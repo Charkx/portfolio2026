@@ -5,12 +5,12 @@
   --foreground: #171717;
 }
 
-@theme inline {
+/* @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
+} */
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -23,4 +23,155 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.glitch {
+  position: relative;
+  color: white;
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  color: #ff00c8;
+  clip: rect(0, 900px, 0, 0);
+  animation: glitch 2s infinite linear alternate-reverse;
+}
+.glitch::after {
+  color: cyan;
+  animation-delay: 0.5s;
+}
+
+@keyframes glitch {
+  0% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  5% {
+    clip: rect(5px, 9999px, 15px, 0);
+  }
+  10% {
+    clip: rect(20px, 9999px, 25px, 0);
+  }
+  15% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  100% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+}
+
+/* Styles pour la section Projects améliorée */
+.neon-glow {
+  text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 15px #00ffff, 0 0 20px #00ffff;
+}
+
+.scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 255, 0.03) 2px,
+    rgba(0, 255, 255, 0.03) 4px
+  );
+  animation: scanlines 0.1s linear infinite;
+}
+
+@keyframes scanlines {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.holographic {
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
+  animation: holographic 4s ease-in-out infinite alternate;
+}
+
+@keyframes holographic {
+  0% { opacity: 0.1; }
+  100% { opacity: 0.3; }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Améliorations pour l'accessibilité et l'UX */
+@media (prefers-reduced-motion: reduce) {
+  .scanlines,
+  .holographic,
+  .glitch::before,
+  .glitch::after {
+    animation: none;
+  }
+}
+
+/* Focus visible pour la navigation clavier */
+.project-tile:focus-visible {
+  outline: 2px solid #00ffff;
+  outline-offset: 2px;
+}
+
+/* Styles pour les indicateurs de navigation 3D */
+.navigation-hint {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #00ffff;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 255, 255, 0.1);
+  animation: fade-in-out 8s ease-in-out;
+}
+
+@keyframes fade-in-out {
+  0%, 100% { opacity: 0; transform: translateY(10px); }
+  10%, 90% { opacity: 0.8; transform: translateY(0); }
+}
+
+/* Indicateur de statut actif */
+.status-indicator {
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #00ffff;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 255, 255, 0.2);
+}
+
+/* Améliorations pour les hologrammes */
+.hologram-panel {
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(0, 255, 255, 0.6);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 255, 255, 0.15);
+}
+
+/* Optimisations pour les appareils mobiles */
+@media (max-width: 768px) {
+  .navigation-hint {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .status-indicator {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
 }
