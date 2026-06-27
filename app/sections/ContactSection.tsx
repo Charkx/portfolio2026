@@ -91,13 +91,13 @@ export function ContactSection() {
                     <div className="flex items-center gap-3">
                       <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
                       <a
-                        href="https://linkedin.com/in/netrunner"
+                        href="https://www.linkedin.com/in/charly-menthiller/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-300 font-mono underline hover:text-cyan-400 transition"
                         aria-label="Voir le profil LinkedIn"
                       >
-                        linkedin.com/in/netrunner
+                        linkedin.com/in/charly-menthiller
                       </a>
                     </div>
                     <div className="flex items-center gap-3">
