@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useCallback } from "react"
-import { usePortfolioStore } from "../store/portfolioStore"
+import { usePortfolioStore} from "../store/portfolioStore"
+
 
 // Fonction de throttle personnalisée
 function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T {
@@ -16,7 +17,7 @@ function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T 
 }
 
 export function useOptimizedScroll() {
-  const { setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel } = usePortfolioStore()
+  const { setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel, setScrollProgress} = usePortfolioStore()
 
   const handleScroll = useCallback(
     throttle(() => {
@@ -46,10 +47,12 @@ export function useOptimizedScroll() {
 
       // Calcul du niveau d'interférence basé sur le scroll
       const scrollProgress = scrollY / (documentHeight - windowHeight)
+      const safeProgress = Math.min(1, Math.max(0, scrollProgress || 0))
+      setScrollProgress(safeProgress)
       const interferenceLevel = 0.3 + scrollProgress * 0.4 // Entre 0.3 et 0.7
       setInterferenceLevel(interferenceLevel)
     }, 16), // ~60fps
-    [setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel],
+    [setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel, setScrollProgress],
   )
 
   useEffect(() => {

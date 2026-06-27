@@ -1,44 +1,48 @@
 "use client"
 
+// Doit s'exécuter avant le montage de tout <Canvas> R3F (corrige le crash
+// "Invalid argument not valid semver" de l'extension React DevTools).
+import "./lib/devtoolsSemverGuard"
+
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import HeroSection from "./sections/HeroSection"
-import AboutSection from "./sections/AboutSection"
-import SkillsSection from "./sections/SkillsSection"
-import { ProjectsSection } from "./sections/ProjectsSection"
-import { ContactSection } from "./sections/ContactSection"
 import { CyberpunkLoader } from "./components/ui/LoadingScreen"
 import { useOptimizedScroll } from "./hooks/useOptimizedScroll"
 import { usePortfolioStore } from "./store/portfolioStore"
-
 import ARInterface from "./components/ui/ARInterface"
-import MemoryReconstruction from "./components/3d/MemoryReconstruction"
-import TransmissionChannel from "./sections/TransmissionChannel"
+import { ErrorBoundary } from "./hooks/ErrorBoundary"
 
-// Panneau de debug séparé pour plus de clarté
-function DebugPanel({ currentSection, skillsProgress, interferenceLevel }: {
-  currentSection: string
-  skillsProgress: number
-  interferenceLevel: number
-}) {
+// Petit fallback pendant le chargement client des sections 3D
+function SectionFallback() {
   return (
-    <div className="fixed top-4 right-4 z-50 bg-black/80 text-green-400 p-4 rounded-lg font-mono text-sm border border-green-400">
-      <div>
-        Section: <span className="text-cyan-400">{currentSection || "hero"}</span>
-      </div>
-      <div>
-        Skills: <span className="text-cyan-400">{skillsProgress || 0}/6</span>
-      </div>
-      <div>
-        Interference: <span className="text-cyan-400">{(interferenceLevel || 0.3).toFixed(2)}</span>
-      </div>
+    <div className="min-h-[40vh] flex items-center justify-center text-cyan-400/60 font-mono text-sm">
+      <span className="animate-pulse">{"// loading module..."}</span>
     </div>
   )
 }
 
+// Sections lourdes (Three.js) chargées côté client uniquement (ssr:false) :
+// code-split hors du bundle initial, montées dès l'hydratation de la page.
+const AboutSection = dynamic(() => import("./sections/AboutSection"), {
+  ssr: false,
+  loading: SectionFallback,
+})
+const SkillsSection = dynamic(() => import("./sections/SkillsSection"), {
+  ssr: false,
+  loading: SectionFallback,
+})
+const ProjectsSection = dynamic(
+  () => import("./sections/ProjectsSection").then((m) => m.ProjectsSection),
+  { ssr: false, loading: SectionFallback }
+)
+const TransmissionChannel = dynamic(() => import("./sections/TransmissionChannel"), {
+  ssr: false,
+  loading: SectionFallback,
+})
+
 export default function CyberpunkLanding() {
-  const { isLoading, setIsLoading, currentSection, skillsProgress, interferenceLevel, debugMode } = usePortfolioStore()
-  const [accessGranted, setAccessGranted] = useState(false);
-  const [scanInitiated, setScanInitiated] = useState(false);
+  const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
 
   // Hook pour améliorer le scroll (expérience utilisateur)
   useOptimizedScroll()
@@ -61,32 +65,28 @@ export default function CyberpunkLanding() {
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-
-      {/* Contenu principal du portfolio */}
-      <main className="relative z-10">
-         <div className="bg-black text-white overflow-x-hidden">
       <ARInterface />
-      
-      <HeroSection
-        onScan={() => setScanInitiated(true)}
-        onAccessGranted={() => setAccessGranted(true)}
-        scanInitiated={scanInitiated}
-      />
-      
-      {accessGranted && (
-        <>
-          <AboutSection />
-          <SkillsSection />
-          <ProjectsSection />
-          <TransmissionChannel />
-        </>
-      )}
-    </div>
-        {/* <HeroSection />
-        <AboutSection interferenceLevel={interferenceLevel} />
-        <SkillsSection skillsProgress={skillsProgress}/>
-        <ProjectsSection />
-        <ContactSection /> */}
+      <main className="relative z-10">
+        <HeroSection
+          onScan={() => { if (introPhase === "LOCKED") setIntroPhase("SCANNING") }}
+        />
+
+        {introPhase === "UNLOCKED" && (
+          <>
+              <ErrorBoundary fallback={null}>
+                <AboutSection />
+              </ErrorBoundary>
+              <ErrorBoundary fallback={null}>
+                <SkillsSection />
+              </ErrorBoundary>
+              <ErrorBoundary fallback={null}>
+                <ProjectsSection />
+              </ErrorBoundary>
+              <ErrorBoundary fallback={null}>
+                <TransmissionChannel />
+              </ErrorBoundary>
+          </>
+        )}
       </main>
     </div>
   )

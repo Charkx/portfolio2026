@@ -1,10 +1,10 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Text, useCursor } from '@react-three/drei';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { Environment } from '@react-three/drei'
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -46,26 +46,27 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
     return () => clearInterval(interval)
   }, [])
 
-  // Custom polygon shape for the card outline
-  const shape = new THREE.Shape();
-  shape.moveTo(-0.75, -0.5);
-  shape.lineTo(-0.05, -0.5);
-  shape.lineTo(0, -0.45);
-  shape.lineTo(0.60, -0.45);
-  shape.lineTo(0.65, -0.5);
-  shape.lineTo(0.75, -0.5);
-  shape.lineTo(0.75, 0.5);
-  shape.lineTo(0.05, 0.5);
-  shape.lineTo(0, 0.45);
-  shape.lineTo(-0.60, 0.45);
-  shape.lineTo(-0.65, 0.5);
-  shape.lineTo(-0.75, 0.5);
-  shape.lineTo(-0.75, -0.5);
-
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.02,
-    bevelEnabled: false,
-  });
+  // Custom polygon shape for the card outline.
+  // Mémoïsé : sinon une nouvelle géométrie est créée à CHAQUE rendu (glitch,
+  // chargement de texture…) sans libérer l'ancienne → fuite mémoire GPU →
+  // perte du contexte WebGL → canvas blanc.
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.75, -0.5);
+    shape.lineTo(-0.05, -0.5);
+    shape.lineTo(0, -0.45);
+    shape.lineTo(0.60, -0.45);
+    shape.lineTo(0.65, -0.5);
+    shape.lineTo(0.75, -0.5);
+    shape.lineTo(0.75, 0.5);
+    shape.lineTo(0.05, 0.5);
+    shape.lineTo(0, 0.45);
+    shape.lineTo(-0.60, 0.45);
+    shape.lineTo(-0.65, 0.5);
+    shape.lineTo(-0.75, 0.5);
+    shape.lineTo(-0.75, -0.5);
+    return new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
+  }, []);
 
   useFrame((state) => {
     if (cardRef.current && !isScanning) {
@@ -216,30 +217,30 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
         {glitchText}
       </Text>
 
-      {/* Infos statiques type HUD */}
+      {/* Infos statiques type HUD — identité réelle (sans accents : troika rend mal) */}
       <Text fontSize={0.035} color="#aaaaaa" position={[-0.68, 0.17, 0.021]} anchorX="left">
-        &gt; SOFTWARE ENGINEER & CREATIVE DEVELOPER
+        &gt; FULL STACK DEVELOPER
       </Text>
       <Text fontSize={0.03} color="#00ffcc" position={[-0.38, -0.25, 0.021]} anchorX="left">
-        &gt; STATUS: ONLINE
+        &gt; STATUS: AVAILABLE
       </Text>
       <Text fontSize={0.03} color="green" position={[-0.38, -0.35, 0.021]} anchorX="left">
-        &gt; STATUS: ONLINE
+        &gt; MODE: ALTERNANCE
       </Text>
       <Text fontSize={0.03} color="#ffff00" position={[0.10, -0.25, 0.021]} anchorX="left">
-        &gt; SECURITY: LEVEL 9
+        &gt; LEVEL: BAC+5 ENG.
       </Text>
-      <Text fontSize={0.03} color="#ff0000" position={[0.10, -0.35, 0.021]} anchorX="left">
-        &gt; THREAT: MAXIMUM
+      <Text fontSize={0.03} color="#00ffff" position={[0.10, -0.35, 0.021]} anchorX="left">
+        &gt; STACK: REACT / NODE
       </Text>
       <Text fontSize={0.025} color="#888" position={[0.30, 0.45, 0.021]} anchorX="left">
-        AVAIBLE TO WORK NOW
+        ALTERNANCE 09/2026
       </Text>
        <Text fontSize={0.025} color="#888" position={[0.60, 0.45, -0.001]} anchorX="left" rotation={[0, Math.PI, 0]}>
-        AVAIBLE TO WORK NOW
+        ALTERNANCE 09/2026
       </Text>
       <Text fontSize={0.025} color="#888" position={[-0.68, -0.48, 0.021]} anchorX="left">
-        Night City Protocols | Sector 7G
+        Polytech Marseille | CODA Avignon
       </Text>
     </group>
   );
@@ -254,24 +255,20 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
           <Canvas>
             <PerspectiveCamera makeDefault position={[0, 0, 2]} />
             <OrbitControls enableZoom={false} enablePan={false} />
-            <ambientLight intensity={0.2} />
+            <ambientLight intensity={0.9} />
             <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
             <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
             <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
             
-            <CyberpunkIDCard onScanTrigger={() => {
-              onScan();
-            }} />
-
-            {/* 🌟 Effet Bloom */}
-            <EffectComposer>
-              <Bloom
-                intensity={0.6}        // intensité du bloom
-                luminanceThreshold={0} // seuil de luminosité pour déclencher l’effet
-                luminanceSmoothing={0.9} // adoucissement
-                mipmapBlur
-              />
-            </EffectComposer>
+            
+            {/* Suspense interne : le chargement de texture (useLoader) est contenu
+                ICI, sans faire démonter/remonter tout le Canvas. */}
+            <Suspense fallback={null}>
+              <Environment preset="night" />
+              <CyberpunkIDCard onScanTrigger={() => {
+                onScan();
+              }} />
+            </Suspense>
           </Canvas>
   );
 };

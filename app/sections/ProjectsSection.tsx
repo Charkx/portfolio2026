@@ -10,6 +10,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import MemoryReconstruction from '../components/3d/MemoryReconstruction';
 import { useAudioManager } from '../hooks/useAudioManager';
 import { useProjectManager } from '../hooks/useProjectManager';
+import { useInView } from '../hooks/useInView';
 import type { Project } from '@/app/utils/types';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -18,48 +19,43 @@ gsap.registerPlugin(ScrollTrigger);
 
 const PROJECTS_DATA: Project[] = [
   {
-    title:          'Neural Interface Dashboard',
-    description:    'Système de monitoring cybernétique avec analyse biométrique en temps réel et visualisation des flux de données.',
-    tech:           ['React', 'Three.js', 'WebGL', 'GSAP'],
+    title:          'Arrakis Player Cards',
+    description:    'Plateforme communautaire pour une association gaming de 2000 membres. Système de cartes joueurs façon FIFA, alimenté par les performances réelles en compétition.',
+    contribution:   'Architecture complète, parseur Excel custom, algorithme de scoring calibré sur données réelles, animations Framer Motion, CI/CD Vercel.',
+    tech:           ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Vercel'],
+    highlights:     ['Livré seul de bout en bout', 'Données réelles', 'Déployé en production'],
     status:         'COMPLETED',
-    memId:          'MEM.DAT_001',
-    classification: 'LEVEL_7_CLEARANCE',
+    memId:          'PRJ.001',
+    classification: 'PRODUCTION',
     extractionTime: 600,
-    github:         'https://github.com/username/project-1',
-    demo:           'https://project-1.vercel.app',
+    github:         'https://github.com/Charkx',
+    demo:           '',
   },
   {
-    title:          'Quantum Data Processor',
-    description:    'Moteur de visualisation haute performance pour applications de calcul quantique avec simulation de particules.',
-    tech:           ['TypeScript', 'D3.js', 'WebAssembly', 'Shaders'],
+    title:          "L'Œil Artistique",
+    description:    'Site vitrine moderne avec animations avancées, conçu et déployé de bout en bout.',
+    contribution:   'Design, développement et déploiement complet.',
+    tech:           ['Next.js', 'Tailwind CSS', 'GSAP', 'Vercel'],
+    highlights:     ['Animations avancées', 'Performance', 'Déployé en production'],
     status:         'OPERATIONAL',
-    memId:          'MEM.DAT_002',
-    classification: 'ACTIVE_DEPLOYMENT',
-    extractionTime: 700,
-    github:         'https://github.com/username/project-2',
-    demo:           'https://project-2.vercel.app',
+    memId:          'PRJ.002',
+    classification: 'LIVE',
+    extractionTime: 600,
+    github:         '',
+    demo:           'https://oeilartistique.vercel.app',
   },
   {
-    title:          'Holographic Memory Bank',
-    description:    'Interface 3D immersive pour le stockage et la récupération de données complexes avec reconnaissance gestuelle.',
-    tech:           ['Three.js', 'GSAP', 'WebXR', 'AI'],
+    title:          'Expérience 3D Interactive',
+    description:    'Expérience interactive 3D navigable directement dans le navigateur (ce portfolio même).',
+    contribution:   'Scènes WebGL temps réel, interactions et animations 3D, intégration React.',
+    tech:           ['Three.js', 'React Three Fiber', 'React'],
+    highlights:     ['WebGL', 'Animations 3D temps réel'],
     status:         'ACTIVE',
-    memId:          'MEM.DAT_003',
+    memId:          'PRJ.003',
     classification: 'EXPERIMENTAL',
-    extractionTime: 800,
-    github:         'https://github.com/username/project-3',
-    demo:           'https://project-3.vercel.app',
-  },
-  {
-    title:          'Synthetic Mind Core',
-    description:    'Système de support décisionnel IA avec analytics prédictif et intégration de réseau neuronal.',
-    tech:           ['Python', 'TensorFlow', 'React', 'Neural'],
-    status:         'CLASSIFIED',
-    memId:          'MEM.DAT_004',
-    classification: 'TOP_SECRET',
-    extractionTime: 800,
-    github:         'https://github.com/username/project-4',
-    demo:           'https://project-4.vercel.app',
+    extractionTime: 600,
+    github:         'https://github.com/Charkx',
+    demo:           '',
   },
 ];
 
@@ -243,6 +239,31 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
             {project.description}
           </p>
 
+          {project.contribution && (
+            <div>
+              <div className="text-xs text-cyan-400/60 font-mono mb-1 uppercase tracking-wider">
+                Ce que j&apos;ai fait
+              </div>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                {project.contribution}
+              </p>
+            </div>
+          )}
+
+          {project.highlights && project.highlights.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {project.highlights.map((h) => (
+                <li
+                  key={h}
+                  className="text-xs px-2.5 py-1 rounded-full border border-cyan-400/30
+                             bg-cyan-400/5 text-cyan-200 font-mono"
+                >
+                  ✓ {h}
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div>
             <div className="text-xs text-cyan-400/60 font-mono mb-2 uppercase tracking-wider">
               Stack technique
@@ -372,6 +393,26 @@ function MobileProjectList({
                   {project.description}
                 </p>
 
+                {project.contribution && (
+                  <p className="text-gray-500 text-xs leading-relaxed">
+                    {project.contribution}
+                  </p>
+                )}
+
+                {project.highlights && project.highlights.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {project.highlights.map((h) => (
+                      <li
+                        key={h}
+                        className="text-xs px-2 py-0.5 rounded-full border border-cyan-400/30
+                                   bg-cyan-400/5 text-cyan-200 font-mono"
+                      >
+                        ✓ {h}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 <div className="flex flex-wrap gap-1.5">
                   {project.tech.map((tech) => (
                     <span
@@ -437,6 +478,7 @@ export function ProjectsSection() {
 
   // null = pas encore détecté (SSR safe), évite le flash hydration
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const { ref: canvasGateRef, inView: canvasInView } = useInView<HTMLDivElement>();
   const [hoveredProject, setHoveredProject] = useState<number | null>(null);
 
   const { playSound, isAudioEnabled } = useAudioManager();
@@ -455,14 +497,15 @@ export function ProjectsSection() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Animations GSAP d'entrée
+  // Animations GSAP d'entrée — on attend la détection device pour que les
+  // cibles (.project-card en desktop) existent réellement dans le DOM.
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.set(['.projects-title', '.projects-hint', '.project-card'], {
-        opacity: 0, y: 20,
-      });
+    if (isMobile === null) return; // détection pas encore faite
 
-      gsap.timeline({
+    const ctx = gsap.context(() => {
+      gsap.set(['.projects-title', '.projects-hint'], { opacity: 0, y: 20 });
+
+      const tl = gsap.timeline({
         scrollTrigger: {
           trigger:       sectionRef.current,
           start:         'top 70%',
@@ -476,15 +519,20 @@ export function ProjectsSection() {
       .to('.projects-hint', {
         opacity: 1, y: 0,
         duration: 0.5, ease: 'power2.out',
-      }, '-=0.3')
-      .to('.project-card', {
-        opacity: 1, y: 0,
-        duration: 0.5, stagger: 0.1, ease: 'back.out(1.2)',
-      }, '-=0.2');
+      }, '-=0.3');
+
+      // Les cartes .project-card n'existent qu'en desktop
+      if (isMobile === false) {
+        gsap.set('.project-card', { opacity: 0, y: 20 });
+        tl.to('.project-card', {
+          opacity: 1, y: 0,
+          duration: 0.5, stagger: 0.1, ease: 'back.out(1.2)',
+        }, '-=0.2');
+      }
     }, sectionRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [isMobile]);
 
   const handleProjectSelect = useCallback((index: number) => {
     selectProject(index, playSound);
@@ -535,9 +583,11 @@ export function ProjectsSection() {
         {/* Canvas 3D — desktop uniquement, rendu après détection */}
         {isMobile === false && (
           <div
+            ref={canvasGateRef}
             className="w-full rounded-2xl overflow-hidden border border-cyan-400/20"
             style={{ height: '55vh' }}
           >
+            {canvasInView && (
             <Canvas gl={{ antialias: true }}>
               <PerspectiveCamera makeDefault position={[0, 2.5, 8]} fov={55} />
               <OrbitControls
@@ -563,6 +613,7 @@ export function ProjectsSection() {
                 onCardHover={handleTileHover}
               />
             </Canvas>
+            )}
           </div>
         )}
 

@@ -2,11 +2,21 @@
 
 import { create } from "zustand"
 import { devtools } from "zustand/middleware"
+import { IntroPhase } from "../utils/types"
 
 interface PortfolioState {
   // État de chargement
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+
+  // Phases d'introduction
+  introPhase: IntroPhase
+  setIntroPhase: (phase: IntroPhase) => void
+
+  //Barre de progression du scroll
+  scrollProgress: number
+  setScrollProgress: (p: number) => void
+
 
   // Navigation
   currentSection: string
@@ -34,6 +44,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     (set, get) => ({
       // État initial
       isLoading: true,
+      introPhase: "LOCKED",
       currentSection: "hero",
       scrollY: 0,
       skillsProgress: 0,
@@ -45,6 +56,10 @@ export const usePortfolioStore = create<PortfolioState>()(
         console.log("🔄 Loading state:", loading)
         set({ isLoading: loading })
       },
+
+      setIntroPhase: (phase) => set({ introPhase: phase }),
+
+      setScrollProgress: (p) => set({ scrollProgress: p }),
 
       setCurrentSection: (section) => {
         const current = get().currentSection

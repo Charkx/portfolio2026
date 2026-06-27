@@ -9,7 +9,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader';
+import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import gsap from 'gsap';
 import type { TechItem } from '@/app/utils/types';
 

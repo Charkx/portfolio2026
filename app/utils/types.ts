@@ -24,4 +24,8 @@ export interface Project {
   extractionTime: number;
   github:         string;
   demo:           string;
+  contribution?:  string;   // "Ce que j'ai fait"
+  highlights?:    string[]; // Points forts
 }
+
+export type IntroPhase = 'LOCKED' | 'SCANNING' | 'BOOTING' | 'UNLOCKED';

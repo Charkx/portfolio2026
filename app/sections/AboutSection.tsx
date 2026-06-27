@@ -4,11 +4,12 @@ import React, { useRef, useEffect, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import CognitiveProfile from '../components/3d/CognitiveProfil';
+import { LazyMount } from '../components/LazyMount';
 import { ABOUT_TEXT } from '../utils/constants';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const scanColors = ['#ff00ff', '#9b5de5', '#00ffff'];
+const scanColors = ['#ff00ff', '#9b5de5', '#00ffff', '#39ff14', '#ffe600'];
 
 const BOOT_LINES = [
   '>> Initializing neural framework...',
@@ -147,6 +148,8 @@ export default function AboutSection() {
               'border-pink-400/40 hover:border-pink-400/70',
               'border-purple-400/40 hover:border-purple-400/70',
               'border-cyan-400/40 hover:border-cyan-400/70',
+              'border-green-400/40 hover:border-green-400/70',
+              'border-yellow-400/40 hover:border-yellow-400/70',
             ];
 
             const isVisible = visibleIndex > i;
@@ -157,7 +160,7 @@ export default function AboutSection() {
                 className={`relative border p-4 rounded transition-all bg-black/50 cursor-pointer group overflow-hidden
                   ${borderColors[i] || ''}
                   ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                ref={(el) => (blocksRef.current[i] = el!)}
+                ref={(el) => { if (el) blocksRef.current[i] = el; }}
                 onClick={() => handleBlockClick(i)}
               >
                 {isVisible && (
@@ -175,7 +178,9 @@ export default function AboutSection() {
           })}
         </div>
 
-        <CognitiveProfile activeColor={activeScanColor} />
+        <LazyMount className="h-[80vh] w-full">
+          <CognitiveProfile activeColor={activeScanColor} />
+        </LazyMount>
       </div>
     </section>
   );

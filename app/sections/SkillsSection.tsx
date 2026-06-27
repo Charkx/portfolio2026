@@ -5,7 +5,8 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import DNAAnalysis from '../components/3d/DNAAnalysis';
 import TechList from '../components/TechList';
-import { TECH_STACK } from '../utils/constants';
+import { LazyMount } from '../components/LazyMount';
+import { TECH_STACK, SKILLS_EXTRA } from '../utils/constants';
 import type { MutationState, PositionMap } from '../utils/types';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -102,21 +103,23 @@ export default function SkillsSection() {
         DNA MODULE ANALYSIS
       </h2>
       <p className="text-lg text-cyan-100 mb-12 max-w-2xl text-center z-10">
-        Chaque technologie que j'apprends devient un fragment de mon ADN de développeur.
+        Chaque technologie que j&apos;apprends devient un fragment de mon ADN de développeur.
         Cette section explore les modules qui composent mon code génétique professionnel.
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 z-10 w-full max-w-6xl relative">
-        <DNAAnalysis
-          visibleTechs={visibleTechs}
-          hoveredTech={hoveredTech}
-          selectedTech={selectedTech}
-          mutation={mutation}
-          onTechClick={handleTechClick}
-          onTechHover={handleTechHover}
-          onPositionsReady={handlePositionsReady}
-          onMutationComplete={handleMutationComplete}
-        />
+        <LazyMount className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }}>
+          <DNAAnalysis
+            visibleTechs={visibleTechs}
+            hoveredTech={hoveredTech}
+            selectedTech={selectedTech}
+            mutation={mutation}
+            onTechClick={handleTechClick}
+            onTechHover={handleTechHover}
+            onPositionsReady={handlePositionsReady}
+            onMutationComplete={handleMutationComplete}
+          />
+        </LazyMount>
 
         <TechList
           selectedTech={selectedTech}
@@ -124,6 +127,28 @@ export default function SkillsSection() {
           onTechClick={handleTechClick}
           onTechHover={handleTechHover}
         />
+      </div>
+
+      {/* Compétences sans logo : DevOps, IA, méthodes */}
+      <div className="z-10 w-full max-w-6xl mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
+        {SKILLS_EXTRA.map((group) => (
+          <div key={group.title}>
+            <h3 className="text-lg font-mono text-pink-400 mb-4">
+              &gt;&gt; {group.title}
+            </h3>
+            <ul className="flex flex-wrap gap-2">
+              {group.items.map((item) => (
+                <li
+                  key={item}
+                  className="text-xs px-3 py-1.5 rounded-full border border-cyan-400/30
+                             bg-cyan-400/5 text-cyan-200 font-mono"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </section>
   );
