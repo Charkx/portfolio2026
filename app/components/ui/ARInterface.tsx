@@ -28,29 +28,34 @@ export default function ARInterface() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
-      {/* Bouton TOUJOURS visible (même en LOCKED) */}
-      <a
-        href={PROFILE.cv}
-        download
-        aria-label="Télécharger le CV"
-        className="text-cyan-400 pointer-events-auto absolute top-0 right-20 h-16 flex items-center gap-1 hover:text-cyan-200 transition-colors"  
-      >
-        <FileDown size={18} /> <span className="text-xs font-mono">CV</span>
-      </a>
-      <button
-        aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
-        className="text-cyan-400 pointer-events-auto absolute top-0 right-10 h-16 flex items-center"
-        onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
-      >
-        {introPhase === "LOCKED" ? <Power size={18}/> : <PowerOff size={18}/>}
-      </button>
+      {/* Cluster haut-droit TOUJOURS visible : MEMORY_DUMP (CV) + Power */}
+      <div className="pointer-events-auto absolute top-0 right-6 h-16 z-20 flex items-center gap-4">
+        <a
+          href={PROFILE.cv}
+          download
+          aria-label="Télécharger le CV (memory dump)"
+          title="Télécharger le CV"
+          className="group flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors"
+        >
+          <FileDown size={14}/>
+          <span className="hidden sm:inline">MEMORY_DUMP</span>
+        </a>
+        <button
+          aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
+          title={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}
+          className="text-cyan-400 hover:text-cyan-200 transition-colors"
+          onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
+        >
+          {introPhase === "LOCKED" ? <Power size={18}/> : <PowerOff size={18}/>}
+        </button>
+      </div>
     
       {/* Top HUD */}
 
    {introPhase !== "LOCKED" && (
       <div className="hud-boot relative w-full h-full">
       <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex justify-between items-center h-full pl-6 pr-20 text-cyan-400 font-mono text-sm">
+        <div className="flex justify-between items-center h-full pl-6 pr-44 text-cyan-400 font-mono text-sm">
 
             <div className="flex items-center space-x-6">
                 ID:
@@ -89,6 +94,7 @@ export default function ARInterface() {
                   <div aria-hidden="true" className="hidden sm:flex text-cyan-400/40">{item.prefix}:</div>
                   <button
                     aria-label={`Aller à la section ${item.label}`}
+                    title={`Aller à la section ${item.label}`}
                     onClick={() => document.getElementById(item.section)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}                   className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
                       booted
                       ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/40"}`
