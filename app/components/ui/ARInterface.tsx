@@ -3,6 +3,32 @@ import { PROFILE } from '../../utils/constants';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { Power, PowerOff, FileDown } from 'lucide-react';
 
+// Infobulle custom : instantanée et stylée (contrairement au `title` natif).
+// `pointer-events-auto` sur le wrapper pour que le :hover se déclenche même
+// dans le HUD qui est en pointer-events-none.
+function HudTooltip({
+  label,
+  side = "bottom",
+  children,
+}: {
+  label: string
+  side?: "top" | "bottom"
+  children: React.ReactNode
+}) {
+  const pos = side === "top" ? "bottom-full mb-2" : "top-full mt-2"
+  return (
+    <span className="group relative inline-flex items-center pointer-events-auto">
+      {children}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute ${pos} left-1/2 -translate-x-1/2 whitespace-nowrap rounded border border-cyan-400/40 bg-black/90 px-2 py-1 text-[10px] font-mono text-cyan-300 opacity-0 transition-opacity duration-150 group-hover:opacity-100 z-50`}
+      >
+        {label}
+      </span>
+    </span>
+  )
+}
+
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
   const [signalStrength, setSignalStrength] = useState(95);
@@ -30,24 +56,26 @@ export default function ARInterface() {
     <div className="fixed inset-0 pointer-events-none z-50">
       {/* Cluster haut-droit TOUJOURS visible : MEMORY_DUMP (CV) + Power */}
       <div className="pointer-events-auto absolute top-0 right-6 h-16 z-20 flex items-center gap-4">
-        <a
-          href={PROFILE.cv}
-          download
-          aria-label="Télécharger le CV (memory dump)"
-          title="Télécharger le CV"
-          className="group flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors"
-        >
-          <FileDown size={14}/>
-          <span className="hidden sm:inline">MEMORY_DUMP</span>
-        </a>
-        <button
-          aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
-          title={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}
-          className="text-cyan-400 hover:text-cyan-200 transition-colors"
-          onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
-        >
-          {introPhase === "LOCKED" ? <Power size={18}/> : <PowerOff size={18}/>}
-        </button>
+        <HudTooltip label="Télécharger le CV (memory dump)">
+          <a
+            href={PROFILE.cv}
+            download
+            aria-label="Télécharger le CV"
+            className="flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
+          >
+            <FileDown size={14}/>
+            <span className="hidden sm:inline">MEMORY_DUMP</span>
+          </a>
+        </HudTooltip>
+        <HudTooltip label={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}>
+          <button
+            aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
+            className="text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
+            onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
+          >
+            {introPhase === "LOCKED" ? <Power size={18}/> : <PowerOff size={18}/>}
+          </button>
+        </HudTooltip>
       </div>
     
       {/* Top HUD */}
@@ -92,18 +120,20 @@ export default function ARInterface() {
               {NAV.map((item, idx) => (        // ← idx = la position
                 <div key={item.section} className="flex items-center">
                   <div aria-hidden="true" className="hidden sm:flex text-cyan-400/40">{item.prefix}:</div>
-                  <button
-                    aria-label={`Aller à la section ${item.label}`}
-                    title={`Aller à la section ${item.label}`}
-                    onClick={() => document.getElementById(item.section)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}                   className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
-                      booted
-                      ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/40"}`
-                      : "opacity-0"
-                    }`}
-                    style={{ '--i': idx + 4 } as React.CSSProperties}   // ← cascade auto
-                  >
-                    {item.label}
-                  </button>
+                  <HudTooltip label={`Aller à la section ${item.label}`} side="top">
+                    <button
+                      aria-label={`Aller à la section ${item.label}`}
+                      onClick={() => document.getElementById(item.section)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
+                        booted
+                        ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/40"}`
+                        : "opacity-0"
+                      }`}
+                      style={{ '--i': idx + 4 } as React.CSSProperties}
+                    >
+                      {item.label}
+                    </button>
+                  </HudTooltip>
                 </div>
               ))}
             </div>
