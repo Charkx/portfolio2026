@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://portfolio-pi-six-dtdgbzbkb0.vercel.app/"), // ← mets ton URL de déploiement

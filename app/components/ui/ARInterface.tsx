@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { usePortfolioStore } from '../../store/portfolioStore';
-import { Power, PowerOff } from 'lucide-react';
+import { Power, PowerOff, FileDown } from 'lucide-react';
 
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
@@ -29,6 +29,14 @@ export default function ARInterface() {
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {/* Bouton TOUJOURS visible (même en LOCKED) */}
+      <a
+        href={PROFILE.cv}
+        download
+        aria-label="Télécharger le CV"
+        className="text-cyan-400 pointer-events-auto absolute top-0 right-20 h-16 flex items-center gap-1 hover:text-cyan-200 transition-colors"  
+      >
+        <FileDown size={18} /> <span className="text-xs font-mono">CV</span>
+      </a>
       <button
         aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
         className="text-cyan-400 pointer-events-auto absolute top-0 right-10 h-16 flex items-center"

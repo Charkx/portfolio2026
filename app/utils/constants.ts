@@ -13,6 +13,7 @@ export const PROFILE = {
   linkedin:     "https://www.linkedin.com/in/charly-menthiller/",
   linkedinLabel:"linkedin.com/in/charly-menthiller",
   location:     "Roquemaure (30) — Mobile selon l'offre",
+  cv:           "/CV_Charly_Menthiller.pdf",
 } as const
 
 // --- Stack technique (icônes devicon + DNA 3D) ---
