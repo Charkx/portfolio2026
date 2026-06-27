@@ -10,6 +10,8 @@ export const PROFILE = {
   phoneDisplay: "06 51 72 60 48",
   github:       "https://github.com/Charkx",
   githubLabel:  "github.com/Charkx",
+  linkedin:     "https://www.linkedin.com/in/charly-menthiller/",
+  linkedinLabel:"linkedin.com/in/charly-menthiller",
   location:     "Roquemaure (30) — Mobile selon l'offre",
 } as const
 

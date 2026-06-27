@@ -165,10 +165,32 @@ export default function TransmissionChannel() {
                 {PROFILE.githubLabel}
               </a>
             </div>
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <a
+                href={PROFILE.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-300 underline hover:text-cyan-100"
+              >
+                {PROFILE.linkedinLabel}
+              </a>
+            </div>
             <div className="text-gray-400 pt-2 border-t border-cyan-400/10">
               📍 {PROFILE.location}
             </div>
             <div className="text-green-300">⏳ {PROFILE.availability}</div>
+
+            <a
+              href="/CV_Charly_Menthiller.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="mt-3 inline-flex items-center justify-center gap-2 px-4 py-2 rounded
+                         bg-cyan-500 hover:bg-cyan-400 text-black font-semibold transition-colors"
+            >
+              ↓ Télécharger mon CV
+            </a>
           </div>
         </div>
 
