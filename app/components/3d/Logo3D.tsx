@@ -30,7 +30,6 @@ interface Props {
   position:     [number, number, number];
   highlighted?: boolean;
   selected?:    boolean;
-  mutated?:     boolean;
   onClick?:     () => void;
   onPointerOver?: () => void;
   onPointerOut?:  () => void;
@@ -45,7 +44,6 @@ const Logo3D = forwardRef<THREE.Group, Props>(({
   position,
   highlighted = false,
   selected    = false,
-  mutated     = false,
   onClick,
   onPointerOver,
   onPointerOut,
@@ -59,12 +57,6 @@ const Logo3D = forwardRef<THREE.Group, Props>(({
   const logoMatsRef      = useRef<THREE.MeshStandardMaterial[]>([]);
   const sphereMatRef     = useRef<THREE.MeshStandardMaterial | null>(null);
   const [logoGroup, setLogoGroup] = useState<THREE.Group | null>(null);
-
-  // Ref pour éviter de relancer l'animation mutation si déjà en cours
-  const mutationActiveRef = useRef(false);
-  // Ref stable pour les props qui changent
-  const mutatedRef = useRef(mutated);
-  useEffect(() => { mutatedRef.current = mutated; }, [mutated]);
 
   useImperativeHandle(ref, () => groupRef.current ?? new THREE.Group(), []);
 
@@ -170,61 +162,6 @@ group.position.set(-center.x, -center.y, -center.z);
     mat.opacity           = THREE.MathUtils.lerp(mat.opacity, targetOpacity, 0.12);
     mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetEmissive, 0.12);
   });
-
-  // --- Animation de mutation déclenchée par la prop `mutated` ---
-  useEffect(() => {
-    if (!mutated || mutationActiveRef.current) return;
-    if (!groupRef.current) return;
-
-    mutationActiveRef.current = true;
-    const group = groupRef.current;
-
-    // 1. Pulsation de scale
-    gsap.fromTo(
-      group.scale,
-      { x: 1,   y: 1,   z: 1   },
-      { x: 1.3, y: 1.3, z: 1.3,
-        yoyo: true, repeat: 1,
-        duration: 0.4, ease: 'power2.inOut' }
-    );
-
-    // 2. Rotation complète
-    gsap.to(group.rotation, {
-      y:        group.rotation.y + Math.PI * 2,
-      duration: 1,
-      ease:     'power1.inOut',
-    });
-
-    // 3. Fade-in du logo
-    const proxy = { t: 0 };
-    gsap.to(proxy, {
-      t:        1,
-      duration: 0.6,
-      ease:     'power2.out',
-      onUpdate() {
-        logoMatsRef.current.forEach((m) => {
-          m.opacity = THREE.MathUtils.lerp(0.1, 1, proxy.t);
-        });
-      },
-      onComplete() {
-        // 4. Fade-out après affichage
-        gsap.to(proxy, {
-          t:        0,
-          duration: 0.6,
-          delay:    0.3,
-          ease:     'power2.in',
-          onUpdate() {
-            logoMatsRef.current.forEach((m) => {
-              m.opacity = THREE.MathUtils.lerp(0.1, 1, proxy.t);
-            });
-          },
-          onComplete() {
-            mutationActiveRef.current = false;
-          },
-        });
-      },
-    });
-  }, [mutated]);
 
   return (
     <group

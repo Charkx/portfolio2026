@@ -7,7 +7,6 @@ import DNAAnalysis from '../components/3d/DNAAnalysis';
 import TechList from '../components/TechList';
 import { LazyMount } from '../components/LazyMount';
 import { TECH_STACK, HELIX_STRANDS } from '../utils/constants';
-import type { MutationState, PositionMap } from '../utils/types';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -33,8 +32,6 @@ export default function SkillsSection() {
   const [visibleTechs, setVisibleTechs] = useState<string[]>([]);
   const [hoveredTech, setHoveredTech]   = useState<string | null>(null);
   const [selectedTech, setSelectedTech] = useState<string | null>(null);
-  const [mutation, setMutation]         = useState<MutationState | null>(null);
-  const [positions, setPositions]       = useState<PositionMap>({});
   const [levelFilter, setLevelFilter]   = useState<number>(0); // 0 = tout
 
   // -- Révélation : quand la section entre, TOUTES les technos s'assemblent --
@@ -81,15 +78,6 @@ export default function SkillsSection() {
     setHoveredTech(techName ? techName.toLowerCase() : null);
   }, []);
 
-  // -- Positions 3D prêtes (émises par DNAHelix) --
-  const handlePositionsReady = useCallback((map: PositionMap) => {
-    setPositions(map);
-  }, []);
-
-  // -- Fin de la mutation --
-  const handleMutationComplete = useCallback(() => {
-    setMutation(null);
-  }, []);
 
   return (
     <section
@@ -132,11 +120,8 @@ export default function SkillsSection() {
               visibleTechs={shownTechs}
               hoveredTech={hoveredTech}
               selectedTech={selectedTech}
-              mutation={mutation}
               onTechClick={handleTechClick}
               onTechHover={handleTechHover}
-              onPositionsReady={handlePositionsReady}
-              onMutationComplete={handleMutationComplete}
             />
           </LazyMount>
 

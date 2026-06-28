@@ -16,7 +16,7 @@ const CYAN = new THREE.Color('#22d3ee');
 
 function BrainModel({ selected, color, count }: Props) {
   const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(MODEL);
+  const { scene, animations } = useGLTF(MODEL, true); // true = décodeur Draco
 
   // On retire les pistes "scale" de l'animation : elles faisaient varier la
   // taille du cerveau (et ralentir l'anim le figeait trop petit). On garde
@@ -220,4 +220,4 @@ export default function CognitiveProfile({ selected, color, count }: Props) {
   );
 }
 
-useGLTF.preload(MODEL);
+useGLTF.preload(MODEL, true);

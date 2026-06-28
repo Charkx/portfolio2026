@@ -32,7 +32,7 @@ export const TECH_STACK = {
   ],
   "Backend": [
     { name: "NodeJs",     icon: "nodejs",      level: 2, desc: "Serveurs et API REST côté back." },
-    { name: "Express",    icon: "express",     level: 2, desc: "Routing et API REST sur mes projets." },
+    { name: "Supabase",    icon: "supabase",     level: 2, desc: "Routing et API REST sur mes projets." },
     { name: "PostgreSQL", icon: "postgresql",  level: 2, desc: "Modélisation relationnelle et requêtes SQL." },
     { name: "Java",       icon: "java",        level: 2, desc: "Découvert en école, approfondi en stage R&D chez Dassault Systèmes." },
   ],

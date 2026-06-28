@@ -4,17 +4,13 @@ import { Suspense, memo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html, useProgress } from '@react-three/drei';
 import DNAHelix from './DNAHelix';
-import type { MutationState, PositionMap } from '@/app/utils/types';
 
 interface Props {
-  visibleTechs:       string[];
-  hoveredTech:        string | null;
-  selectedTech:       string | null;
-  mutation:           MutationState | null;
-  onTechClick:        (name: string) => void;
-  onTechHover:        (name: string | null) => void;
-  onPositionsReady:   (map: PositionMap) => void;
-  onMutationComplete: () => void;
+  visibleTechs: string[];
+  hoveredTech:  string | null;
+  selectedTech: string | null;
+  onTechClick:  (name: string) => void;
+  onTechHover:  (name: string | null) => void;
 }
 
 // Stable — évite la recréation de l'objet camera à chaque render
@@ -24,11 +20,8 @@ export default memo(function DNAAnalysis({
   visibleTechs,
   hoveredTech,
   selectedTech,
-  mutation,
   onTechClick,
   onTechHover,
-  onPositionsReady,
-  onMutationComplete,
 }: Props) {
   return (
     // Decorative 3D view — l'équivalent accessible est la TechList à droite
@@ -54,11 +47,8 @@ export default memo(function DNAAnalysis({
             visibleTechs={visibleTechs}
             hoveredTech={hoveredTech}
             selectedTech={selectedTech}
-            mutation={mutation}
             onTechClick={onTechClick}
             onTechHover={onTechHover}
-            onPositionsReady={onPositionsReady}
-            onMutationComplete={onMutationComplete}
           />
         </Suspense>
 
