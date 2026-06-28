@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Logo3D from './Logo3D';
 import MiniLogoParticlesManager from './MiniLogoParticlesManager';
-import { TECH_STACK } from '@/app/utils/constants';
+import { TECH_STACK, HELIX_STRANDS } from '@/app/utils/constants';
 import type { MutationState, PositionMap } from '@/app/utils/types';
 
 // --- Constantes ---
@@ -23,7 +23,7 @@ const COMPLEMENT: Record<Base, Base> = { A: 'T', T: 'A', G: 'C', C: 'G' };
 const BASES: Base[] = ['A', 'T', 'G', 'C'];
 
 const HELIX_CONFIG = {
-  totalPairs: 15,
+  totalPairs: 16, // = nb total de technos (Front + Back + DevOps)
   spacing:    0.5,
   radius:     1.5,
   angleStep:  0.35,
@@ -38,9 +38,15 @@ const _up   = new THREE.Vector3(0, 1, 0);
 const _quat = new THREE.Quaternion();
 const _lerp = new THREE.Vector3();
 
-// Géométrie et matériau partagés pour tous les liens
-const LINK_GEOMETRY = new THREE.CylinderGeometry(0.05, 0.05, 1, 6);
-const LINK_MATERIAL = new THREE.MeshStandardMaterial({ color: '#aaaaaa' });
+// Géométrie et matériau partagés pour tous les liens (barreaux = cyan néon)
+const LINK_GEOMETRY = new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6);
+const LINK_MATERIAL = new THREE.MeshStandardMaterial({
+  color: '#0a3a4a',
+  emissive: '#22d3ee',
+  emissiveIntensity: 0.9,
+  transparent: true,
+  opacity: 0.85,
+});
 
 // --- Types ---
 
@@ -86,7 +92,7 @@ export default function DNAHelix({
     };
   }, []);
 
-  // Stack aplati — stable entre les renders
+  // Stack pour l'hélice — toutes les technos (langages + DevOps)
   const flatStack = useMemo(() => Object.values(TECH_STACK).flat(), []);
 
   // Set des techs visibles — recalculé seulement quand visibleTechs change
@@ -94,6 +100,41 @@ export default function DNAHelix({
     () => new Set(visibleTechs.map((t) => t.toLowerCase())),
     [visibleTechs]
   );
+
+  // --- Scaffold DA (cyan néon) : les 2 brins + un voile de particules ---
+  const scaffold = useMemo(() => {
+    const { totalPairs, spacing, radius, angleStep } = HELIX_CONFIG;
+    const ptsA: THREE.Vector3[] = [];
+    const ptsB: THREE.Vector3[] = [];
+    const rBack = radius + 0.4; // brins un peu à l'extérieur → ne traversent plus les sphères
+    for (let i = 0; i < totalPairs; i++) {
+      const angle = i * angleStep;
+      const y = (i - totalPairs / 2) * spacing;
+      ptsA.push(new THREE.Vector3(Math.cos(angle) * rBack, y, Math.sin(angle) * rBack));
+      ptsB.push(new THREE.Vector3(Math.cos(angle + Math.PI) * rBack, y, Math.sin(angle + Math.PI) * rBack));
+    }
+    const tubeA = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ptsA), 100, 0.02, 8, false);
+    const tubeB = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ptsB), 100, 0.02, 8, false);
+    // particules autour de l'hélice (cylindre)
+    const N = 260;
+    const h = totalPairs * spacing;
+    const arr = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = radius * (0.6 + Math.random() * 1.2);
+      arr[i * 3] = Math.cos(a) * r;
+      arr[i * 3 + 1] = (Math.random() - 0.5) * h * 1.1;
+      arr[i * 3 + 2] = Math.sin(a) * r;
+    }
+    const particles = new THREE.BufferGeometry();
+    particles.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    return { tubeA, tubeB, particles };
+  }, []);
+  useEffect(() => () => {
+    scaffold.tubeA.dispose();
+    scaffold.tubeB.dispose();
+    scaffold.particles.dispose();
+  }, [scaffold]);
 
   // --- Rotation de l'hélice ---
   useFrame(() => {
@@ -244,6 +285,18 @@ export default function DNAHelix({
   // --- Rendu ---
   return (
     <group ref={groupRef}>
+      {/* Brins néon = MÉTHODES (A) et IA & PRODUCTIVITÉ (B) — teintes de HELIX_STRANDS */}
+      <mesh geometry={scaffold.tubeA}>
+        <meshStandardMaterial color="#0a3a4a" emissive={HELIX_STRANDS[0].color} emissiveIntensity={1} transparent opacity={0.85} />
+      </mesh>
+      <mesh geometry={scaffold.tubeB}>
+        <meshStandardMaterial color="#0a3a4a" emissive={HELIX_STRANDS[1].color} emissiveIntensity={1} transparent opacity={0.85} />
+      </mesh>
+      {/* Voile de particules cyan (cohérence avec le cerveau) */}
+      <points geometry={scaffold.particles}>
+        <pointsMaterial color="#22d3ee" size={0.045} transparent opacity={0.5} sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
+
       {elements}
 
       {mutation && mutationSource && mutationTargetPos && (

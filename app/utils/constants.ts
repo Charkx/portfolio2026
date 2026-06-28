@@ -21,42 +21,42 @@ export const PROFILE = {
 // ni de point. Le "icon" doit correspondre à un slug devicon existant.
 export const TECH_STACK = {
   "Frontend": [
-    { name: "React",      icon: "react" },
-    { name: "TypeScript", icon: "typescript" },
-    { name: "NextJs",     icon: "nextjs" },
-    { name: "JavaScript", icon: "javascript" },
-    { name: "HTML5",      icon: "html5" },
-    { name: "CSS3",       icon: "css3" },
-    { name: "Tailwind",   icon: "tailwindcss" },
-    { name: "ThreeJs",    icon: "threejs" },
+    { name: "React",      icon: "react",       level: 3, desc: "Le cœur de mon front : composants, hooks, gestion d'état. Sur tous mes projets." },
+    { name: "TypeScript", icon: "typescript",  level: 3, desc: "Mon réflexe : typer pour fiabiliser. Strict sur tout ce portfolio." },
+    { name: "NextJs",     icon: "nextjs",      level: 2, desc: "App Router, SSR, déploiement Vercel — ce portfolio tourne dessus." },
+    { name: "JavaScript", icon: "javascript",  level: 3, desc: "La base de tout mon code, front comme back." },
+    { name: "HTML5",      icon: "html5",       level: 3, desc: "Structure sémantique et accessible." },
+    { name: "CSS3",       icon: "css3",        level: 2, desc: "Layouts, animations, responsive — même sans framework." },
+    { name: "Tailwind",   icon: "tailwindcss", level: 2, desc: "Mon outil de stylage au quotidien : rapide et cohérent." },
+    { name: "ThreeJs",    icon: "threejs",     level: 2, desc: "3D temps réel avec React-Three-Fiber — ce cerveau et cette hélice, c'est moi." },
   ],
   "Backend": [
-    { name: "NodeJs",     icon: "nodejs" },
-    { name: "Express",    icon: "express" },
-    { name: "PostgreSQL", icon: "postgresql" },
-    { name: "Java",       icon: "java" },
+    { name: "NodeJs",     icon: "nodejs",      level: 2, desc: "Serveurs et API REST côté back." },
+    { name: "Express",    icon: "express",     level: 2, desc: "Routing et API REST sur mes projets." },
+    { name: "PostgreSQL", icon: "postgresql",  level: 2, desc: "Modélisation relationnelle et requêtes SQL." },
+    { name: "Java",       icon: "java",        level: 2, desc: "Découvert en école, approfondi en stage R&D chez Dassault Systèmes." },
   ],
-  "Outils": [
-    { name: "Git",    icon: "git" },
-    { name: "Github", icon: "github" },
-    { name: "Docker", icon: "docker" },
-    { name: "Jira",   icon: "jira" },
+  // Affiché dans la LISTE (logos + niveaux), mais exclu de l'hélice (ADN = langages).
+  "DevOps & CI/CD": [
+    { name: "Git",    icon: "git",    level: 3, desc: "Versioning quotidien : branches, commits propres, historique clair." },
+    { name: "Github", icon: "github", level: 3, desc: "Repos, pull requests, déploiement continu." },
+    { name: "Docker", icon: "docker", level: 1, desc: "Conteneurisation : notions solides, en montée en compétence." },
+    { name: "Vercel", icon: "vercel", level: 2, desc: "Déploiement continu de mes apps Next.js." },
   ],
 } as const
 
-// --- Compétences sans logo devicon (rendues en texte) ---
-export const SKILLS_EXTRA = [
+// --- Les 2 brins de l'hélice : ce qui RELIE les langages (méthodes + IA) ---
+// `color` teinte le brin 3D ET la légende (cohérence couleur ↔ brin).
+export const HELIX_STRANDS = [
   {
-    title: "DevOps & CI/CD",
-    items: ["CI/CD", "GitHub Actions", "Vercel", "Docker (notions)"],
+    label: "MÉTHODES",
+    color: "#34d399", // vert émeraude
+    items: ["Agile/Scrum", "Jira", "Figma", "Notion", "Clean code", "Tests unitaires", "Architecture logicielle", "API REST"],
   },
   {
-    title: "IA & Productivité",
-    items: ["Claude Code — usage quotidien", "Intégration de LLMs", "Développement augmenté"],
-  },
-  {
-    title: "Méthodes",
-    items: ["Agile", "Scrum", "Clean code", "Tests unitaires", "Architecture logicielle", "API REST"],
+    label: "IA & PRODUCTIVITÉ",
+    color: "#c084fc", // violet
+    items: ["Claude Code", "Intégration de LLMs", "Développement augmenté"],
   },
 ] as const
 
@@ -69,26 +69,13 @@ export const ABOUT_TEXT = [
     color: "text-pink-400",
     text: [
       "Ingénieur informatique Bac+5 diplômé de Polytech Marseille (spécialisation Réalité Virtuelle & Augmentée).",
+      "Après une pause pro, j'ai consacré deux ans à monter en compétences en autonomie : projets réels déployés en production, front moderne (React, TypeScript, Three.js) et IA (Claude Code) au quotidien.",
       "Je recherche une alternance en développement Full Stack à partir de septembre 2026, dans le cadre du Bachelor que je prépare chez CODA Avignon.",
-    ],
-  },
-  {
-    title: "PARCOURS",
-    color: "text-purple-400",
-    text: [
-      "Après une pause professionnelle, j'ai consacré deux ans à monter en compétences de façon autonome :",
-      "construction de projets réels déployés en production, exploration des technologies front modernes (React, TypeScript, Three.js) et intégration de l'IA (Claude Code) comme outil de dev quotidien.",
-      "J'aime les interfaces soignées, les architectures propres et les projets à impact concret.",
-    ],
-  },
-  {
-    title: "CE QUE J'APPORTE",
-    color: "text-cyan-400",
-    text: [
-      "▸ Profil hybride Développeur + Chef de Projet",
-      "▸ Expérience Agile/Scrum réelle (ORTEC)",
-      "▸ Pratique quotidienne de l'IA appliquée au code",
-      "▸ Curiosité technique et autonomie",
+      "▸ Ce que j'apporte :",
+      "- Profil hybride Développeur + Chef de Projet",
+      "- Expérience Agile/Scrum réelle (ORTEC)",
+      "- Pratique quotidienne de l'IA appliquée au code",
+      "- Curiosité technique et autonomie",
     ],
   },
   {

@@ -9,15 +9,17 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { Billboard } from '@react-three/drei';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import gsap from 'gsap';
 import type { TechItem } from '@/app/utils/types';
 
+// Nuances de cyan (au lieu du rainbow A/T/G/C) pour matcher la DA du cerveau.
 const BASE_COLORS = {
-  A: '#FF5733',
-  T: '#33C1FF',
-  G: '#33FF57',
-  C: '#FF33D1',
+  A: '#22d3ee',
+  T: '#19b6d6',
+  G: '#3ae0f0',
+  C: '#1fc4dd',
 } as const;
 
 type Base = keyof typeof BASE_COLORS;
@@ -49,6 +51,8 @@ const Logo3D = forwardRef<THREE.Group, Props>(({
   onPointerOut,
 }, ref) => {
   const groupRef  = useRef<THREE.Group>(null);
+  const animRef   = useRef<THREE.Group>(null); // groupe INTERNE animé à l'entrée
+  const enteredRef = useRef(false);
   const sphereRef = useRef<THREE.Mesh>(null);
 
   // Cache des matériaux du logo — mis à jour directement, sans setState
@@ -63,6 +67,30 @@ const Logo3D = forwardRef<THREE.Group, Props>(({
   useEffect(() => { mutatedRef.current = mutated; }, [mutated]);
 
   useImperativeHandle(ref, () => groupRef.current ?? new THREE.Group(), []);
+
+  // Caché tant que le logo n'est pas prêt (évite que le socle apparaisse seul)
+  useEffect(() => {
+    animRef.current?.scale.setScalar(0);
+  }, []);
+
+  // --- Entrée « assemblage » : arrive dispersé → se loge dans l'hélice ---
+  useEffect(() => {
+    if (!logoGroup || !animRef.current || enteredRef.current) return;
+    enteredRef.current = true;
+    const g = animRef.current;
+    // point de départ dispersé (relatif à l'emplacement final)
+    g.position.set(
+      (Math.random() - 0.5) * 8,
+      (Math.random() - 0.5) * 8,
+      (Math.random() - 0.5) * 8
+    );
+    gsap.to(g.position, { x: 0, y: 0, z: 0, duration: 0.9, ease: 'power3.out' });
+    gsap.fromTo(
+      g.scale,
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 1, z: 1, duration: 0.7, ease: 'back.out(1.6)' } // petit rebond
+    );
+  }, [logoGroup]);
 
   // --- Chargement SVG ---
   useEffect(() => {
@@ -80,19 +108,20 @@ const Logo3D = forwardRef<THREE.Group, Props>(({
             });
             const mat = new THREE.MeshStandardMaterial({
               color:      path.color ?? '#ffffff',
-              metalness:  0,           // était 0.2 — le metalness assombrit les couleurs SVG
-              roughness:  0.2,         // était 0.4 — plus lisse = plus de reflets, meilleure lisibilité
+              metalness:  0,
+              roughness:  0.2,
               transparent: true,
-              opacity:     0.85,       // était 0.1 — les logos sont visibles dès l'apparition
+              opacity:     1,
               emissive:    new THREE.Color(path.color ?? '#ffffff'),
-              emissiveIntensity: 0.4,  // les logos émettent leur propre couleur — contraste sur fond sombre
+              emissiveIntensity: 0.5,
+              side:        THREE.DoubleSide, // l'échelle -Y inverse les faces → on rend les deux côtés
             });
             group.add(new THREE.Mesh(geometry, mat));
             mats.push(mat);
           });
         });
 
-        group.scale.set(0.0035, -0.0035, 0.0035);
+        group.scale.set(0.0045, -0.0045, 0.0045);
 
 // Calcule la bounding box du groupe une fois scalé
 const box = new THREE.Box3().setFromObject(group);
@@ -124,6 +153,13 @@ group.position.set(-center.x, -center.y, -center.z);
 
   // --- Réactions visuelles : highlighted / selected (useFrame, pas de setState) ---
   useFrame(() => {
+    // Pop : le logo sélectionné grossit légèrement (sort de l'hélice)
+    if (groupRef.current) {
+      const target = selected ? 1.22 : 1;
+      const s = THREE.MathUtils.lerp(groupRef.current.scale.x, target, 0.15);
+      groupRef.current.scale.setScalar(s);
+    }
+
     const mat = sphereMatRef.current;
     if (!mat) return;
 
@@ -198,18 +234,26 @@ group.position.set(-center.x, -center.y, -center.z);
       onPointerOver={(e) => { e.stopPropagation(); onPointerOver?.(); }}
       onPointerOut={(e)  => { e.stopPropagation(); onPointerOut?.();  }}
     >
-      <mesh ref={sphereRef}>
-        <sphereGeometry args={[0.35, 32, 32]} />
-        <meshStandardMaterial
-          color={BASE_COLORS[base]}
-          transparent
-          opacity={0.1}           // était 0.1 — sphère visible comme socle coloré
-          emissive={BASE_COLORS[base]}
-          emissiveIntensity={0.02}  // la sphère émet sa couleur ADN — différencie du logo
-        />
-      </mesh>
+      <group ref={animRef}>
+        <mesh ref={sphereRef}>
+          <sphereGeometry args={[0.3, 32, 32]} />
+          <meshStandardMaterial
+            color={BASE_COLORS[base]}
+            transparent
+            opacity={0.1}
+            emissive={BASE_COLORS[base]}
+            emissiveIntensity={0.02}
+            depthWrite={false}
+          />
+        </mesh>
 
-      {logoGroup && <primitive object={logoGroup} />}
+        {/* Billboard : le logo reste face caméra → toujours lisible même quand l'hélice tourne */}
+        {logoGroup && (
+          <Billboard>
+            <primitive object={logoGroup} />
+          </Billboard>
+        )}
+      </group>
     </group>
   );
 });
