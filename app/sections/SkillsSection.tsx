@@ -9,6 +9,7 @@ import { LazyMount } from '../components/LazyMount';
 import { TECH_STACK, HELIX_STRANDS } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
+import { audioEngine } from '../lib/audioEngine';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -70,6 +71,7 @@ export default function SkillsSection() {
     // clic = sélection (toggle) → lit la valeur courante du store (pas de closure obsolète)
     const cur = useSceneStore.getState().skillsSelected;
     useSceneStore.getState().setSkillsSelected(cur === id ? null : id);
+    audioEngine.play('molecular');
   }, []);
 
   // Donnée de la techno sélectionnée (pour le panneau de décodage)
@@ -102,7 +104,7 @@ export default function SkillsSection() {
       id="skills"
       className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-32 relative scroll-mt-[100px]"
     >
-      <h2 className="text-4xl font-bold text-cyan-400 mb-2 font-mono z-10 text-center">
+      <h2 className="text-4xl font-bold text-cyan-400 mb-2 font-display z-10 text-center">
         SKILLS:DNA_MODULE_ANALYSIS
       </h2>
       <p className="text-lg text-cyan-100 mb-12 max-w-2xl text-center z-10">
@@ -117,7 +119,7 @@ export default function SkillsSection() {
           return (
             <button
               key={f.value}
-              onClick={() => setLevelFilter(f.value)}
+              onClick={() => { setLevelFilter(f.value); audioEngine.play('molecular'); }}
               aria-pressed={isActive}
               className={`px-3 py-1.5 rounded font-mono text-sm border transition-colors cursor-pointer ${
                 isActive

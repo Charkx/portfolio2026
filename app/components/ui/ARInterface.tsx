@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useModalStore } from '../../store/modalStore';
 import { PdfViewer } from './ModalViewers';
-import { Power, PowerOff, FileDown } from 'lucide-react';
+import { useAudioStore } from '../../store/audioStore';
+import { audioEngine } from '../../lib/audioEngine';
+import { scrollToId } from '../SmoothScroll';
+import { Power, PowerOff, FileDown, Volume2, VolumeX } from 'lucide-react';
 
 // Infobulle custom : instantanée et stylée (contrairement au `title` natif).
 // `pointer-events-auto` sur le wrapper pour que le :hover se déclenche même
@@ -36,6 +39,8 @@ export default function ARInterface() {
   const [signalStrength, setSignalStrength] = useState(95);
   const { introPhase, currentSection, scrollProgress, setIntroPhase } = usePortfolioStore();
   const openModal = useModalStore((s) => s.open);
+  const soundEnabled = useAudioStore((s) => s.enabled);
+  const toggleSound = useAudioStore((s) => s.toggle);
 
   // Ouvre le CV dans la modale (sans quitter la page) — le href reste le repli sans JS.
   const openCv = (e: React.MouseEvent) => {
@@ -56,6 +61,15 @@ export default function ARInterface() {
   { prefix: "UPLINK",           label: "CONTACT",  section: "contact" },
 ] as const;
 
+  // Son du déverrouillage (system power-on) / re-verrouillage (power-down) — no-op si son coupé
+  const prevPhase = useRef(introPhase);
+  useEffect(() => {
+    if (introPhase === prevPhase.current) return;
+    if (introPhase === "UNLOCKED") audioEngine.play("boot");
+    else if (introPhase === "LOCKED") audioEngine.play("powerdown");
+    prevPhase.current = introPhase;
+  }, [introPhase]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(new Date());
@@ -73,6 +87,7 @@ export default function ARInterface() {
           <a
             href={PROFILE.cv}
             onClick={openCv}
+            onMouseEnter={() => audioEngine.play('hover')}
             aria-label="Voir le CV"
             className="flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
           >
@@ -80,11 +95,23 @@ export default function ARInterface() {
             <span className="hidden sm:inline">MEMORY_DUMP</span>
           </a>
         </HudTooltip>
+        <HudTooltip label={soundEnabled ? "Couper le son" : "Activer le son (effets de section)"}>
+          <button
+            aria-label={soundEnabled ? "Couper le son" : "Activer le son"}
+            aria-pressed={soundEnabled}
+            className={`transition-colors cursor-pointer ${soundEnabled ? "text-cyan-300 hover:text-cyan-100" : "text-cyan-400/50 hover:text-cyan-200"}`}
+            onClick={toggleSound}
+            onMouseEnter={() => audioEngine.play('hover')}
+          >
+            {soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
+          </button>
+        </HudTooltip>
         <HudTooltip label={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}>
           <button
             aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
             className="text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
             onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
+            onMouseEnter={() => audioEngine.play('hover')}
           >
             {introPhase === "LOCKED" ? <Power size={18}/> : <PowerOff size={18}/>}
           </button>
@@ -136,7 +163,8 @@ export default function ARInterface() {
                   <HudTooltip label={`Aller à la section ${item.label}`} side="top">
                     <button
                       aria-label={`Aller à la section ${item.label}`}
-                      onClick={() => document.getElementById(item.section)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      onClick={() => { audioEngine.play('nav'); scrollToId(item.section); }}
+                      onMouseEnter={() => audioEngine.play('hover')}
                       className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
                         booted
                         ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/40"}`

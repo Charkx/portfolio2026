@@ -12,9 +12,19 @@ import { useOptimizedScroll } from "./hooks/useOptimizedScroll"
 import { usePortfolioStore } from "./store/portfolioStore"
 import { useModalStore } from "./store/modalStore"
 import ARInterface from "./components/ui/ARInterface"
+import CustomCursor from "./components/ui/CustomCursor"
+import SmoothScroll from "./components/SmoothScroll"
 import ModalRoot from "./components/ui/ModalRoot"
 import LegalContent from "./components/LegalContent"
+import { preloadAssets } from "./lib/preloadAssets"
 import { ErrorBoundary } from "./hooks/ErrorBoundary"
+
+// Modèles 3D lourds préchargés pendant l'écran de chargement (progression réelle).
+const HEAVY_ASSETS = [
+  "/3d/holograming_man.glb",
+  "/3d/brain_hologram.glb",
+  "/3d/earth_globe_hologram_2mb_looping_animation.glb",
+]
 
 // Petit fallback pendant le chargement client des sections 3D
 function SectionFallback() {
@@ -51,28 +61,41 @@ const AugmentedHumanLayer = dynamic(() => import("./components/3d/AugmentedHuman
 export default function CyberpunkLanding() {
   const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
   const openModal = useModalStore((s) => s.open)
+  const [progress, setProgress] = useState(0)
 
   // Hook pour améliorer le scroll (expérience utilisateur)
   useOptimizedScroll()
 
-  // Simulation du chargement (à remplacer par un vrai chargement si besoin)
+  // Vrai chargement : précharge les modèles 3D (le loader reflète la progression réelle).
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let done = false
+    const start = performance.now()
+    const finish = () => {
+      if (done) return
+      done = true
+      setProgress(100)
       setIsLoading(false)
-    }, 2000)
-    return () => clearTimeout(timer)
+    }
+    preloadAssets(HEAVY_ASSETS, (p) => setProgress(p)).finally(() => {
+      // affichage minimum de 900 ms pour ne pas "flasher"
+      window.setTimeout(finish, Math.max(0, 900 - (performance.now() - start)))
+    })
+    const cap = window.setTimeout(finish, 6000) // filet : ne bloque jamais >6 s
+    return () => window.clearTimeout(cap)
   }, [setIsLoading])
 
   if (isLoading) {
     return (
       <div aria-live="polite">
-        <CyberpunkLoader />
+        <CyberpunkLoader progress={progress} />
       </div>
     )
   }
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
+      <SmoothScroll />
+      <CustomCursor />
       <ARInterface />
       <main className="relative z-10">
         <HeroSection

@@ -11,6 +11,7 @@ import { useInView } from '../hooks/useInView';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { useModalStore } from '../store/modalStore';
 import { PdfViewer } from '../components/ui/ModalViewers';
+import { audioEngine } from '../lib/audioEngine';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -129,6 +130,7 @@ export default function TransmissionChannel() {
   // Ouvre le client mail du visiteur, pré-rempli.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    audioEngine.play('uplink'); // cue "connexion établie"
     const subject = encodeURIComponent(`Contact portfolio — ${name || 'message'}`);
     const body = encodeURIComponent(
       `${message}\n\n— ${name}${senderEmail ? ` (${senderEmail})` : ''}`
@@ -225,7 +227,7 @@ export default function TransmissionChannel() {
 
         {/* Colonne droite : terminal + formulaire */}
         <div className="terminal-container">
-          <h2 className="text-4xl font-bold text-cyan-400 mb-8 font-mono">
+          <h2 className="text-4xl font-bold text-cyan-400 mb-8 font-display">
             CONTACT:TRANSMISSION_CHANNELS
           </h2>
 

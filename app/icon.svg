@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- bleu métallique (façon carte biométrique) -->
+    <linearGradient id="metal" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#3f6fe0"/>
+      <stop offset="0.5" stop-color="#1b45b8"/>
+      <stop offset="1" stop-color="#0a1f66"/>
+    </linearGradient>
+    <!-- reflet métal en haut -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- monogramme CM (blanc, tracé une fois) -->
+    <g id="cm" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.2">
+      <path d="M24 23 A9 9 0 1 0 24 41"/>
+      <path d="M34 41 L34 23 L41 33 L48 23 L48 41"/>
+    </g>
+  </defs>
+
+  <!-- plaque métal + reflet + liseré biseauté clair -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="url(#metal)"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="url(#sheen)"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="none"
+        stroke="#aac4ff" stroke-opacity="0.45" stroke-width="1.5"/>
+
+  <use href="#cm"/>
+</svg>

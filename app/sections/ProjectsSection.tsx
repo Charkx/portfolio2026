@@ -5,7 +5,7 @@ import {
 } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useAudioManager } from '../hooks/useAudioManager';
+import { audioEngine } from '../lib/audioEngine';
 import { useProjectManager } from '../hooks/useProjectManager';
 import { useSceneStore } from '../store/sceneStore';
 import { useModalStore } from '../store/modalStore';
@@ -437,7 +437,6 @@ export function ProjectsSection() {
   // null = pas encore détecté (SSR safe), évite le flash hydration
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
-  const { playSound } = useAudioManager();
   const {
     selectedProject,
     isTransitioning,
@@ -508,8 +507,9 @@ export function ProjectsSection() {
   }, [isMobile]);
 
   const handleProjectSelect = useCallback((index: number) => {
-    selectProject(index, playSound);
-  }, [selectProject, playSound]);
+    audioEngine.play('ignition');       // cue "wow" de la section Projets
+    selectProject(index, () => {});     // (les beeps internes sont remplacés par l'ignition)
+  }, [selectProject]);
 
   // Expose la sélection au réacteur 3D (clic sur une carte flottante → sélectionne ici)
   useEffect(() => {
@@ -542,7 +542,7 @@ export function ProjectsSection() {
           <h2
             id="projects-title"
             className="projects-title text-3xl md:text-5xl font-bold
-                       text-cyan-400 font-mono"
+                       text-cyan-400 font-display"
           >
             PROJECTS:CORE_DIAGNOSTICS
           </h2>

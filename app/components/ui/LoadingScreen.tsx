@@ -1,39 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
+const LOADING_STEPS = [
+  "INITIALISATION...",
+  "CHARGEMENT DES MODULES HOLOGRAPHIQUES...",
+  "DÉCOMPRESSION DU MODÈLE NEURAL...",
+  "CALIBRAGE DE L'INTERFACE...",
+  "SYSTÈME PRÊT",
+]
 
-export function CyberpunkLoader() {
-  const [progress, setProgress] = useState(0)
-  const [loadingText, setLoadingText] = useState("INITIALIZING...")
-
-  const loadingSteps = [
-    "INITIALIZING NEURAL INTERFACE...",
-    "CONNECTING TO NETWORK...",
-    "LOADING CYBERPUNK PROTOCOLS...",
-    "ESTABLISHING SECURE CONNECTION...",
-    "ACTIVATING HOLOGRAPHIC DISPLAY...",
-    "NEURAL LINK ESTABLISHED",
-  ]
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + 2
-        const stepIndex = Math.floor((newProgress / 100) * loadingSteps.length)
-        setLoadingText(loadingSteps[Math.min(stepIndex, loadingSteps.length - 1)])
-        return Math.min(newProgress, 100)
-      })
-    }, 50)
-
-    return () => clearInterval(interval)
-  }, [loadingSteps])
+// Loader contrôlé : `progress` (0-100) reflète le chargement réel des modèles 3D.
+export function CyberpunkLoader({ progress = 0 }: { progress?: number }) {
+  const pct = Math.round(progress)
+  const loadingText = LOADING_STEPS[Math.min(LOADING_STEPS.length - 1, Math.floor((pct / 100) * LOADING_STEPS.length))]
 
   return (
     <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
       <div className="text-center space-y-8 max-w-md">
         {/* Logo/Titre */}
         <div className="space-y-4">
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 font-mono">
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 font-display">
             NEURAL_INTERFACE
           </h1>
           <div className="text-cyan-400 font-mono text-sm">v2.077</div>
@@ -43,14 +28,14 @@ export function CyberpunkLoader() {
         <div className="space-y-4">
           <div className="w-80 h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-cyan-400 to-green-400 transition-all duration-100 ease-out"
-              style={{ width: `${progress}%` }}
+              className="h-full bg-gradient-to-r from-cyan-400 to-green-400 transition-all duration-200 ease-out"
+              style={{ width: `${pct}%` }}
             />
           </div>
 
           <div className="flex justify-between text-sm font-mono">
-            <span className="text-gray-400">Loading...</span>
-            <span className="text-cyan-400">{progress}%</span>
+            <span className="text-gray-400">Chargement...</span>
+            <span className="text-cyan-400">{pct}%</span>
           </div>
         </div>
 

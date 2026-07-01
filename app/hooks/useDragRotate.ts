@@ -3,6 +3,7 @@
 import { useCallback, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useSceneStore } from '../store/sceneStore';
+import { audioEngine } from '../lib/audioEngine';
 
 /**
  * Permet de faire pivoter à la souris le module 3D embarqué dans le canvas partagé.
@@ -20,6 +21,7 @@ export function useDragRotate(focus: string) {
     dragging.current = true;
     last.current = { x: e.clientX, y: e.clientY };
     setDragFocus(focus);
+    audioEngine.play('grab');
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   }, [focus, setDragFocus]);
 
@@ -33,6 +35,7 @@ export function useDragRotate(focus: string) {
     if (!dragging.current) return;
     dragging.current = false;
     setDragFocus(null);
+    audioEngine.play('release');
     (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
   }, [setDragFocus]);
 

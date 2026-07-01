@@ -1,6 +1,6 @@
 // app/hooks/useProjectManager.ts
 import { useRef, useState, useCallback } from 'react';
-import type { SoundType } from './useAudioManager';
+import type { Cue } from '../lib/audioEngine';
 import type { Project } from '@/app/utils/types';
 
 // Machine d'état explicite — transitions valides uniquement
@@ -36,7 +36,7 @@ export function useProjectManager(projects: Project[]) {
 
   const selectProject = useCallback((
     index: number,
-    playSound: (type: SoundType) => void
+    playSound: (type: Cue) => void
   ) => {
     // Même module → on ne désélectionne pas (toujours un actif, mise en page fixe)
     if (state.selectedProject === index) return;

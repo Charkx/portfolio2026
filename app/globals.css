@@ -5,12 +5,24 @@
   --foreground: #171717;
 }
 
-/* @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-} */
+/* Polices next/font → utilitaires Tailwind (font-mono, font-sans) + .font-display */
+@theme {
+  --font-sans: var(--font-plex-mono), ui-monospace, monospace;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-display: var(--font-orbitron), sans-serif;
+}
+
+/* Titres en Orbitron (sci-fi) — à réserver aux gros titres courts */
+.font-display {
+  font-family: var(--font-orbitron), sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* Curseur custom actif → on masque le curseur natif partout (souris uniquement) */
+body.custom-cursor,
+body.custom-cursor * {
+  cursor: none !important;
+}
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -22,7 +34,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 .glitch {
@@ -140,7 +152,7 @@ body {
   border: 1px solid rgba(0, 255, 255, 0.4);
   border-radius: 8px;
   padding: 12px 16px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-plex-mono), monospace;
   font-size: 14px;
   color: #00ffff;
   backdrop-filter: blur(8px);
@@ -159,7 +171,7 @@ body {
   border: 1px solid rgba(0, 255, 255, 0.5);
   border-radius: 20px;
   padding: 8px 16px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-plex-mono), monospace;
   font-size: 12px;
   color: #00ffff;
   backdrop-filter: blur(10px);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import type { ModalSize } from "../../store/modalStore"
+import { lenisStart, lenisStop } from "../SmoothScroll"
 
 const MAX_W: Record<ModalSize, string> = {
   md: "max-w-2xl",
@@ -35,6 +36,7 @@ export default function Modal({
     prevFocus.current = document.activeElement as HTMLElement
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden" // bloque le scroll derrière
+    lenisStop() // stoppe le smooth scroll pendant la modale
 
     const panel = panelRef.current
     const first = panel?.querySelector<HTMLElement>(FOCUSABLE)
@@ -42,6 +44,7 @@ export default function Modal({
 
     return () => {
       document.body.style.overflow = prevOverflow
+      lenisStart()
       prevFocus.current?.focus?.() // rend le focus au déclencheur
     }
   }, [])

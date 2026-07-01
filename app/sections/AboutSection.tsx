@@ -7,6 +7,7 @@ import { useTypewriter } from '../hooks/useTypewriter';
 import { ABOUT_TEXT } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
+import { audioEngine } from '../lib/audioEngine';
 
 // Aligné sur les couleurs des catégories (PROFIL rose · EXPÉRIENCE vert vif · FORMATION ambre).
 const scanColors = ['#ff00ff', '#2bff66', '#ffc400', '#00ffff', '#9b5de5'];
@@ -38,7 +39,7 @@ export default function AboutSection() {
       id="about"
       className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20"
     >
-      <h2 className="text-4xl text-cyan-400 font-bold font-mono mb-12 z-10">
+      <h2 className="text-4xl text-cyan-400 font-bold font-display mb-12 z-10">
         ABOUT:COGNITIVE_PROFILE
       </h2>
 
@@ -54,7 +55,7 @@ export default function AboutSection() {
                   key={block.title}
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => setSelected(i)}
+                  onClick={() => { setSelected(i); audioEngine.play('scan'); }}
                   style={isActive ? { textShadow: `0 0 10px ${scanColors[i]}` } : undefined}
                   className={`-mb-px px-3 py-1.5 font-mono text-sm tracking-wide border-b-2 transition-all cursor-pointer ${
                     isActive
