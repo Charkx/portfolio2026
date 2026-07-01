@@ -9,7 +9,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Billboard } from '@react-three/drei';
+import { Billboard, Html } from '@react-three/drei';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import gsap from 'gsap';
 import type { TechItem } from '@/app/utils/types';
@@ -189,6 +189,21 @@ group.position.set(-center.x, -center.y, -center.z);
           <Billboard>
             <primitive object={logoGroup} />
           </Billboard>
+        )}
+
+        {/* Zone de clic HTML : le canvas partagé est pointer-events:none → les events 3D
+            (R3F) ne passent pas. On capte le clic/survol via un overlay HTML transparent. */}
+        {logoGroup && (
+          <Html center zIndexRange={[8, 0]} style={{ pointerEvents: 'auto' }}>
+            <button
+              type="button"
+              aria-label={tech.name}
+              onClick={() => onClick?.()}
+              onPointerOver={() => onPointerOver?.()}
+              onPointerOut={() => onPointerOut?.()}
+              className="w-9 h-9 rounded-full bg-transparent cursor-pointer"
+            />
+          </Html>
         )}
       </group>
     </group>

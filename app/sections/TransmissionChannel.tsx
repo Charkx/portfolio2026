@@ -8,6 +8,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { PROFILE } from '../utils/constants';
 import { useInView } from '../hooks/useInView';
+import { useDragRotate } from '../hooks/useDragRotate';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -58,8 +59,18 @@ const CompleteModel: React.FC = () => {
 export default function TransmissionChannel() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const { ref: canvasGateRef, inView: canvasInView } = useInView<HTMLDivElement>();
+  const dragGlobe = useDragRotate('globe');
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [terminalText, setTerminalText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
+
+  // desktop → slot du canvas partagé (globe) · mobile → modèle local (3D conservé)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Formulaire
   const [name, setName] = useState('');
@@ -120,25 +131,32 @@ export default function TransmissionChannel() {
     <div
       id="contact"
       ref={sectionRef}
-      className="min-h-screen flex items-center justify-center bg-black relative py-20 scroll-mt-20"
+      className="holo-veil-fade min-h-screen flex items-center justify-center bg-black relative py-20 scroll-mt-20"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
 
       <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         {/* Colonne gauche : 3D + coordonnées directes */}
         <div className="flex flex-col gap-6">
-          <div ref={canvasGateRef} className="h-72">
-            {canvasInView && (
-            <Canvas>
-              <PerspectiveCamera makeDefault position={[0, 0, 6]} />
-              <OrbitControls enableZoom={false} />
-              <ambientLight intensity={0.3} />
-              <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
-              <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
-              <CompleteModel />
-            </Canvas>
-            )}
-          </div>
+          {isMobile === false ? (
+            // desktop : slot où le canvas partagé (page) se niche pour la station globe
+            <div data-holo="contact" className="h-72 cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragGlobe} />
+          ) : isMobile ? (
+            <div ref={canvasGateRef} className="h-72">
+              {canvasInView && (
+              <Canvas>
+                <PerspectiveCamera makeDefault position={[0, 0, 6]} />
+                <OrbitControls enableZoom={false} />
+                <ambientLight intensity={0.3} />
+                <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
+                <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
+                <CompleteModel />
+              </Canvas>
+              )}
+            </div>
+          ) : (
+            <div className="h-72" />
+          )}
 
           <div className="border border-cyan-400/30 rounded bg-black/70 p-6 font-mono text-sm space-y-3">
             <div className="text-pink-400 mb-2">&gt;&gt; DIRECT CHANNELS</div>
@@ -197,7 +215,7 @@ export default function TransmissionChannel() {
         {/* Colonne droite : terminal + formulaire */}
         <div className="terminal-container">
           <h2 className="text-4xl font-bold text-cyan-400 mb-8 font-mono">
-            TRANSMISSION CHANNEL
+            CONTACT:TRANSMISSION_CHANNELS
           </h2>
 
           <div className="border border-cyan-400/30 rounded bg-black/80 p-6 font-mono">

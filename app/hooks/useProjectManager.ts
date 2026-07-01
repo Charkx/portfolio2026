@@ -20,7 +20,7 @@ interface ProjectState {
 
 export function useProjectManager(projects: Project[]) {
   const [state, setState] = useState<ProjectState>({
-    selectedProject: null,
+    selectedProject: 0,          // 1er module actif par défaut (panneau toujours rempli, mise en page fixe)
     scanStatus:      'STANDBY',
     memoryFragments: 0,
     isTransitioning: false,
@@ -38,17 +38,8 @@ export function useProjectManager(projects: Project[]) {
     index: number,
     playSound: (type: SoundType) => void
   ) => {
-    // Désélection
-    if (state.selectedProject === index) {
-      clearTimers();
-      setState({
-        selectedProject: null,
-        scanStatus:      'STANDBY',
-        memoryFragments: state.memoryFragments,
-        isTransitioning: false,
-      });
-      return;
-    }
+    // Même module → on ne désélectionne pas (toujours un actif, mise en page fixe)
+    if (state.selectedProject === index) return;
 
     // Annule la transition précédente avant d'en lancer une nouvelle
     clearTimers();

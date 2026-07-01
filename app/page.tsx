@@ -40,6 +40,10 @@ const TransmissionChannel = dynamic(() => import("./sections/TransmissionChannel
   ssr: false,
   loading: SectionFallback,
 })
+// Canvas 3D partagé (humain holographique) — se niche dans les slots des sections migrées
+const AugmentedHumanLayer = dynamic(() => import("./components/3d/AugmentedHumanLayer"), {
+  ssr: false,
+})
 
 export default function CyberpunkLanding() {
   const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
@@ -73,6 +77,7 @@ export default function CyberpunkLanding() {
 
         {introPhase === "UNLOCKED" && (
           <>
+              <AugmentedHumanLayer />
               <ErrorBoundary fallback={null}>
                 <AboutSection />
               </ErrorBoundary>

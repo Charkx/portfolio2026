@@ -14,7 +14,7 @@ interface Props {
 const MODEL = '/3d/brain_hologram.glb';
 const CYAN = new THREE.Color('#22d3ee');
 
-function BrainModel({ selected, color, count }: Props) {
+export function BrainModel({ selected, color, count }: Props) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF(MODEL, true); // true = décodeur Draco
 

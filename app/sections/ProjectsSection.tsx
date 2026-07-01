@@ -5,12 +5,10 @@ import {
 } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
-import MemoryReconstruction from '../components/3d/MemoryReconstruction';
 import { useAudioManager } from '../hooks/useAudioManager';
 import { useProjectManager } from '../hooks/useProjectManager';
-import { useInView } from '../hooks/useInView';
+import { useSceneStore } from '../store/sceneStore';
+import { useDragRotate } from '../hooks/useDragRotate';
 import type { Project } from '@/app/utils/types';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -30,6 +28,9 @@ const PROJECTS_DATA: Project[] = [
     extractionTime: 600,
     github:         'https://github.com/Charkx/arrakis-cards',
     demo:           'https://arrakis-cards.vercel.app/',
+    image:          '/projects/arrakis.png',
+    context:        'ASSO',
+    short:          'Arrakis',
   },
   {
     title:          "L'Œil Artistique",
@@ -43,6 +44,9 @@ const PROJECTS_DATA: Project[] = [
     extractionTime: 600,
     github:         'https://github.com/Charkx/oeilartistique',
     demo:           'https://oeilartistique.vercel.app',
+    image:          '/projects/oeil-artistique.png',
+    context:        'PRO',
+    short:          "L'Œil",
   },
   {
     title:          'Expérience 3D Interactive',
@@ -56,6 +60,9 @@ const PROJECTS_DATA: Project[] = [
     extractionTime: 600,
     github:         'https://github.com/Charkx/components_library_react',
     demo:           '',
+    image:          '/projects/portfolio-3d.png',
+    context:        'PERSO',
+    short:          'Exp. 3D',
   },
   {
     title:          'Poly\'tendo',
@@ -68,17 +75,37 @@ const PROJECTS_DATA: Project[] = [
     classification: 'EXPERIMENTAL',
     extractionTime: 600,
     github:         'https://github.com/Charkx/Poly-tendo',
-    demo:           '',
+    demo:           'https://poly-tendo.vercel.app/',
+    image:          '/projects/polytendo.png',
+    context:        'ECOLE',
+    short:          "Poly'tendo",
   },
 ];
 
 // --- Constantes ---
 
-const STATUS_COLORS: Record<Project['status'], string> = {
-  COMPLETED:   'bg-green-900/70 text-green-300 border-green-400/50',
-  OPERATIONAL: 'bg-blue-900/70 text-blue-300 border-blue-400/50',
-  ACTIVE:      'bg-yellow-900/70 text-yellow-300 border-yellow-400/50',
-  CLASSIFIED:  'bg-red-900/70 text-red-300 border-red-400/50',
+// Contexte du projet → badge + couleur (puces réacteur, LED, onglet actif)
+type ProjectContext = Project['context'];
+
+const CONTEXT_LABEL: Record<ProjectContext, string> = {
+  PRO:   'Pro',
+  ASSO:  'Asso',
+  ECOLE: 'École',
+  PERSO: 'Perso',
+};
+
+const CONTEXT_HEX: Record<ProjectContext, string> = {
+  PRO:   '#3b82f6', // bleu
+  ASSO:  '#22c55e', // vert
+  ECOLE: '#eab308', // ambre
+  PERSO: '#a855f7', // violet
+};
+
+const CONTEXT_COLORS: Record<ProjectContext, string> = {
+  PRO:   'bg-blue-900/70 text-blue-300 border-blue-400/50',
+  ASSO:  'bg-green-900/70 text-green-300 border-green-400/50',
+  ECOLE: 'bg-yellow-900/70 text-yellow-300 border-yellow-400/50',
+  PERSO: 'bg-purple-900/70 text-purple-300 border-purple-400/50',
 };
 
 // --- Icônes ---
@@ -115,106 +142,36 @@ function IconExternalLink() {
   );
 }
 
-// --- ProjectCard ---
+// --- ProjectImage (aperçu visuel + placeholder tant que le fichier n'existe pas) ---
 
-interface ProjectCardProps {
-  project:         Project;
-  index:           number;
-  isSelected:      boolean;
-  isTransitioning: boolean;
-  className?:      string;
-  role?:           string;
-  onSelect:        (index: number) => void;
-  onHover:         (index: number | null) => void;
-}
+function ProjectImage({ src, alt }: { src?: string; alt: string }) {
+  const [ok, setOk] = useState(!!src);
+  useEffect(() => { setOk(!!src); }, [src]);
 
-const ProjectCard = memo(function ProjectCard({
-  project,
-  index,
-  isSelected,
-  isTransitioning,
-  className = '',
-  role,
-  onSelect,
-  onHover,
-}: ProjectCardProps) {
+  if (!src || !ok) {
+    return (
+      <div className="relative h-40 md:h-52 w-full flex items-center justify-center
+                      bg-gradient-to-br from-cyan-900/20 to-pink-900/20 border-b border-cyan-400/20">
+        <div className="scanlines absolute inset-0 opacity-10 pointer-events-none" aria-hidden="true" />
+        <span className="text-cyan-400/40 font-mono text-xs">// visuel à venir</span>
+      </div>
+    );
+  }
   return (
-    <div
-      role={role ?? 'button'}
-      tabIndex={0}
-      aria-pressed={isSelected}
-      aria-label={`Projet ${project.title}`}
-      className={`
-        group cursor-pointer transition-all duration-300 shrink-0
-        p-4 rounded-xl border-2 w-[260px] md:w-[300px] backdrop-blur-sm
-        ${isSelected
-          ? 'bg-black/80 border-cyan-400/80 shadow-xl shadow-cyan-400/20 ring-2 ring-cyan-400/30'
-          : 'border-cyan-400/20 bg-black/40 hover:border-cyan-400/50 hover:bg-black/60'
-        }
-        ${isTransitioning ? 'pointer-events-none opacity-60' : ''}
-        ${className}
-      `}
-      onClick={() => onSelect(index)}
-      onMouseEnter={() => onHover(index)}
-      onMouseLeave={() => onHover(null)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect(index);
-        }
-      }}
-    >
-      <div className="text-pink-400/70 text-xs mb-2 font-mono">
-        {project.memId}
-      </div>
-
-      <h3 className="text-sm md:text-base font-bold text-cyan-300 font-mono
-                     mb-3 group-hover:text-cyan-200 transition-colors line-clamp-2">
-        {project.title}
-      </h3>
-
-      <div className="flex flex-wrap gap-1 mb-3">
-        {project.tech.slice(0, 3).map((tech) => (
-          <span
-            key={tech}
-            className="text-xs px-2 py-0.5 bg-pink-900/50 text-pink-300
-                       rounded border border-pink-400/30 font-mono"
-          >
-            {tech}
-          </span>
-        ))}
-        {project.tech.length > 3 && (
-          <span className="text-xs px-2 py-0.5 bg-gray-900/50 text-gray-400
-                           rounded border border-gray-400/30 font-mono">
-            +{project.tech.length - 3}
-          </span>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <span className={`text-xs px-2 py-1 rounded font-mono border
-                          ${STATUS_COLORS[project.status]}`}>
-          {project.status}
-        </span>
-        {isSelected && (
-          <div className="flex items-center gap-1.5" aria-hidden="true">
-            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
-            <span className="text-xs text-cyan-400 font-mono">SELECTED</span>
-          </div>
-        )}
-      </div>
+    <div className="relative h-40 md:h-52 w-full overflow-hidden border-b border-cyan-400/20">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={`Aperçu — ${alt}`} className="w-full h-full object-cover" onError={() => setOk(false)} />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
     </div>
   );
-});
+}
 
 // --- ProjectInfoPanel ---
 
 const ProjectInfoPanel = memo(function ProjectInfoPanel({
   project,
-  onClose,
 }: {
   project: Project;
-  onClose: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -231,10 +188,12 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
     <div
       ref={panelRef}
       className="border border-cyan-400/30 rounded-xl bg-black/70
-                 backdrop-blur-sm mx-4 overflow-hidden"
+                 backdrop-blur-sm overflow-hidden min-h-[30rem]"
       role="region"
       aria-label={`Détails du projet ${project.title}`}
     >
+      <ProjectImage src={project.image} alt={project.title} />
+
       <div className="p-6 flex flex-col md:flex-row gap-6">
 
         {/* Colonne gauche : info */}
@@ -244,7 +203,7 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
               {project.memId} · {project.classification}
             </div>
             <h3 className="text-xl font-bold text-cyan-300 font-mono">
-              {project.title}
+              <GlitchText text={project.title} duration={project.extractionTime} />
             </h3>
           </div>
 
@@ -299,11 +258,11 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
         <div className="flex flex-col gap-4 md:w-48 shrink-0">
           <div>
             <div className="text-xs text-cyan-400/60 font-mono mb-2 uppercase tracking-wider">
-              Statut
+              Contexte
             </div>
             <span className={`inline-block text-xs px-3 py-1.5 rounded
-                              font-mono border ${STATUS_COLORS[project.status]}`}>
-              {project.status}
+                              font-mono border ${CONTEXT_COLORS[project.context]}`}>
+              {CONTEXT_LABEL[project.context]}
             </span>
           </div>
 
@@ -341,146 +300,124 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
               </a>
             )}
           </div>
-
-          <button
-            onClick={onClose}
-            aria-label="Fermer le panneau de détails"
-            className="text-xs text-gray-500 hover:text-gray-300 font-mono
-                       transition-colors text-center mt-1 cursor-pointer"
-          >
-            [ fermer ]
-          </button>
         </div>
       </div>
     </div>
   );
 });
 
-// --- MobileProjectList ---
+// --- GlitchText : décodage scramble → résolution gauche→droite (thème "extraction") ---
 
-function MobileProjectList({
-  projects,
-  selectedProject,
-  onSelect,
-}: {
-  projects:        Project[];
-  selectedProject: number | null;
-  onSelect:        (index: number) => void;
-}) {
+const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/01';
+
+function GlitchText({ text, duration = 600, className }: { text: string; duration?: number; className?: string }) {
+  const [display, setDisplay] = useState(text);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const revealed = Math.floor(t * text.length);
+      let s = text.slice(0, revealed);
+      for (let i = revealed; i < text.length; i++) {
+        s += text[i] === ' ' ? ' ' : GLITCH_CHARS[(Math.random() * GLITCH_CHARS.length) | 0];
+      }
+      setDisplay(s);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setDisplay(text);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [text, duration]);
+  return <span className={className}>{display}</span>;
+}
+
+// --- DecodeProgress : barre d'extraction qui se remplit sur `duration` ---
+
+function DecodeProgress({ duration, color, runKey }: { duration: number; color: string; runKey: number }) {
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    setPct(0);
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      setPct(t * 100);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [duration, runKey]);
   return (
-    <ul className="flex flex-col gap-4 px-4 list-none">
-      {projects.map((project, index) => {
-        const isSelected = selectedProject === index;
+    <div className="h-0.5 w-full bg-cyan-400/10 rounded overflow-hidden mt-2" aria-hidden="true">
+      <div className="h-full" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  );
+}
+
+// --- ProjectSelector : onglets compacts (façon About) — HTML, fonctionne SANS le canvas ---
+// Roving tabindex + flèches. Pilote la sélection + le survol (puces 3D). Couleur = contexte.
+
+function ProjectSelector({
+  projects, selected, onSelect, onHover,
+}: {
+  projects: Project[];
+  selected: number | null;
+  onSelect: (i: number) => void;
+  onHover:  (i: number | null) => void;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const move = (from: number, dir: number) => {
+    const n = (from + dir + projects.length) % projects.length;
+    refs.current[n]?.focus();
+    onSelect(n);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent, i: number) => {
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': e.preventDefault(); move(i, 1); break;
+      case 'ArrowLeft':  case 'ArrowUp':   e.preventDefault(); move(i, -1); break;
+      case 'Home':       e.preventDefault(); refs.current[0]?.focus(); onSelect(0); break;
+      case 'End':        e.preventDefault(); refs.current[projects.length - 1]?.focus(); onSelect(projects.length - 1); break;
+    }
+  };
+
+  const tabTarget = selected ?? 0; // roving : l'actif (ou le 1er) est focusable au Tab
+
+  return (
+    <div role="group" aria-label="Projets" className="flex flex-wrap gap-1 border-b border-cyan-400/15">
+      {projects.map((p, i) => {
+        const isSel = selected === i;
+        const c = CONTEXT_HEX[p.context];
         return (
-          <li key={project.memId}>
-            <article
-              className={`
-                rounded-xl border-2 p-4 backdrop-blur-sm transition-all duration-300
-                ${isSelected
-                  ? 'border-cyan-400/80 bg-black/80 shadow-lg shadow-cyan-400/20'
-                  : 'border-cyan-400/20 bg-black/40'
-                }
-              `}
-            >
-              {/* En-tête cliquable */}
-              <button
-                onClick={() => onSelect(index)}
-                aria-expanded={isSelected}
-                aria-controls={`mobile-project-detail-${index}`}
-                className="w-full text-left mb-3 cursor-pointer"
-              >
-                <div className="text-pink-400/70 text-xs font-mono mb-1">
-                  {project.memId}
-                </div>
-                <h3 className="text-base font-bold text-cyan-300 font-mono">
-                  {project.title}
-                </h3>
-              </button>
-
-              {/* Contenu toujours visible sur mobile */}
-              <div
-                id={`mobile-project-detail-${index}`}
-                className="space-y-3"
-              >
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  {project.description}
-                </p>
-
-                {project.contribution && (
-                  <p className="text-gray-500 text-xs leading-relaxed">
-                    {project.contribution}
-                  </p>
-                )}
-
-                {project.highlights && project.highlights.length > 0 && (
-                  <ul className="flex flex-wrap gap-1.5">
-                    {project.highlights.map((h) => (
-                      <li
-                        key={h}
-                        className="text-xs px-2 py-0.5 rounded-full border border-cyan-400/30
-                                   bg-cyan-400/5 text-cyan-200 font-mono"
-                      >
-                        ✓ {h}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="flex flex-wrap gap-1.5">
-                  {project.tech.map((tech) => (
-                    <span
-                      key={tech}
-                      className="text-xs px-2 py-0.5 bg-pink-900/50 text-pink-300
-                                 rounded border border-pink-400/30 font-mono"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <span className={`text-xs px-2 py-1 rounded font-mono border
-                                    ${STATUS_COLORS[project.status]}`}>
-                    {project.status}
-                  </span>
-
-                  <div className="flex gap-2">
-                    {project.github && (
-                      <a
-                        href={project.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`Code source de ${project.title} sur GitHub`}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5
-                                   border border-cyan-400/40 rounded-lg text-cyan-300
-                                   font-mono hover:bg-cyan-400/10 transition-all"
-                      >
-                        <IconGithub />
-                        GitHub
-                      </a>
-                    )}
-                    {project.demo && (
-                      <a
-                        href={project.demo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`Démo live de ${project.title}`}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5
-                                   bg-cyan-500 hover:bg-cyan-400 rounded-lg
-                                   text-black font-mono font-semibold transition-all"
-                      >
-                        <IconExternalLink />
-                        Démo
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </article>
-          </li>
+          <button
+            key={p.memId}
+            ref={(el) => { refs.current[i] = el; }}
+            type="button"
+            aria-pressed={isSel}
+            tabIndex={i === tabTarget ? 0 : -1}
+            aria-label={`${p.title} — ${CONTEXT_LABEL[p.context]}`}
+            onClick={() => onSelect(i)}
+            onMouseEnter={() => onHover(i)}
+            onMouseLeave={() => onHover(null)}
+            onFocus={() => onHover(i)}
+            onBlur={() => onHover(null)}
+            onKeyDown={(e) => onKeyDown(e, i)}
+            style={isSel ? { color: c, borderColor: c, textShadow: `0 0 10px ${c}80` } : undefined}
+            className={`project-card -mb-px flex items-center gap-2 px-3 py-1.5 font-mono text-sm
+              border-b-2 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60
+              ${isSel
+                ? 'border-current'
+                : 'text-cyan-400/40 border-transparent hover:text-cyan-400/80 hover:border-cyan-400/30'}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" aria-hidden="true"
+                  style={{ background: c, boxShadow: isSel ? `0 0 8px ${c}` : 'none', opacity: isSel ? 1 : 0.5 }} />
+            {isSel && '▸ '}{p.short}
+          </button>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
@@ -491,16 +428,33 @@ export function ProjectsSection() {
 
   // null = pas encore détecté (SSR safe), évite le flash hydration
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
-  const { ref: canvasGateRef, inView: canvasInView } = useInView<HTMLDivElement>();
-  const [hoveredProject, setHoveredProject] = useState<number | null>(null);
 
-  const { playSound, isAudioEnabled } = useAudioManager();
+  const { playSound } = useAudioManager();
   const {
     selectedProject,
     isTransitioning,
     selectProject,
-    reset,
   } = useProjectManager(PROJECTS_DATA);
+
+  // Pont vers le réacteur 3D embarqué (les cartes pilotent les puces)
+  const setProjectSelected = useSceneStore((s) => s.setProjectSelected);
+  const setProjectHovered  = useSceneStore((s) => s.setProjectHovered);
+  const setProjectColors   = useSceneStore((s) => s.setProjectColors);
+  const setProjectCards    = useSceneStore((s) => s.setProjectCards);
+  const setRequestSelectProject = useSceneStore((s) => s.setRequestSelectProject);
+  const dragReactor        = useDragRotate('heart');
+
+  // Couleurs de statut + données des cartes flottantes → réacteur (données statiques)
+  useEffect(() => {
+    setProjectColors(PROJECTS_DATA.map((p) => CONTEXT_HEX[p.context]));
+    setProjectCards(PROJECTS_DATA.map((p) => ({
+      id: p.memId, title: p.title, tech: p.tech, statusLabel: CONTEXT_LABEL[p.context],
+    })));
+  }, [setProjectColors, setProjectCards]);
+
+  // Miroir sélection/survol → store (le réacteur lit, reset au démontage)
+  useEffect(() => { setProjectSelected(selectedProject); }, [selectedProject, setProjectSelected]);
+  useEffect(() => () => { setProjectSelected(null); setProjectHovered(null); }, [setProjectSelected, setProjectHovered]);
 
   // Détection mobile — côté client uniquement
   useEffect(() => {
@@ -534,14 +488,12 @@ export function ProjectsSection() {
         duration: 0.5, ease: 'power2.out',
       }, '-=0.3');
 
-      // Les cartes .project-card n'existent qu'en desktop
-      if (isMobile === false) {
-        gsap.set('.project-card', { opacity: 0, y: 20 });
-        tl.to('.project-card', {
-          opacity: 1, y: 0,
-          duration: 0.5, stagger: 0.1, ease: 'back.out(1.2)',
-        }, '-=0.2');
-      }
+      // Le sélecteur .project-card est présent sur desktop ET mobile
+      gsap.set('.project-card', { opacity: 0, y: 20 });
+      tl.to('.project-card', {
+        opacity: 1, y: 0,
+        duration: 0.5, stagger: 0.1, ease: 'back.out(1.2)',
+      }, '-=0.2');
     }, sectionRef);
 
     return () => ctx.revert();
@@ -551,21 +503,22 @@ export function ProjectsSection() {
     selectProject(index, playSound);
   }, [selectProject, playSound]);
 
-  const handleClose = useCallback(() => {
-    reset();
-    playSound('hover');
-  }, [reset, playSound]);
+  // Expose la sélection au réacteur 3D (clic sur une carte flottante → sélectionne ici)
+  useEffect(() => {
+    setRequestSelectProject(handleProjectSelect);
+    return () => setRequestSelectProject(null);
+  }, [handleProjectSelect, setRequestSelectProject]);
 
-  const handleTileHover = useCallback((index: number | null) => {
-    setHoveredProject(index);
-    if (index !== null && isAudioEnabled) playSound('hover');
-  }, [playSound, isAudioEnabled]);
+  // Survol d'un module (liste HTML) → met en valeur la puce 3D correspondante
+  const handleHover = useCallback((i: number | null) => {
+    setProjectHovered(i);
+  }, [setProjectHovered]);
 
   return (
     <section
       id="projects"
       ref={sectionRef}
-      className="min-h-screen py-20 bg-gradient-to-br from-purple-900/20
+      className="holo-veil-fade min-h-screen py-20 bg-gradient-to-br from-purple-900/20
                  via-pink-900/20 to-blue-900/20 relative overflow-hidden"
       aria-labelledby="projects-title"
     >
@@ -583,91 +536,82 @@ export function ProjectsSection() {
             className="projects-title text-3xl md:text-5xl font-bold
                        text-cyan-400 font-mono"
           >
-            MEMORY RECONSTRUCTION
+            PROJECTS:CORE_DIAGNOSTICS
           </h2>
           <p className="projects-hint mt-3 text-gray-400 text-sm md:text-base">
             {isMobile
-              ? 'Explore les projets ci-dessous'
-              : 'Clique sur une carte pour explorer un projet'
+              ? 'Les modules qui alimentent mon réacteur'
+              : 'Chaque projet est un module branché au réacteur — clique pour le mettre en ligne'
             }
           </p>
         </div>
 
-        {/* Canvas 3D — desktop uniquement, rendu après détection */}
-        {isMobile === false && (
-          <div
-            ref={canvasGateRef}
-            className="w-full rounded-2xl overflow-hidden border border-cyan-400/20"
-            style={{ height: '55vh' }}
-          >
-            {canvasInView && (
-            <Canvas gl={{ antialias: true }}>
-              <PerspectiveCamera makeDefault position={[0, 2.5, 8]} fov={55} />
-              <OrbitControls
-                enableZoom={false}
-                enablePan={false}
-                maxPolarAngle={Math.PI / 2}
-                minPolarAngle={Math.PI / 4}
-                enableDamping
-                dampingFactor={0.05}
-              />
-              <ambientLight intensity={0.3} />
-              <pointLight position={[5, 5, 5]}   intensity={2}   color="#00ffff" />
-              <pointLight position={[-5, -5, -5]} intensity={1}   color="#ff00ff" />
-              <pointLight position={[0, 10, 0]}   intensity={1.5} color="#ffffff" />
+        {/* Contenu — fonctionne SANS le canvas : sélecteur HTML + fiche (toujours présents).
+            Desktop : réacteur 3D en bonus à droite · Mobile : 1 colonne (pas de canvas). */}
+        {isMobile === null ? null : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start w-full max-w-6xl mx-auto">
+            {/* Gauche (toujours) : sélecteur de modules + fiche détail */}
+            <div className="flex flex-col gap-4">
+              <div className="text-pink-400/70 text-xs font-mono tracking-wider">
+                &gt;&gt; MODULES BRANCHÉS — {PROJECTS_DATA.length}
+              </div>
 
-              <MemoryReconstruction
+              <ProjectSelector
                 projects={PROJECTS_DATA}
-                selectedProject={selectedProject}
-                hoveredProject={hoveredProject}
-                insertedProject={selectedProject}
-                onProjectSelect={handleProjectSelect}
-                onProjectInsert={handleProjectSelect}
-                onCardHover={handleTileHover}
+                selected={selectedProject}
+                onSelect={handleProjectSelect}
+                onHover={handleHover}
               />
-            </Canvas>
-            )}
-          </div>
-        )}
 
-        {/* Contenu selon le device — null = on attend la détection */}
-        {isMobile === null ? null : isMobile ? (
-          <MobileProjectList
-            projects={PROJECTS_DATA}
-            selectedProject={selectedProject}
-            onSelect={handleProjectSelect}
-          />
-        ) : (
-          <>
-            {/* Cards desktop — scroll horizontal */}
-            <div
-              role="list"
-              aria-label="Liste des projets"
-              className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide px-1"
-            >
-              {PROJECTS_DATA.map((project, index) => (
-                <ProjectCard
-                  key={project.memId}
-                  role="listitem"
-                  className="project-card"
-                  project={project}
-                  index={index}
-                  isSelected={selectedProject === index}
-                  isTransitioning={isTransitioning}
-                  onSelect={handleProjectSelect}
-                  onHover={handleTileHover}
-                />
-              ))}
+              {selectedProject !== null && (
+                <ProjectInfoPanel project={PROJECTS_DATA[selectedProject]} />
+              )}
             </div>
 
-            {/* Panneau info */}
-            {selectedProject !== null && (
-              <ProjectInfoPanel
-                project={PROJECTS_DATA[selectedProject]}
-                onClose={handleClose}
-              />
+            {/* Droite (desktop only) : réacteur 3D + décodage en BAS du canvas (façon ADN) */}
+            {isMobile === false && (
+              <div className="relative w-full" style={{ height: '80vh' }}>
+                <div
+                  data-holo="projects"
+                  className="w-full h-full rounded-2xl overflow-hidden border border-cyan-400/20 cursor-grab touch-none"
+                  title="Glisse pour faire pivoter"
+                  {...dragReactor}
+                />
+
+                {selectedProject !== null && (() => {
+                  const p = PROJECTS_DATA[selectedProject];
+                  const c = CONTEXT_HEX[p.context];
+                  return (
+                    <div
+                      key={selectedProject}
+                      className="hud-reveal absolute bottom-3 left-3 right-3 rounded-lg border bg-black/85
+                                 backdrop-blur-sm p-3 font-mono pointer-events-none"
+                      style={{ borderColor: `${c}66`, boxShadow: `0 0 16px ${c}40` }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c, boxShadow: `0 0 8px ${c}` }} />
+                        <span className="text-pink-400/70 text-[10px]">{p.memId}</span>
+                        <span className="text-cyan-200 text-sm truncate flex-1">
+                          <GlitchText text={p.title} duration={p.extractionTime} />
+                        </span>
+                        <span className="text-[10px] font-bold tracking-wider shrink-0" style={{ color: c }}>
+                          {CONTEXT_LABEL[p.context]}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {p.tech.map((t) => (
+                          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-pink-900/50 text-pink-300 border border-pink-400/30">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <DecodeProgress duration={p.extractionTime} color={c} runKey={selectedProject} />
+                    </div>
+                  );
+                })()}
+              </div>
             )}
-          </>
+          </div>
         )}
 
         {/* Indicateur de transition */}
@@ -684,7 +628,7 @@ export function ProjectsSection() {
               aria-hidden="true"
             />
             <span className="text-cyan-400 font-mono text-xs">
-              Decrypting...
+              Mise sous tension...
             </span>
           </div>
         )}

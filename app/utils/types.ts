@@ -19,6 +19,9 @@ export interface Project {
   demo:           string;
   contribution?:  string;   // "Ce que j'ai fait"
   highlights?:    string[]; // Points forts
+  image?:         string;   // aperçu visuel (screenshot/GIF) — ex: '/projects/arrakis.png'
+  context:        'PRO' | 'ASSO' | 'ECOLE' | 'PERSO'; // cadre du projet (badge)
+  short:          string;   // libellé court (onglet)
 }
 
 export type IntroPhase = 'LOCKED' | 'SCANNING' | 'BOOTING' | 'UNLOCKED';

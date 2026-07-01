@@ -7,6 +7,8 @@ import DNAAnalysis from '../components/3d/DNAAnalysis';
 import TechList from '../components/TechList';
 import { LazyMount } from '../components/LazyMount';
 import { TECH_STACK, HELIX_STRANDS } from '../utils/constants';
+import { useSceneStore } from '../store/sceneStore';
+import { useDragRotate } from '../hooks/useDragRotate';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -29,10 +31,25 @@ const LEVEL_FILTERS = [
 // --- Composant ---
 
 export default function SkillsSection() {
-  const [visibleTechs, setVisibleTechs] = useState<string[]>([]);
-  const [hoveredTech, setHoveredTech]   = useState<string | null>(null);
-  const [selectedTech, setSelectedTech] = useState<string | null>(null);
-  const [levelFilter, setLevelFilter]   = useState<number>(0); // 0 = tout
+  // États partagés avec l'ADN embarqué dans le canvas humain (via le store)
+  const visibleTechs  = useSceneStore((s) => s.skillsVisible);
+  const setVisibleTechs = useSceneStore((s) => s.setSkillsVisible);
+  const hoveredTech   = useSceneStore((s) => s.skillsHovered);
+  const setHoveredTech  = useSceneStore((s) => s.setSkillsHovered);
+  const selectedTech  = useSceneStore((s) => s.skillsSelected);
+  const setSelectedTech = useSceneStore((s) => s.setSkillsSelected);
+  const levelFilter   = useSceneStore((s) => s.skillsLevel);
+  const setLevelFilter  = useSceneStore((s) => s.setSkillsLevel);
+  const dragDNA       = useDragRotate('adn');
+  const [isMobile, setIsMobile]         = useState<boolean | null>(null);
+
+  // Détection device : desktop → slot du canvas partagé · mobile → ADN local (2D conservé)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // -- Révélation : quand la section entre, TOUTES les technos s'assemblent --
   useEffect(() => {
@@ -50,8 +67,9 @@ export default function SkillsSection() {
   // -- Clic sur une tech (depuis la liste ou le canvas) --
   const handleTechClick = useCallback((techName: string) => {
     const id = techName.toLowerCase();
-    // clic = sélection (toggle) → ouvre / ferme le panneau de décodage
-    setSelectedTech((cur) => (cur === id ? null : id));
+    // clic = sélection (toggle) → lit la valeur courante du store (pas de closure obsolète)
+    const cur = useSceneStore.getState().skillsSelected;
+    useSceneStore.getState().setSkillsSelected(cur === id ? null : id);
   }, []);
 
   // Donnée de la techno sélectionnée (pour le panneau de décodage)
@@ -82,10 +100,10 @@ export default function SkillsSection() {
   return (
     <section
       id="skills"
-      className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-32 relative scroll-mt-[100px]"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-32 relative scroll-mt-[100px]"
     >
       <h2 className="text-4xl font-bold text-cyan-400 mb-2 font-mono z-10 text-center">
-        DNA MODULE ANALYSIS
+        SKILLS:DNA_MODULE_ANALYSIS
       </h2>
       <p className="text-lg text-cyan-100 mb-12 max-w-2xl text-center z-10">
         Chaque technologie que j&apos;apprends devient un fragment de mon ADN de développeur.
@@ -115,15 +133,22 @@ export default function SkillsSection() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 z-10 w-full max-w-6xl relative">
         <div className="relative w-full">
-          <LazyMount className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }}>
-            <DNAAnalysis
-              visibleTechs={shownTechs}
-              hoveredTech={hoveredTech}
-              selectedTech={selectedTech}
-              onTechClick={handleTechClick}
-              onTechHover={handleTechHover}
-            />
-          </LazyMount>
+          {isMobile === false ? (
+            // desktop : emplacement où le canvas partagé (page) se niche pour la station ADN
+            <div data-holo="skills" className="w-full cursor-grab touch-none" style={{ height: 'clamp(500px, 60vh, 800px)' }} title="Glisse pour faire pivoter" {...dragDNA} />
+          ) : isMobile ? (
+            <LazyMount className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }}>
+              <DNAAnalysis
+                visibleTechs={shownTechs}
+                hoveredTech={hoveredTech}
+                selectedTech={selectedTech}
+                onTechClick={handleTechClick}
+                onTechHover={handleTechHover}
+              />
+            </LazyMount>
+          ) : (
+            <div className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }} />
+          )}
 
           {/* Affordance : on peut décoder un module */}
           {!decoded && (

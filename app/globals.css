@@ -117,6 +117,17 @@ body {
   }
 }
 
+/* Voile de transition : le contenu HTML des sections se dématérialise/rematérialise
+   en synchro avec le fond du canvas (var --holo-veil pilotée par AugmentedHumanLayer :
+   0 = section dockée, contenu visible · 1 = canvas plein écran, contenu masqué). */
+.holo-veil-fade {
+  opacity: calc(1 - var(--holo-veil, 0));
+  will-change: opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-veil-fade { opacity: 1; }
+}
+
 /* Focus visible pour la navigation clavier */
 .project-tile:focus-visible {
   outline: 2px solid #00ffff;

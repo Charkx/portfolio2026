@@ -1,17 +1,30 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CognitiveProfile from '../components/3d/CognitiveProfil';
 import { LazyMount } from '../components/LazyMount';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { ABOUT_TEXT } from '../utils/constants';
+import { useSceneStore } from '../store/sceneStore';
+import { useDragRotate } from '../hooks/useDragRotate';
 
 // Aligné sur les couleurs des catégories (PROFIL rose · EXPÉRIENCE vert vif · FORMATION ambre).
 const scanColors = ['#ff00ff', '#2bff66', '#ffc400', '#00ffff', '#9b5de5'];
 
 export default function AboutSection() {
-  // Quelle catégorie est affichée. 0 = PROFIL par défaut.
-  const [selected, setSelected] = useState(0);
+  // Catégorie active : partagée avec le cerveau embarqué dans le canvas humain.
+  const selected = useSceneStore((s) => s.aboutSelected);
+  const setSelected = useSceneStore((s) => s.setAboutSelected);
+  const dragBrain = useDragRotate('brain');
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  // desktop → slot du canvas partagé (cerveau) · mobile → cerveau local (3D conservé)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Valeurs DÉRIVÉES de `selected` (pas de state en plus).
   const active = ABOUT_TEXT[selected];
@@ -23,10 +36,10 @@ export default function AboutSection() {
   return (
     <section
       id="about"
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20"
     >
       <h2 className="text-4xl text-cyan-400 font-bold font-mono mb-12 z-10">
-        COGNITIVE_PROFILE.dat
+        ABOUT:COGNITIVE_PROFILE
       </h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 z-10 w-full max-w-6xl">
@@ -83,10 +96,17 @@ export default function AboutSection() {
           </div>
         </div>
 
-        {/* Le 3D reçoit juste la couleur dérivée */}
-        <LazyMount className="h-[80vh] w-full">
-          <CognitiveProfile selected={selected} color={activeColor} count={ABOUT_TEXT.length} />
-        </LazyMount>
+        {/* desktop : slot où le canvas partagé (page) se niche pour la station cerveau
+            mobile : cerveau local (3D conservé) */}
+        {isMobile === false ? (
+          <div data-holo="about" className="h-[80vh] w-full cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragBrain} />
+        ) : isMobile ? (
+          <LazyMount className="h-[80vh] w-full">
+            <CognitiveProfile selected={selected} color={activeColor} count={ABOUT_TEXT.length} />
+          </LazyMount>
+        ) : (
+          <div className="h-[80vh] w-full" />
+        )}
       </div>
     </section>
   );

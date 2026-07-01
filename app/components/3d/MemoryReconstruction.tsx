@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { gsap } from 'gsap';
@@ -10,7 +10,11 @@ import type { Project } from '@/app/utils/types';
 
 // --- Constantes ---
 
-const CAROUSEL_RADIUS = 4;
+const CYAN = '#22d3ee';
+const PANEL_RADIUS = 2.55; // rayon où sont projetés les panneaux projets
+const NET_TILT_X   = -0.3; // l'œil fait face à la caméra (placée en hauteur)
+const BASE_Y       = 0.15;
+const BEAM_PKTS    = 6;
 
 const STATUS_COLORS: Record<Project['status'], string> = {
   COMPLETED:   '#00ff00',
@@ -19,232 +23,267 @@ const STATUS_COLORS: Record<Project['status'], string> = {
   CLASSIFIED:  '#ff0000',
 };
 
-// Vecteurs pré-alloués
-const _INSERT_POSITION = new THREE.Vector3(0, 1.2, 2.2);
-const _INSERT_SCALE    = new THREE.Vector3(1.25, 1.25, 1.25);
-const _DEFAULT_SCALE   = new THREE.Vector3(1, 1, 1);
-const _SELECT_SCALE    = new THREE.Vector3(1.12, 1.12, 1.12);
-const _HOVER_SCALE     = new THREE.Vector3(1.06, 1.06, 1.06);
-const _DIM_SCALE       = new THREE.Vector3(0.92, 0.92, 0.92);
+// --- Géométries de l'œil (procédurales, partagées) ---
 
-// --- Types ---
+const EYE_W = 1.75;
+const EYE_H = 1.05;
 
-interface CardProps {
-  position:             [number, number, number];
-  rotation:             [number, number, number];
-  project:              Project;
-  index:                number;
-  isSelected:           boolean;
-  isInserted:           boolean;
-  isHovered:            boolean;
-  isDimmed:             boolean; // true si un autre projet est actif
-  prefersReducedMotion: boolean;
-  onCardClick:          (index: number) => void;
-  onCardHover:          (index: number | null) => void;
-}
+// Contour en amande : 2 courbes de Bézier (paupière haute + basse)
+const EYE_OUTLINE_GEO = (() => {
+  const shape = new THREE.Shape();
+  shape.moveTo(-EYE_W, 0);
+  shape.quadraticCurveTo(0, EYE_H, EYE_W, 0);
+  shape.quadraticCurveTo(0, -EYE_H, -EYE_W, 0);
+  const pts = shape.getPoints(96);
+  const arr = new Float32Array(pts.length * 3);
+  pts.forEach((p, i) => { arr[i * 3] = p.x; arr[i * 3 + 1] = p.y; });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  return g;
+})();
 
-// --- Guard drag ---
+const IRIS_INNER = 0.42;
+const IRIS_OUTER = 0.96;
 
-function useDragGuard(threshold = 4) {
-  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
-  const isDragging     = useRef(false);
+// Fibres radiales de l'iris (look cybernétique)
+const IRIS_FIBERS_GEO = (() => {
+  const N = 56;
+  const arr = new Float32Array(N * 2 * 3);
+  for (let i = 0; i < N; i++) {
+    const a  = (i / N) * Math.PI * 2;
+    const r1 = IRIS_INNER + (i % 2 ? 0.05 : 0);
+    arr[i * 6]     = Math.cos(a) * r1;
+    arr[i * 6 + 1] = Math.sin(a) * r1;
+    arr[i * 6 + 3] = Math.cos(a) * IRIS_OUTER;
+    arr[i * 6 + 4] = Math.sin(a) * IRIS_OUTER;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  return g;
+})();
 
-  const onPointerDown = useCallback((e: any) => {
-    pointerDownPos.current = { x: e.clientX, y: e.clientY };
-    isDragging.current = false;
-  }, []);
+const RING_OUT_GEO  = new THREE.RingGeometry(0.97, 1.03, 72);
+const RING_IN_GEO   = new THREE.RingGeometry(0.40, 0.46, 56);
+const PUPIL_GEO     = new THREE.CircleGeometry(0.32, 40);
+const PUPIL_RING    = new THREE.RingGeometry(0.32, 0.37, 40);
+const GLOW_GEO      = new THREE.CircleGeometry(0.6, 40);
 
-  const onPointerMove = useCallback((e: any) => {
-    if (!pointerDownPos.current) return;
-    const dx = e.clientX - pointerDownPos.current.x;
-    const dy = e.clientY - pointerDownPos.current.y;
-    if (Math.sqrt(dx * dx + dy * dy) > threshold) isDragging.current = true;
-  }, [threshold]);
+// Vecteur temporaire
+const _tmp = new THREE.Vector3();
 
-  const onPointerUp = useCallback((callback: () => void) => () => {
-    if (!isDragging.current) callback();
-    pointerDownPos.current = null;
-  }, []);
+// --- Faisceau de données pupille → panneau sélectionné ---
 
-  return { onPointerDown, onPointerMove, onPointerUp };
-}
+function FocusBeam({ target, reduced }: { target: THREE.Vector3; reduced: boolean }) {
+  const pktGeoRef = useRef<THREE.BufferGeometry>(null);
+  const pktMatRef = useRef<THREE.PointsMaterial>(null);
 
-// --- MemoryCard ---
-
-function MemoryCard({
-  position,
-  rotation,
-  project,
-  index,
-  isSelected,
-  isInserted,
-  isHovered,
-  isDimmed,
-  prefersReducedMotion,
-  onCardClick,
-  onCardHover,
-}: CardProps) {
-  const cardRef  = useRef<THREE.Group>(null);
-  const haloRef  = useRef<THREE.Group>(null);
-  const labelRef = useRef<THREE.Mesh>(null);
-
-  // Ref pour l'opacité courante du matériau body — interpolée dans useFrame
-  const bodyOpacityRef = useRef(1);
-
-  const statusColor = STATUS_COLORS[project.status];
-  const { onPointerDown, onPointerMove, onPointerUp } = useDragGuard();
-
-  useEffect(() => {
-    return () => { document.body.style.cursor = 'auto'; };
-  }, []);
+  const src = useMemo(() => new THREE.Vector3(0, 0, 0.18), []);
+  const linePositions = useMemo(
+    () => new Float32Array([src.x, src.y, src.z, target.x, target.y, target.z]),
+    [src, target]
+  );
+  const packetPositions = useMemo(() => new Float32Array(BEAM_PKTS * 3), []);
 
   useFrame((state) => {
-    if (!cardRef.current) return;
-
-    if (isInserted) {
-      cardRef.current.position.lerp(_INSERT_POSITION, 0.08);
-      cardRef.current.scale.lerp(_INSERT_SCALE, 0.1);
-      cardRef.current.rotation.set(0, 0, 0);
-      return;
+    if (reduced || !pktGeoRef.current) return;
+    const t = state.clock.elapsedTime * 0.8;
+    const arr = packetPositions;
+    for (let k = 0; k < BEAM_PKTS; k++) {
+      const frac = (t + k / BEAM_PKTS) % 1;
+      arr[k * 3]     = THREE.MathUtils.lerp(src.x, target.x, frac);
+      arr[k * 3 + 1] = THREE.MathUtils.lerp(src.y, target.y, frac);
+      arr[k * 3 + 2] = THREE.MathUtils.lerp(src.z, target.z, frac);
     }
-
-    const time   = state.clock.elapsedTime;
-    const floatY = prefersReducedMotion
-      ? 0
-      : Math.sin(time * 0.6 + index * 1.2) * 0.05;
-
-    cardRef.current.position.set(position[0], position[1] + floatY, position[2]);
-    cardRef.current.rotation.set(rotation[0], rotation[1], rotation[2]);
-
-    // Scale : sélectionné > hover > dimmed > défaut
-    const targetScale = isSelected
-      ? _SELECT_SCALE
-      : isHovered
-        ? _HOVER_SCALE
-        : isDimmed
-          ? _DIM_SCALE
-          : _DEFAULT_SCALE;
-
-    cardRef.current.scale.lerp(targetScale, 0.1);
-
-    // Opacité : dimmed = 40%, sinon 100%
-    const targetOpacity = isDimmed ? 0.4 : 1;
-    bodyOpacityRef.current = THREE.MathUtils.lerp(
-      bodyOpacityRef.current,
-      targetOpacity,
-      0.08
-    );
-
-    // Applique l'opacité à tous les meshes enfants
-    cardRef.current.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        if (mat.transparent) mat.opacity = bodyOpacityRef.current;
-      }
-    });
-
-    // Halo
-    if (haloRef.current && isSelected && !prefersReducedMotion) {
-      haloRef.current.rotation.y += 0.03;
-      haloRef.current.rotation.x = Math.sin(time * 1.4) * 0.1;
-    }
+    (pktGeoRef.current.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
   });
 
   return (
     <group>
-      <group
-        ref={cardRef}
-        position={position}
-        rotation={rotation}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp(() => onCardClick(index))}
-        onPointerOver={() => {
-          document.body.style.cursor = 'pointer';
-          onCardHover(index);
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto';
-          onCardHover(null);
-        }}
-      >
-        {/* Corps */}
-        <mesh>
-          <boxGeometry args={[0.8, 0.05, 1.2]} />
-          <meshStandardMaterial
-            color="#2a2a2a"
-            metalness={0.1}
-            roughness={0.3}
-            transparent
-            opacity={1}
-          />
-        </mesh>
-
-        {/* Face avant */}
-        <mesh position={[0, 0.026, 0]}>
-          <planeGeometry args={[0.75, 1.15]} />
-          <meshStandardMaterial
-            color="#1a1a1a"
-            transparent
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Indicateur statut */}
-        <mesh position={[0.3, 0.027, 0.5]}>
-          <sphereGeometry args={[0.02, 8, 8]} />
-          <meshStandardMaterial
-            color={statusColor}
-            emissive={statusColor}
-            emissiveIntensity={isSelected ? 1.2 : isHovered ? 0.8 : 0.4}
-          />
-        </mesh>
-
-        {/* Preview au hover — Html Three.js */}
-        {(isHovered || isSelected) && !isInserted && (
-          <Html
-            position={[0, 0.8, 0]}
-            center
-            distanceFactor={4}
-            occlude
-            style={{ pointerEvents: 'none' }}
-          >
-            <div className="bg-black/90 border border-cyan-400/50 rounded-lg
-                            px-3 py-2 font-mono text-center backdrop-blur-sm
-                            shadow-xl shadow-cyan-400/10 whitespace-nowrap">
-              <div className="text-cyan-300 text-xs font-semibold mb-0.5">
-                {project.title}
-              </div>
-              <div className="text-pink-300/70 text-[10px]">
-                {project.tech.slice(0, 3).join(' · ')}
-              </div>
-            </div>
-          </Html>
-        )}
-      </group>
-
-      {/* Halo de sélection */}
-      {isSelected && !isInserted && (
-        <group
-          ref={haloRef}
-          position={[position[0], position[1] + 0.8, position[2]]}
-        >
-          <mesh>
-            <torusGeometry args={[1.5, 0.03, 8, 32]} />
-            <meshBasicMaterial
-              color={statusColor}
-              transparent
-              opacity={0.5}
-              blending={THREE.AdditiveBlending}
-            />
-          </mesh>
-        </group>
-      )}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[linePositions, 3]} count={2} />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ff2bd6" transparent opacity={0.55} depthWrite={false} />
+      </line>
+      <points>
+        <bufferGeometry ref={pktGeoRef}>
+          <bufferAttribute attach="attributes-position" args={[packetPositions, 3]} count={BEAM_PKTS} />
+        </bufferGeometry>
+        <pointsMaterial ref={pktMatRef} color="#ff2bd6" size={0.12} transparent opacity={0.95}
+          depthWrite={false} sizeAttenuation blending={THREE.AdditiveBlending} />
+      </points>
     </group>
   );
 }
 
-// --- MemoryReconstruction ---
+// --- L'œil cybernétique ---
+
+interface EyeProps {
+  gaze:    THREE.Vector3 | null; // direction du regard (panneau actif)
+  focused: boolean;              // un projet est sélectionné
+  reduced: boolean;
+}
+
+function CyberEye({ gaze, focused, reduced }: EyeProps) {
+  const irisRef   = useRef<THREE.Group>(null); // décalé par le regard
+  const fibersRef = useRef<THREE.LineSegments>(null);
+  const pupilRef  = useRef<THREE.Group>(null);
+  const outRingMat = useRef<THREE.MeshBasicMaterial>(null);
+  const glowMat    = useRef<THREE.MeshBasicMaterial>(null);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+
+    // Regard : l'iris se décale doucement vers le projet actif
+    if (irisRef.current) {
+      let gx = 0, gy = 0;
+      if (gaze) {
+        _tmp.copy(gaze).setZ(0).normalize().multiplyScalar(0.16);
+        gx = _tmp.x; gy = _tmp.y;
+      }
+      irisRef.current.position.x = THREE.MathUtils.lerp(irisRef.current.position.x, gx, 0.08);
+      irisRef.current.position.y = THREE.MathUtils.lerp(irisRef.current.position.y, gy, 0.08);
+    }
+
+    // Rotation lente des fibres (vie)
+    if (fibersRef.current && !reduced) fibersRef.current.rotation.z += 0.0015;
+
+    // Pupille : pulsation + contraction quand l'œil focus
+    if (pupilRef.current) {
+      const pulse  = reduced ? 1 : 1 + Math.sin(t * 2) * 0.05;
+      const target = (focused ? 0.7 : 1) * pulse;
+      const s = THREE.MathUtils.lerp(pupilRef.current.scale.x, target, 0.12);
+      pupilRef.current.scale.setScalar(s);
+    }
+
+    // Intensité lumineuse selon le focus
+    if (outRingMat.current) outRingMat.current.opacity = THREE.MathUtils.lerp(outRingMat.current.opacity, focused ? 1 : 0.7, 0.1);
+    if (glowMat.current)    glowMat.current.opacity    = THREE.MathUtils.lerp(glowMat.current.opacity, focused ? 0.45 : 0.22, 0.1);
+  });
+
+  return (
+    <group>
+      {/* Contour en amande (paupières) */}
+      <lineLoop geometry={EYE_OUTLINE_GEO}>
+        <lineBasicMaterial color={CYAN} transparent opacity={0.8} depthWrite={false} />
+      </lineLoop>
+      <lineLoop geometry={EYE_OUTLINE_GEO} scale={0.92}>
+        <lineBasicMaterial color={CYAN} transparent opacity={0.3} depthWrite={false} />
+      </lineLoop>
+
+      {/* Iris (décalé par le regard) */}
+      <group ref={irisRef}>
+        {/* halo */}
+        <mesh geometry={GLOW_GEO} position={[0, 0, -0.02]}>
+          <meshBasicMaterial ref={glowMat} color={CYAN} transparent opacity={0.22}
+            depthWrite={false} blending={THREE.AdditiveBlending} />
+        </mesh>
+
+        <mesh geometry={RING_OUT_GEO}>
+          <meshBasicMaterial ref={outRingMat} color={CYAN} transparent opacity={0.7} depthWrite={false} />
+        </mesh>
+        <mesh geometry={RING_IN_GEO}>
+          <meshBasicMaterial color={CYAN} transparent opacity={0.6} depthWrite={false} />
+        </mesh>
+
+        <lineSegments ref={fibersRef} geometry={IRIS_FIBERS_GEO}>
+          <lineBasicMaterial color={CYAN} transparent opacity={0.45} depthWrite={false} />
+        </lineSegments>
+
+        {/* Pupille */}
+        <group ref={pupilRef}>
+          <mesh geometry={PUPIL_GEO} position={[0, 0, 0.03]}>
+            <meshBasicMaterial color="#03080d" />
+          </mesh>
+          <mesh geometry={PUPIL_RING} position={[0, 0, 0.04]}>
+            <meshBasicMaterial color={CYAN} transparent opacity={0.95} depthWrite={false}
+              blending={THREE.AdditiveBlending} />
+          </mesh>
+        </group>
+      </group>
+    </group>
+  );
+}
+
+// --- Panneau projet (HUD holographique) ---
+
+interface PanelProps {
+  project:    Project;
+  index:      number;
+  anchor:     THREE.Vector3;
+  isSelected: boolean;
+  isHovered:  boolean;
+  isDimmed:   boolean;
+  onSelect:   (i: number) => void;
+  onHover:    (i: number | null) => void;
+}
+
+function ProjectPanel({ project, index, anchor, isSelected, isHovered, isDimmed, onSelect, onHover }: PanelProps) {
+  const statusColor = STATUS_COLORS[project.status];
+  const active = isSelected || isHovered;
+
+  return (
+    <Html position={anchor} center distanceFactor={6} zIndexRange={[20, 0]}
+      style={{ pointerEvents: 'auto', transition: 'opacity .25s', opacity: isDimmed ? 0.35 : 1 }}>
+      <button
+        onClick={() => onSelect(index)}
+        onPointerEnter={() => onHover(index)}
+        onPointerLeave={() => onHover(null)}
+        aria-label={`Projet ${project.title}`}
+        className={`group relative w-[150px] text-left font-mono rounded-lg border-2 px-3 py-2.5
+                    backdrop-blur-sm cursor-pointer transition-all duration-200
+                    ${isSelected
+                      ? 'border-[#ff2bd6] bg-[#1a0a16]/85 shadow-[0_0_24px_rgba(255,43,214,.35)]'
+                      : 'border-cyan-400/40 bg-black/70 hover:border-cyan-300/80 shadow-[0_0_18px_rgba(34,211,238,.18)]'}`}
+      >
+        {/* coins HUD */}
+        <span className={`absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 ${isSelected ? 'border-[#ff2bd6]' : 'border-cyan-300'}`} />
+        <span className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 ${isSelected ? 'border-[#ff2bd6]' : 'border-cyan-300'}`} />
+
+        <div className="text-[9px] tracking-widest mb-0.5" style={{ color: isSelected ? '#ff77e0' : '#67e8f9aa' }}>
+          {project.memId}
+        </div>
+        <div className={`text-[11px] font-semibold leading-tight ${isSelected ? 'text-pink-100' : 'text-cyan-100'}`}>
+          {project.title}
+        </div>
+        <div className="flex items-center gap-1.5 mt-1.5">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor, boxShadow: `0 0 6px ${statusColor}` }} />
+          <span className="text-[8px] tracking-wider text-gray-400">{project.status}</span>
+        </div>
+      </button>
+    </Html>
+  );
+}
+
+// --- Particules d'ambiance (cohérence DA cerveau/ADN) ---
+
+function DustField({ reduced }: { reduced: boolean }) {
+  const ref = useRef<THREE.Points>(null);
+  const positions = useMemo(() => {
+    const N = 110;
+    const arr = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      arr[i * 3]     = (Math.random() - 0.5) * 8;
+      arr[i * 3 + 1] = (Math.random() - 0.5) * 5.5;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 3 - 1;
+    }
+    return arr;
+  }, []);
+  useFrame((state) => {
+    if (ref.current && !reduced) ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.05) * 0.1;
+  });
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} count={positions.length / 3} />
+      </bufferGeometry>
+      <pointsMaterial color={CYAN} size={0.03} transparent opacity={0.4} depthWrite={false}
+        sizeAttenuation blending={THREE.AdditiveBlending} />
+    </points>
+  );
+}
+
+// --- Composant principal ---
 
 interface Props {
   projects:        Project[];
@@ -260,82 +299,66 @@ export default function MemoryReconstruction({
   projects,
   selectedProject,
   hoveredProject,
-  insertedProject,
   onProjectSelect,
   onProjectInsert,
   onCardHover,
 }: Props) {
-  const rotationRef          = useRef(0);
-  const [rotation, setRotation] = useState(0);
-  const gsapTweenRef         = useRef<gsap.core.Tween | null>(null);
-  const prefersReducedMotion = useReducedMotion();
+  const rootRef = useRef<THREE.Group>(null);
+  const reduced = useReducedMotion();
 
-  // Source active — sélection prioritaire sur hover
-  const activeIndex = selectedProject ?? hoveredProject ?? null;
+  // Ancres des panneaux (autour de l'iris)
+  const anchors = useMemo(() => {
+    const base = [45, 135, 225, 315]; // coins, en degrés
+    return projects.map((_, i) => {
+      const a = (base[i % base.length] * Math.PI) / 180;
+      return new THREE.Vector3(Math.cos(a) * PANEL_RADIUS, Math.sin(a) * PANEL_RADIUS, 0.1);
+    });
+  }, [projects]);
 
-  const getPos = useCallback((i: number, total: number): [number, number, number] => {
-    const angle = (i / total) * Math.PI * 2 + rotationRef.current;
-    return [Math.cos(angle) * CAROUSEL_RADIUS, 0, Math.sin(angle) * CAROUSEL_RADIUS];
-  }, []);
+  const activeIndex  = selectedProject ?? hoveredProject ?? null;
+  const activeAnchor = activeIndex !== null ? anchors[activeIndex] : null;
 
-  const getRot = useCallback((i: number, total: number): [number, number, number] => {
-    const angle = (i / total) * Math.PI * 2 + rotationRef.current;
-    return [0, -angle + Math.PI / 2, 0];
-  }, []);
+  // Entrée : léger fade/scale
+  useEffect(() => {
+    if (!rootRef.current || reduced) return;
+    const g = rootRef.current;
+    gsap.fromTo(g.scale, { x: 0.85, y: 0.85, z: 0.85 }, { x: 1, y: 1, z: 1, duration: 1, ease: 'power2.out' });
+  }, [reduced]);
 
-  // Rotation auto
-  useFrame(() => {
-    if (activeIndex !== null || prefersReducedMotion) return;
-    rotationRef.current += 0.002;
-    setRotation(rotationRef.current);
+  useFrame((state) => {
+    if (!rootRef.current) return;
+    rootRef.current.rotation.x = NET_TILT_X;
+    if (!reduced) rootRef.current.position.y = BASE_Y + Math.sin(state.clock.elapsedTime * 0.5) * 0.06;
   });
 
-  // Rotation vers la carte active (sélection ou hover)
-  useEffect(() => {
-    if (activeIndex === null) return;
-
-    gsapTweenRef.current?.kill();
-
-    const target = -(activeIndex / projects.length) * Math.PI * 2;
-
-    gsapTweenRef.current = gsap.to(rotationRef, {
-      current:  target,
-      duration: prefersReducedMotion ? 0.2 : selectedProject !== null ? 1.2 : 0.6,
-      ease:     selectedProject !== null ? 'power2.out' : 'power1.out',
-      onUpdate: () => setRotation(rotationRef.current),
-    });
-
-    return () => { gsapTweenRef.current?.kill(); };
-  }, [activeIndex, projects.length, prefersReducedMotion, selectedProject]);
-
-  const handleCardClick = useCallback((index: number) => {
+  const handleSelect = useCallback((index: number) => {
     if (index === selectedProject) onProjectInsert(index);
     else onProjectSelect(index);
   }, [selectedProject, onProjectSelect, onProjectInsert]);
 
-  // Propagé vers le parent — synchronise le hover canvas → cards HTML
-  const handleCardHover = useCallback((index: number | null) => {
-    // On passe par onProjectSelect avec un signal neutre
-    // Le parent gère hoveredProject séparément via setHoveredProject
-    // Ce callback est injecté via prop depuis ProjectsSection
-  }, []);
-
   return (
-    <group>
+    <group ref={rootRef} position={[0, BASE_Y, 0]}>
+      <DustField reduced={reduced} />
+
+      <CyberEye gaze={activeAnchor} focused={selectedProject !== null} reduced={reduced} />
+
+      {/* Faisceau vers le projet sélectionné */}
+      {selectedProject !== null && (
+        <FocusBeam target={anchors[selectedProject]} reduced={reduced} />
+      )}
+
+      {/* Panneaux projets */}
       {projects.map((project, index) => (
-        <MemoryCard
+        <ProjectPanel
           key={project.memId}
-          position={getPos(index, projects.length)}
-          rotation={getRot(index, projects.length)}
           project={project}
           index={index}
+          anchor={anchors[index]}
           isSelected={selectedProject === index}
-          isInserted={insertedProject === index}
           isHovered={hoveredProject === index && selectedProject === null}
           isDimmed={activeIndex !== null && activeIndex !== index}
-          prefersReducedMotion={prefersReducedMotion}
-          onCardClick={handleCardClick}
-          onCardHover={onCardHover}
+          onSelect={handleSelect}
+          onHover={onCardHover}
         />
       ))}
     </group>
