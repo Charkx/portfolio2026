@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { usePortfolioStore } from '../../store/portfolioStore';
+import { useModalStore } from '../../store/modalStore';
+import { PdfViewer } from './ModalViewers';
 import { Power, PowerOff, FileDown } from 'lucide-react';
 
 // Infobulle custom : instantanée et stylée (contrairement au `title` natif).
@@ -33,6 +35,17 @@ export default function ARInterface() {
   const [time, setTime] = useState(new Date());
   const [signalStrength, setSignalStrength] = useState(95);
   const { introPhase, currentSection, scrollProgress, setIntroPhase } = usePortfolioStore();
+  const openModal = useModalStore((s) => s.open);
+
+  // Ouvre le CV dans la modale (sans quitter la page) — le href reste le repli sans JS.
+  const openCv = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openModal({
+      title: "CV — Charly Menthiller",
+      size: "xl",
+      content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" />,
+    });
+  };
   const booted = introPhase === "BOOTING" || introPhase === "UNLOCKED";
   const batteryLevel = Math.max(1, Math.round(scrollProgress * 100));
 
@@ -59,8 +72,8 @@ export default function ARInterface() {
         <HudTooltip label="Télécharger le CV (memory dump)">
           <a
             href={PROFILE.cv}
-            download
-            aria-label="Télécharger le CV"
+            onClick={openCv}
+            aria-label="Voir le CV"
             className="flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
           >
             <FileDown size={14}/>

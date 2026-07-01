@@ -10,7 +10,10 @@ import HeroSection from "./sections/HeroSection"
 import { CyberpunkLoader } from "./components/ui/LoadingScreen"
 import { useOptimizedScroll } from "./hooks/useOptimizedScroll"
 import { usePortfolioStore } from "./store/portfolioStore"
+import { useModalStore } from "./store/modalStore"
 import ARInterface from "./components/ui/ARInterface"
+import ModalRoot from "./components/ui/ModalRoot"
+import LegalContent from "./components/LegalContent"
 import { ErrorBoundary } from "./hooks/ErrorBoundary"
 
 // Petit fallback pendant le chargement client des sections 3D
@@ -47,6 +50,7 @@ const AugmentedHumanLayer = dynamic(() => import("./components/3d/AugmentedHuman
 
 export default function CyberpunkLanding() {
   const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
+  const openModal = useModalStore((s) => s.open)
 
   // Hook pour améliorer le scroll (expérience utilisateur)
   useOptimizedScroll()
@@ -92,7 +96,25 @@ export default function CyberpunkLanding() {
               </ErrorBoundary>
           </>
         )}
+
+        <footer className="relative z-10 py-6 text-center text-cyan-100/30 font-mono text-xs">
+          <span>© {new Date().getFullYear()} Charly Menthiller</span>
+          <span className="mx-2">·</span>
+          {/* href = repli sans JS (page indexable) · onClick = modale sans quitter la page */}
+          <a
+            href="/mentions-legales"
+            onClick={(e) => {
+              e.preventDefault()
+              openModal({ title: "Mentions légales", size: "md", content: <LegalContent /> })
+            }}
+            className="hover:text-cyan-300 transition-colors underline"
+          >
+            Mentions légales
+          </a>
+        </footer>
       </main>
+
+      <ModalRoot />
     </div>
   )
 }

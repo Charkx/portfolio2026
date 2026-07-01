@@ -9,6 +9,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { PROFILE } from '../utils/constants';
 import { useInView } from '../hooks/useInView';
 import { useDragRotate } from '../hooks/useDragRotate';
+import { useModalStore } from '../store/modalStore';
+import { PdfViewer } from '../components/ui/ModalViewers';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -60,6 +62,17 @@ export default function TransmissionChannel() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const { ref: canvasGateRef, inView: canvasInView } = useInView<HTMLDivElement>();
   const dragGlobe = useDragRotate('globe');
+  const openModal = useModalStore((s) => s.open);
+
+  // Ouvre le CV dans la modale (sans quitter la page) — le href reste le repli sans JS.
+  const openCv = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openModal({
+      title: 'CV — Charly Menthiller',
+      size: 'xl',
+      content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" />,
+    });
+  };
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [terminalText, setTerminalText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
@@ -200,14 +213,12 @@ export default function TransmissionChannel() {
             <div className="text-green-300">⏳ {PROFILE.availability}</div>
 
             <a
-              href="/CV_Charly_Menthiller.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              download
+              href={PROFILE.cv}
+              onClick={openCv}
               className="mt-3 inline-flex items-center justify-center gap-2 px-4 py-2 rounded
-                         bg-cyan-500 hover:bg-cyan-400 text-black font-semibold transition-colors"
+                         bg-cyan-500 hover:bg-cyan-400 text-black font-semibold transition-colors cursor-pointer"
             >
-              ↓ Télécharger mon CV
+              ▸ Voir mon CV
             </a>
           </div>
         </div>

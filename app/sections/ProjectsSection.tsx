@@ -8,7 +8,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAudioManager } from '../hooks/useAudioManager';
 import { useProjectManager } from '../hooks/useProjectManager';
 import { useSceneStore } from '../store/sceneStore';
+import { useModalStore } from '../store/modalStore';
 import { useDragRotate } from '../hooks/useDragRotate';
+import { SiteViewer } from '../components/ui/ModalViewers';
 import type { Project } from '@/app/utils/types';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -174,6 +176,13 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
   project: Project;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const openModal = useModalStore((s) => s.open);
+
+  // Ouvre la démo live dans la modale (sans quitter la page) — le href reste le repli sans JS.
+  const openDemo = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openModal({ title: `${project.title} — démo live`, size: 'xl', content: <SiteViewer src={project.demo} /> });
+  };
 
   useEffect(() => {
     if (!panelRef.current) return;
@@ -287,12 +296,11 @@ const ProjectInfoPanel = memo(function ProjectInfoPanel({
             {project.demo && (
               <a
                 href={project.demo}
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={openDemo}
                 aria-label={`Démo live de ${project.title}`}
                 className="flex items-center justify-center gap-2 px-4 py-2
                            bg-cyan-500 hover:bg-cyan-400 rounded-lg text-black
-                           text-sm font-mono font-semibold
+                           text-sm font-mono font-semibold cursor-pointer
                            transition-all duration-200"
               >
                 <IconExternalLink />
