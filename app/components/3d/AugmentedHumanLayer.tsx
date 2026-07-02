@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
+import { useSceneStore } from '../../store/sceneStore';
 
 // Ancres = sections migrées, dans l'ordre de la page.
 // `prog` = progression globale de la station (index station / (nb stations - 1)) :
@@ -34,6 +35,7 @@ const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
 
 export default function AugmentedHumanLayer() {
   const [desktop, setDesktop] = useState(false);
+  const cardActive = useSceneStore((s) => s.endSessionCardActive); // carte révélée → on gèle ce canvas
   const wrapperRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0.5);
   const coverRef = useRef(0); // part de l'écran couverte par la boîte (→ opacité du fond)
@@ -53,6 +55,12 @@ export default function AugmentedHumanLayer() {
     const loop = () => {
       const w = wrapperRef.current;
       if (w) {
+        // carte révélée → canvas masqué + gelé (frameloop:never), on ne morphe plus la boîte
+        if (useSceneStore.getState().endSessionCardActive) {
+          w.style.opacity = '0';
+          raf = requestAnimationFrame(loop);
+          return;
+        }
         const vh = window.innerHeight, mid = vh / 2;
         // (re)résout les slots tant qu'ils ne sont pas trouvés
         ANCHORS.forEach((a, k) => { if (!els[k]) els[k] = document.querySelector<HTMLElement>(a.sel); });
@@ -115,7 +123,7 @@ export default function AugmentedHumanLayer() {
       style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', zIndex: 15, pointerEvents: 'none', opacity: 0, transition: 'opacity .15s' }}>
       {/* pointerEvents:none explicite → R3F met `auto` par défaut sur son conteneur et
           intercepterait le drag destiné aux slots HTML (rotation manuelle des modules). */}
-      <Canvas style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas frameloop={cardActive ? 'never' : 'always'} style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
         <ambientLight intensity={1} />
         <Suspense fallback={<Loader />}>
           <SceneContents progressRef={progressRef} coverRef={coverRef} linear />

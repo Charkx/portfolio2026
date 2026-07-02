@@ -41,6 +41,16 @@ interface SceneState {
   nudgeRot: (focus: string, dx: number, dy: number) => void
   dragFocus: string | null                      // module en cours de drag (met l'auto-spin en pause)
   setDragFocus: (f: string | null) => void
+
+  // Fin de session (section Contact) : 0 = normal · 1 = corps entièrement désintégré
+  endSessionProgress: number
+  setEndSessionProgress: (p: number) => void
+  // carte révélée → on gèle le canvas partagé (un seul canvas actif à la fois)
+  endSessionCardActive: boolean
+  setEndSessionCardActive: (b: boolean) => void
+  // message envoyé → animation finale de la carte (flip/pulse)
+  endSessionSent: boolean
+  setEndSessionSent: (b: boolean) => void
 }
 
 export const useSceneStore = create<SceneState>((set) => ({
@@ -75,4 +85,11 @@ export const useSceneStore = create<SceneState>((set) => ({
   }),
   dragFocus: null,
   setDragFocus: (f) => set({ dragFocus: f }),
+
+  endSessionProgress: 0,
+  setEndSessionProgress: (p) => set({ endSessionProgress: p }),
+  endSessionCardActive: false,
+  setEndSessionCardActive: (b) => set({ endSessionCardActive: b }),
+  endSessionSent: false,
+  setEndSessionSent: (b) => set({ endSessionSent: b }),
 }))

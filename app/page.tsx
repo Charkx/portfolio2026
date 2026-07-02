@@ -49,7 +49,7 @@ const ProjectsSection = dynamic(
   () => import("./sections/ProjectsSection").then((m) => m.ProjectsSection),
   { ssr: false, loading: SectionFallback }
 )
-const TransmissionChannel = dynamic(() => import("./sections/TransmissionChannel"), {
+const ContactSection = dynamic(() => import("./sections/ContactSection"), {
   ssr: false,
   loading: SectionFallback,
 })
@@ -115,7 +115,7 @@ export default function CyberpunkLanding() {
                 <ProjectsSection />
               </ErrorBoundary>
               <ErrorBoundary fallback={null}>
-                <TransmissionChannel />
+                <ContactSection />
               </ErrorBoundary>
           </>
         )}

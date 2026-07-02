@@ -24,6 +24,20 @@ body.custom-cursor * {
   cursor: none !important;
 }
 
+/* Apparition "glitch" de la carte mobile (clip-path + opacité + teinte, pas de transform → compatible avec le tilt) */
+@keyframes card-glitch-in {
+  0%   { opacity: 0; clip-path: inset(45% 0 45% 0); filter: hue-rotate(80deg) brightness(1.6); }
+  25%  { opacity: 1; clip-path: inset(45% 0 45% 0); }
+  40%  { clip-path: inset(0 0 60% 0); }
+  55%  { clip-path: inset(30% 0 0 0); }
+  70%  { clip-path: inset(0 0 15% 0); filter: hue-rotate(0) brightness(1.15); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); filter: none; }
+}
+.card-glitch-in { animation: card-glitch-in 0.9s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .card-glitch-in { animation: none; }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

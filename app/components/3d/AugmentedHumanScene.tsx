@@ -22,6 +22,10 @@ const LEVEL_BY_ID: Record<string, number> = Object.fromEntries(
 
 const CYAN = 0x22d3ee;
 
+// Cadrage "corps entier" pour la fin de session (miroir de la station d'intro : on finit où on a commencé)
+const FINALE_POS = new THREE.Vector3(0, 0.95, 4.4);
+const FINALE_TGT = new THREE.Vector3(0, 0.95, 0);
+
 // Réglages calibrés du placement des modules sur le corps
 // 👉 PILOTE de tous les modules (à ajuster librement) :
 //   scale = taille · x,z = position (unités monde) · y = hauteur sur le corps (fraction 0..1)
@@ -76,13 +80,15 @@ function makeHolo(timeUniform: { value: number }) {
     sh.uniforms.uTime = timeUniform;
     sh.uniforms.uOp = { value: 0.5 };
     sh.uniforms.uMz = { value: 1 }; // matérialisation : 0 = invisible, 1 = corps complet
+    sh.uniforms.uEdge = { value: 1 }; // multiplicateur de l'edge glow (boost à la désintégration)
     m.userData.uOp = sh.uniforms.uOp;
     m.userData.uMz = sh.uniforms.uMz;
+    m.userData.uEdge = sh.uniforms.uEdge;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
       .replace('#include <skinning_vertex>', '#include <skinning_vertex>\n vWPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         float fres=pow(1.0-abs(dot(normalize(vNormal),normalize(vViewPosition))),2.0);
         float band=smoothstep(0.45,1.0,0.5+0.5*sin(vWPos.y*140.0-uTime*2.5));
@@ -94,7 +100,7 @@ function makeHolo(timeUniform: { value: number }) {
         float reveal=1.0-smoothstep(front-0.04,front+0.04,hN);
         float edge=smoothstep(0.07,0.0,abs(hN-front))*(1.0-uMz);
         a*=reveal;
-        vec3 col=holo*(0.5+fres*1.6+band*0.7)+vec3(0.5,0.95,1.0)*edge*1.5;
+        vec3 col=holo*(0.5+fres*1.6+band*0.7)+vec3(0.5,0.95,1.0)*edge*1.5*uEdge;
         gl_FragColor=vec4(col,a);`);
   };
   return m;
@@ -617,6 +623,8 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const camera = useThree((s) => s.camera);
 
   const _t = useRef(new THREE.Vector3());
+  const _base = useRef(new THREE.Vector3());     // position caméra de station (avant override finale)
+  const _baseTgt = useRef(new THREE.Vector3());  // cible caméra de station
   const mzRef = useRef(0); // 0 → 1 : matérialisation du corps au montage (boot)
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
@@ -627,7 +635,14 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     // matérialisation : monte de 0 à 1 en ~1.6s (instantané en mode calibrage)
     if (!debug && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
     const mz = debug ? 1 : mzRef.current;
-    built.bodyMats.forEach((m) => { if (m.userData.uMz) m.userData.uMz.value = mz; });
+    // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection
+    const es = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);
+    const esAppear = THREE.MathUtils.clamp(es / 0.15, 0, 1);        // 0→1 : le corps se cadre/apparaît
+    const esDissolve = THREE.MathUtils.clamp((es - 0.15) / 0.7, 0, 1); // puis se dissout de haut en bas
+    built.bodyMats.forEach((m) => {
+      if (m.userData.uMz) m.userData.uMz.value = mz * (1 - esDissolve);
+      if (m.userData.uEdge) m.userData.uEdge.value = 1 + esDissolve * 2.8;
+    });
 
     // Environnement : opacité pilotée par la couverture de la boîte canvas (plein écran → opaque)
     const cover = coverRef?.current ?? 0;
@@ -654,13 +669,17 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const { i, f } = (linear ? linearStation : easedStation)(progressRef.current, stations.length);
     const A = stations[i], B = stations[i + 1];
 
-    camera.position.lerpVectors(A.camPos, B.camPos, f);
-    _t.current.lerpVectors(A.target, B.target, f);
+    _base.current.lerpVectors(A.camPos, B.camPos, f);
+    _baseTgt.current.lerpVectors(A.target, B.target, f);
+    // fin de session : la caméra recule vers le plan "corps entier"
+    camera.position.lerpVectors(_base.current, FINALE_POS, esAppear);
+    _t.current.lerpVectors(_baseTgt.current, FINALE_TGT, esAppear);
     camera.lookAt(_t.current);
 
-    // corps : visible pendant le voyage (bulge au milieu), ~0 une fois arrivé sur un module
+    // corps : visible pendant le voyage (bulge au milieu), ~0 une fois arrivé sur un module,
+    // ré-affiché pour la fin de session (avant de se désintégrer)
     const TRAVEL = 0.45;
-    const bodyOp = Math.max(THREE.MathUtils.lerp(A.body, B.body, f), TRAVEL * Math.sin(Math.PI * f));
+    const bodyOp = Math.max(THREE.MathUtils.lerp(A.body, B.body, f), TRAVEL * Math.sin(Math.PI * f), 0.6 * esAppear);
     bodyMats.forEach((m) => { if (m.userData.uOp) m.userData.uOp.value = bodyOp; });
 
     // poids de chaque module = 1 sur SA station, 0 ailleurs (pilote fondu + échelle)
@@ -686,7 +705,8 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       const w = weightsRef.current[o.focus] ?? 0;
       const tgt = o.base * (0.92 + w * 0.30);
       o.group.scale.setScalar(THREE.MathUtils.lerp(o.group.scale.x, tgt, 0.2));
-      o.mats.forEach(({ m, base }) => { m.opacity = base * w; });
+      // le globe s'efface pendant la fin de session (place au corps qui se désintègre)
+      o.mats.forEach(({ m, base }) => { m.opacity = base * w * (o.focus === 'globe' ? (1 - esAppear) : 1); });
       // rotation manuelle (l'anim interne du globe joue sur ses nœuds enfants → le wrap est libre)
       const mr = stH.manualRot[o.focus];
       if (mr) { o.group.rotation.y = mr.y; o.group.rotation.x = mr.x; }
