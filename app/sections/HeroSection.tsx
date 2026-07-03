@@ -94,10 +94,12 @@ export default function HeroSection({
                   <span aria-hidden="true">&gt;</span>
                   <span id="audio-optin-label">FLUX AUDIO :</span>
                   <div role="group" aria-labelledby="audio-optin-label" className="flex items-center gap-1.5">
+                    {/* effet immédiat : [ACTIVÉ] lance la musique d'entrée (geste utilisateur)
+                        → on règle les barres de volume du HUD AVANT d'entrer */}
                     <button
                       type="button"
                       aria-pressed={audioOptIn}
-                      onClick={() => setAudioOptIn(true)}
+                      onClick={() => { setAudioOptIn(true); setSoundEnabled(true); }}
                       className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
                                   ${audioOptIn ? "text-cyan-300" : "text-gray-600 hover:text-cyan-400/80"}`}
                     >
@@ -106,7 +108,7 @@ export default function HeroSection({
                     <button
                       type="button"
                       aria-pressed={!audioOptIn}
-                      onClick={() => setAudioOptIn(false)}
+                      onClick={() => { setAudioOptIn(false); setSoundEnabled(false); }}
                       className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
                                   ${!audioOptIn ? "text-cyan-300" : "text-gray-600 hover:text-cyan-400/80"}`}
                     >

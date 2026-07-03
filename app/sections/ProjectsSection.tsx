@@ -184,10 +184,12 @@ export function ProjectsSection() {
   const [panelVisible, setPanelVisible] = useState(false);
   useEffect(() => {
     if (projectDeployed === null) { setPanelVisible(false); return; }
+    // mobile : pas de canvas DataCubes → le cue 'derez' est joué ici
+    if (isMobile) audioEngine.play('derez');
     if (reducedMotion) { setPanelVisible(true); return; }
     const t = window.setTimeout(() => setPanelVisible(true), 650);
     return () => window.clearTimeout(t);
-  }, [projectDeployed, reducedMotion]);
+  }, [projectDeployed, reducedMotion, isMobile]);
 
   // Couleurs de statut + données des cartes flottantes → réacteur (données statiques)
   useEffect(() => {
@@ -251,10 +253,11 @@ export function ProjectsSection() {
   }, [selectProject]);
 
   // clic sur un chip (ou tap sur le cube mobile) → sélectionne ET déploie le panneau (un seul geste)
+  // sélection SILENCIEUSE : c'est le 'derez' du déploiement (DataCubes) qui porte le son
   const handleOpen = useCallback((index: number) => {
-    handleProjectSelect(index);
+    selectProject(index, () => {});
     setProjectDeployed(index);
-  }, [handleProjectSelect, setProjectDeployed]);
+  }, [selectProject, setProjectDeployed]);
 
   // survol d'un chip → prévisualise : arc d'énergie (projectHovered) + sélection SILENCIEUSE
   // (fiche express + cube mis en avant, sans le son ignition réservé au clic)

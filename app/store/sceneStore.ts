@@ -39,6 +39,10 @@ interface SceneState {
   projectDeployed: number | null
   setProjectDeployed: (i: number | null) => void
 
+  // Contact → pluie stellaire : identifiant réseau survolé (email / github / linkedin / cv)
+  contactIdHovered: string | null
+  setContactIdHovered: (id: string | null) => void
+
   // Rotation manuelle des modules à la souris (drag sur le slot de section)
   manualRot: Record<string, { x: number; y: number }> // rotation accumulée par focus
   nudgeRot: (focus: string, dx: number, dy: number) => void
@@ -81,6 +85,9 @@ export const useSceneStore = create<SceneState>((set) => ({
   setRequestSelectProject: (fn) => set({ requestSelectProject: fn }),
   projectDeployed: null,
   setProjectDeployed: (i) => set({ projectDeployed: i }),
+
+  contactIdHovered: null,
+  setContactIdHovered: (id) => set({ contactIdHovered: id }),
 
   manualRot: {},
   nudgeRot: (focus, dx, dy) => set((s) => {

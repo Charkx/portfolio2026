@@ -19,13 +19,20 @@ export function NetworkIdentifiers() {
     e.preventDefault();
     openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
   };
+  // survol/focus d'un identifiant → la pluie stellaire autour de la carte réagit (teinte + rush)
+  const hoverProps = (id: string) => ({
+    onMouseEnter: () => useSceneStore.getState().setContactIdHovered(id),
+    onMouseLeave: () => useSceneStore.getState().setContactIdHovered(null),
+    onFocus:      () => useSceneStore.getState().setContactIdHovered(id),
+    onBlur:       () => useSceneStore.getState().setContactIdHovered(null),
+  });
   return (
     <div className="font-mono">
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
-        <a href={`mailto:${PROFILE.email}`} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.email}</a>
-        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.githubLabel}</a>
-        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.linkedinLabel}</a>
-        <a href={PROFILE.cv} onClick={openCv} className="text-pink-300 underline hover:text-pink-200 cursor-pointer">CV</a>
+        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.email}</a>
+        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.githubLabel}</a>
+        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.linkedinLabel}</a>
+        <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} className="text-pink-300 underline hover:text-pink-200 cursor-pointer">CV</a>
       </div>
       <div className="mt-2 text-[10px] text-gray-500 text-center">⏳ {PROFILE.availability}</div>
     </div>

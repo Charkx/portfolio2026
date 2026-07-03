@@ -6,7 +6,10 @@ export type Cue =
   | 'activation' | 'success' | 'hover'   // interactions
   | 'scan'                               // About  — scanner
   | 'molecular'                          // Skills — réassemblage moléculaire
-  | 'ignition'                           // Projets — power-core engage
+  | 'ignition'                           // Projets — power-core engage (sélection)
+  | 'derez'                              // Projets — le cube explose (dématérialisation + éclats)
+  | 'materialize'                        // Projets — le panneau se reconstruit tuile par tuile
+  | 'reflow'                             // Projets — fermeture : reflux des éclats, cube reformé
   | 'uplink'                             // Contact — handshake de transmission
   | 'boot'                               // déverrouillage — system power-on
   | 'powerdown'                          // re-verrouillage — power-down
@@ -146,26 +149,61 @@ const CUES: Record<Cue, () => void> = {
   activation: () => tone({ type: 'square', f0: 700, f1: 1100, dur: 0.12, peak: 0.06, send: 0.2, filter: { type: 'bandpass', f0: 900, q: 4 } }),
   success:    () => { tone({ f0: 520, f1: 780, dur: 0.12, peak: 0.08, send: 0.25 }); tone({ f0: 1040, dur: 0.12, peak: 0.05, t: 0.1, send: 0.3 }) },
 
-  // --- About : SCANNER (faisceau qui balaie + bips radar + détection) ---
+  // --- About : SCANNER (faisceau fin qui balaie + bips radar montants + détection réverbérée) ---
   scan: () => {
-    noise({ type: 'bandpass', f0: 300, f1: 3200, dur: 0.55, peak: 0.06, q: 9, send: 0.35 })         // faisceau montant
-    noise({ type: 'bandpass', f0: 3000, f1: 500, dur: 0.5, peak: 0.03, q: 9, t: 0.06, send: 0.35 }) // écho descendant
-    tone({ type: 'sine', f0: 110, dur: 0.5, peak: 0.04, vibrato: { rate: 22, depth: 14 } })          // hum "scanner actif"
-    ;[900, 1250, 1650].forEach((f, i) =>
-      tone({ type: 'square', f0: f, dur: 0.05, peak: 0.05, t: 0.08 + i * 0.12, filter: { type: 'bandpass', f0: f, q: 6 }, send: 0.4 }) // bips radar
+    noise({ type: 'bandpass', f0: 260, f1: 3400, dur: 0.6, peak: 0.05, q: 12, send: 0.4 })            // faisceau montant (fin, q élevé)
+    noise({ type: 'bandpass', f0: 2600, f1: 420, dur: 0.55, peak: 0.025, q: 12, t: 0.08, send: 0.4 }) // écho descendant discret
+    tone({ type: 'sine', f0: 96, dur: 0.6, peak: 0.035, vibrato: { rate: 18, depth: 10 } })            // hum "scanner actif"
+    ;[820, 1130, 1490, 1960].forEach((f, i) =>
+      tone({ type: 'triangle', f0: f, dur: 0.06, peak: 0.045, t: 0.1 + i * 0.11, filter: { type: 'bandpass', f0: f, q: 7 }, send: 0.45 }) // bips radar (triangle = plus doux)
     )
-    tone({ type: 'sine', f0: 2100, dur: 0.16, peak: 0.09, t: 0.48, send: 0.5 })                       // ping de détection
+    tone({ type: 'sine', f0: 2300, f1: 2050, dur: 0.22, peak: 0.08, t: 0.54, send: 0.6 })              // ping de détection, longue traîne
   },
 
-  // --- Skills : RÉASSEMBLAGE MOLÉCULAIRE (nuée qui converge en accord cristallin) ---
+  // --- Skills : RÉASSEMBLAGE MOLÉCULAIRE (souffle de matière + nuée qui converge en accord) ---
   molecular: () => {
-    for (let i = 0; i < 8; i++) {
-      const start = 400 + Math.random() * 1200
+    noise({ type: 'lowpass', f0: 900, f1: 250, dur: 0.4, peak: 0.03, send: 0.3 })                      // souffle de matière qui s'agrège
+    for (let i = 0; i < 10; i++) {
+      const start = 350 + Math.random() * 1400
       const target = CHORD[i % CHORD.length] * 2 // octave au-dessus
-      tone({ type: 'sine', f0: start, f1: target, dur: 0.14, peak: 0.045, t: i * 0.045, send: 0.35 }) // grains qui glissent
+      tone({ type: 'sine', f0: start, f1: target, dur: 0.13, peak: 0.04, t: i * 0.038, send: 0.4 })    // grains qui glissent
     }
-    fm({ f0: 660, ratio: 2.5, index: 220, dur: 0.2, peak: 0.05, t: 0.16, send: 0.45 })                 // éclat cristallin (FM)
-    CHORD.forEach((f) => tone({ type: 'triangle', f0: f, dur: 0.5, peak: 0.04, t: 0.34, send: 0.55 })) // structure qui se fige
+    fm({ f0: 660, ratio: 2.5, index: 240, dur: 0.22, peak: 0.05, t: 0.2, send: 0.5 })                  // éclat cristallin (FM)
+    CHORD.forEach((f, i) => tone({ type: 'triangle', f0: f, dur: 0.6, peak: 0.035, t: 0.36 + i * 0.03, send: 0.6 })) // structure qui se fige (arpégé)
+    tone({ type: 'sine', f0: 2093, dur: 0.25, peak: 0.03, t: 0.5, send: 0.7 })                          // shimmer final
+  },
+
+  // --- Projets : DEREZ — le cube explose (impact, verre FM, éclats épars, convergence vers l'écran) ---
+  // Timing calé sur la 3D : burst immédiat, convergence à t≈0.25-0.65 (le panneau arrive à 650 ms)
+  derez: () => {
+    tone({ type: 'sine', f0: 130, f1: 42, dur: 0.22, peak: 0.14 })                                     // impact sub
+    fm({ f0: 480, ratio: 3.7, index: 520, dur: 0.16, peak: 0.07, send: 0.35 })                          // verre qui casse (FM inharmonique)
+    noise({ type: 'highpass', f0: 2800, dur: 0.14, peak: 0.06, send: 0.3 })                             // burst d'éclats
+    for (let i = 0; i < 7; i++) {
+      const f = 1600 + Math.random() * 1800
+      tone({ type: 'triangle', f0: f, f1: f * 0.55, dur: 0.09, peak: 0.028, t: 0.04 + i * 0.035, send: 0.5 }) // éclats qui s'éparpillent
+    }
+    noise({ type: 'bandpass', f0: 500, f1: 3200, dur: 0.4, peak: 0.045, q: 3, t: 0.25, send: 0.45 })    // convergence des éclats vers l'écran
+  },
+
+  // --- Projets : MATERIALIZE — le panneau se verrouille pixel par pixel ---
+  materialize: () => {
+    for (let i = 0; i < 10; i++) {
+      const f = 700 + i * 160 + Math.random() * 90
+      tone({ type: 'square', f0: f, dur: 0.03, peak: 0.02, t: i * 0.022, filter: { type: 'bandpass', f0: f, q: 8 }, send: 0.3 }) // tuiles qui claquent (montant)
+    }
+    tone({ type: 'sine', f0: 320, f1: 210, dur: 0.16, peak: 0.05, t: 0.24 })                            // "thunk" de solidité
+    ;[523, 784].forEach((f) => tone({ type: 'triangle', f0: f, dur: 0.3, peak: 0.03, t: 0.26, send: 0.5 })) // accord bref "affichage stable"
+  },
+
+  // --- Projets : REFLOW — fermeture : tuiles qui se libèrent, éclats qui refluent, cube reformé ---
+  reflow: () => {
+    for (let i = 0; i < 8; i++) {
+      const f = 2100 - i * 190 + Math.random() * 80
+      tone({ type: 'square', f0: f, dur: 0.03, peak: 0.016, t: i * 0.02, filter: { type: 'bandpass', f0: f, q: 8 }, send: 0.25 }) // tuiles qui se libèrent (descendant)
+    }
+    noise({ type: 'bandpass', f0: 2800, f1: 420, dur: 0.32, peak: 0.04, q: 3, t: 0.1, send: 0.4 })      // reflux des éclats
+    fm({ f0: 300, ratio: 2, index: 160, dur: 0.18, peak: 0.05, t: 0.4, send: 0.4 })                     // clic cristallin : cube reformé (~450 ms = fin du tween 3D)
   },
 
   // --- Projets : POWER-CORE ENGAGE (sub-drop + charge résonante + clank métallique) ---
@@ -226,35 +264,63 @@ const CUES: Record<Cue, () => void> = {
   release: () => tone({ type: 'sine', f0: 120, f1: 210, dur: 0.07, peak: 0.035, send: 0.2 }),
 }
 
-// --- Drone d'ambiance (très bas) : tourne tant que le son est activé ---
+// --- Nappe d'ambiance (site déverrouillé) : deux accords qui respirent l'un dans l'autre ---
+// Am ↔ G en fondu croisé sur ~26 s (jamais statique), souffle d'air filtré, étincelles
+// réverbérées espacées. Niveau très bas : présence, pas musique.
 let drone: { stop: () => void } | null = null
 
 function startDrone() {
   if (!ctx || !master || !reverbIn || drone) return
   const c = ctx
-  const g = c.createGain(); g.gain.value = 0.0001
-  const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 300; flt.Q.value = 2
+  const bus = c.createGain(); bus.gain.value = 0.0001
+  const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 340; flt.Q.value = 1.6
+  flt.connect(bus); bus.connect(master)
+  const s = c.createGain(); s.gain.value = 0.35; bus.connect(s); s.connect(reverbIn)
   const oscs: OscillatorNode[] = []
-  ;[55, 55.3, 82.5].forEach((f, i) => {
-    const o = c.createOscillator(); o.type = i === 2 ? 'triangle' : 'sine'; o.frequency.value = f
-    o.connect(flt); o.start(); oscs.push(o)
-  })
-  // LFO lent sur le filtre → léger mouvement "vivant"
-  const lfo = c.createOscillator(); const lg = c.createGain()
-  lfo.frequency.value = 0.07; lg.gain.value = 110
-  lfo.connect(lg); lg.connect(flt.frequency); lfo.start(); oscs.push(lfo)
-  flt.connect(g); g.connect(master)
-  const s = c.createGain(); s.gain.value = 0.3; g.connect(s); s.connect(reverbIn)
+
+  // un LFO unique pilote le fondu croisé : accord A en phase, accord B en opposition (gain inversé)
+  const xfade = c.createOscillator(); xfade.frequency.value = 1 / 26; xfade.start(); oscs.push(xfade)
+  const mkChord = (freqs: number[], invert: boolean) => {
+    const g = c.createGain(); g.gain.value = 0.5
+    const depth = c.createGain(); depth.gain.value = invert ? -0.45 : 0.45
+    xfade.connect(depth); depth.connect(g.gain)
+    freqs.forEach((f, i) => {
+      const o = c.createOscillator(); o.type = i === 2 ? 'triangle' : 'sine'; o.frequency.value = f
+      o.detune.value = (i - 1) * 4 // léger désaccord → battements lents "vivants"
+      o.connect(g); o.start(); oscs.push(o)
+    })
+    g.connect(flt)
+  }
+  mkChord([55, 82.4, 130.8], false) // Am (A1 · E2 · C3)
+  mkChord([49, 73.4, 123.5], true)  // G  (G1 · D2 · B2)
+
+  // souffle d'air très discret (respire avec le fondu)
+  const air = c.createBufferSource(); air.buffer = noiseBuffer(c); air.loop = true
+  const airFlt = c.createBiquadFilter(); airFlt.type = 'bandpass'; airFlt.frequency.value = 320; airFlt.Q.value = 0.8
+  const airG = c.createGain(); airG.gain.value = 0.012
+  const airDepth = c.createGain(); airDepth.gain.value = 0.008
+  xfade.connect(airDepth); airDepth.connect(airG.gain)
+  air.connect(airFlt); airFlt.connect(airG); airG.connect(bus)
+  air.start()
+
+  // étincelles réverbérées, espacées et aléatoires — l'espace semble habité
+  const sparkle = window.setInterval(() => {
+    if (!enabled || Math.random() > 0.7) return
+    tone({ f0: 1200 + Math.random() * 1600, dur: 0.4, peak: 0.018, send: 0.8 })
+  }, 9000)
+
   const now = c.currentTime
-  g.gain.setValueAtTime(0.0001, now)
-  g.gain.exponentialRampToValueAtTime(0.02, now + 1.5) // fondu d'entrée, niveau très bas
+  bus.gain.setValueAtTime(0.0001, now)
+  bus.gain.exponentialRampToValueAtTime(0.032, now + 2)
   drone = {
     stop: () => {
+      window.clearInterval(sparkle)
       const t = c.currentTime
-      g.gain.cancelScheduledValues(t)
-      g.gain.setValueAtTime(g.gain.value, t)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7) // fondu de sortie
+      bus.gain.cancelScheduledValues(t)
+      bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), t)
+      bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.7)
       oscs.forEach((o) => o.stop(t + 0.8))
+      air.stop(t + 0.8)
     },
   }
 }
@@ -264,6 +330,98 @@ function stopDrone() {
   drone.stop(); drone = null
 }
 
+// --- Musique d'entrée (avant le scan) : arpège cyberpunk minimal en La mineur ---
+// Séquenceur lookahead (croches à 92 BPM), Am ↔ F par mesure, basse + hat discret,
+// filtre balayé très lentement. Sert aussi de mire : l'utilisateur règle son volume dessus.
+let music: { stop: () => void } | null = null
+
+function startEntryMusic() {
+  if (!ctx || !master || !reverbIn || music) return
+  const c = ctx
+  const bus = c.createGain(); bus.gain.value = 0.0001; bus.connect(master)
+  const send = c.createGain(); send.gain.value = 0.5; bus.connect(send); send.connect(reverbIn)
+
+  // filtre commun de l'arpège, balayé lentement → le motif évolue sans changer de notes
+  const arpFlt = c.createBiquadFilter(); arpFlt.type = 'lowpass'; arpFlt.Q.value = 6; arpFlt.frequency.value = 950
+  const fLfo = c.createOscillator(); fLfo.frequency.value = 0.045
+  const fLg = c.createGain(); fLg.gain.value = 480
+  fLfo.connect(fLg); fLg.connect(arpFlt.frequency); fLfo.start()
+  arpFlt.connect(bus)
+
+  const STEP = 60 / 92 / 2 // croches à 92 BPM
+  const AM = [110, 130.81, 164.81, 220, 261.63, 220, 164.81, 130.81] // A2 C3 E3 A3 C4…
+  const FM = [87.31, 130.81, 174.61, 220, 261.63, 220, 174.61, 130.81] // F2 C3 F3 A3 C4…
+  let step = 0
+  let nextT = c.currentTime + 0.1
+  const iv = window.setInterval(() => {
+    // planifie ~0.2 s en avance (précis à l'échantillon, insensible au jitter du timer JS)
+    while (nextT < c.currentTime + 0.2) {
+      const t = nextT
+      const bar = Math.floor(step / 8) % 2 === 0
+      const pat = bar ? AM : FM
+      // arpège
+      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = pat[step % 8]
+      const g = c.createGain()
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(0.045, t + 0.012)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + STEP * 0.9)
+      o.connect(g); g.connect(arpFlt)
+      o.start(t); o.stop(t + STEP)
+      // basse : fondamentale au début de chaque mesure
+      if (step % 8 === 0) {
+        const b = c.createOscillator(); b.type = 'sine'; b.frequency.value = bar ? 55 : 43.65
+        const bg = c.createGain()
+        bg.gain.setValueAtTime(0.0001, t)
+        bg.gain.exponentialRampToValueAtTime(0.11, t + 0.03)
+        bg.gain.exponentialRampToValueAtTime(0.0001, t + STEP * 7)
+        b.connect(bg); bg.connect(bus)
+        b.start(t); b.stop(t + STEP * 8)
+      }
+      // hat discret sur les contretemps
+      if (step % 2 === 1) {
+        const src = c.createBufferSource(); src.buffer = noiseBuffer(c)
+        const hf = c.createBiquadFilter(); hf.type = 'highpass'; hf.frequency.value = 7000
+        const hg = c.createGain()
+        hg.gain.setValueAtTime(0.0001, t)
+        hg.gain.exponentialRampToValueAtTime(0.011, t + 0.004)
+        hg.gain.exponentialRampToValueAtTime(0.0001, t + 0.05)
+        src.connect(hf); hf.connect(hg); hg.connect(bus)
+        src.start(t); src.stop(t + 0.06)
+      }
+      step++
+      nextT += STEP
+    }
+  }, 60)
+
+  const now = c.currentTime
+  bus.gain.setValueAtTime(0.0001, now)
+  bus.gain.exponentialRampToValueAtTime(0.85, now + 1.4)
+  music = {
+    stop: () => {
+      window.clearInterval(iv)
+      const t = c.currentTime
+      bus.gain.cancelScheduledValues(t)
+      bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), t)
+      bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
+      fLfo.stop(t + 1)
+      window.setTimeout(() => { bus.disconnect(); send.disconnect() }, 1300)
+    },
+  }
+}
+
+function stopEntryMusic() {
+  if (!music) return
+  music.stop(); music = null
+}
+
+// scène sonore courante : 'entry' (verrouillé → musique) ou 'site' (déverrouillé → nappe)
+let sceneMode: 'entry' | 'site' = 'entry'
+
+function startAmbience() {
+  if (sceneMode === 'entry') startEntryMusic()
+  else startDrone()
+}
+
 let lastHover = 0 // throttle du cue hover (évite le mitraillage)
 
 export const audioEngine = {
@@ -271,10 +429,18 @@ export const audioEngine = {
     const c = ensureCtx()
     if (c && c.state === 'suspended') c.resume()
     enabled = true
-    startDrone()
+    startAmbience()
   },
-  disable() { enabled = false; stopDrone() },
+  disable() { enabled = false; stopDrone(); stopEntryMusic() },
   isEnabled: () => enabled,
+  // bascule musique d'entrée ↔ nappe du site (appelé quand l'introPhase change)
+  setScene(mode: 'entry' | 'site') {
+    if (mode === sceneMode) return
+    sceneMode = mode
+    if (!enabled) return
+    stopDrone(); stopEntryMusic()
+    startAmbience()
+  },
   // volume global 0..1 (rampe courte pour éviter les clics) — mémorisé même avant la création du contexte
   setVolume(v: number) {
     volume = Math.min(Math.max(v, 0), 1)

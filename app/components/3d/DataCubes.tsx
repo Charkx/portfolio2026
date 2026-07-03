@@ -78,7 +78,7 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
       d.index = deployed;
       const g = cubeRefs.current[deployed];
       if (g) deployOrigin.current.copy(g.position); // fige le point d'émission
-      audioEngine.play('ignition');
+      audioEngine.play('derez'); // dématérialisation : impact + éclats + convergence (calé sur le tween)
       if (reducedMotion) d.t = 0;                    // reduced-motion : pas d'explosion
       // t linéaire (easing par phase dans useFrame). S'arrête à 0.65 = l'instant où le
       // panneau apparaît (650 ms, sync ProjectsSection) → l'explosion SE FIGE dans cet

@@ -81,6 +81,11 @@ export default function ARInterface() {
     prevPhase.current = introPhase;
   }, [introPhase]);
 
+  // Scène sonore : musique d'entrée tant que verrouillé, nappe d'ambiance ensuite
+  useEffect(() => {
+    audioEngine.setScene(introPhase === "LOCKED" ? "entry" : "site");
+  }, [introPhase]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(new Date());

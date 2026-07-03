@@ -5,9 +5,86 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '../../store/sceneStore';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import IdCardMesh, { makeCardMaterial } from './IdCardMesh';
 
 const clamp = THREE.MathUtils.clamp;
+
+// Teinte de la pluie selon l'identifiant survolé (NetworkIdentifiers sous la carte)
+const RAIN_TINTS: Record<string, string> = {
+  email:    '#22d3ee', // cyan
+  github:   '#c084fc', // violet
+  linkedin: '#38bdf8', // bleu
+  cv:       '#f472b6', // rose
+};
+const RAIN_BASE = '#9ceef7';
+
+// Pluie stellaire autour de la carte : étoiles qui tombent lentement, apparaissent avec
+// la carte (reveal fin de session), et réagissent au survol des coordonnées — la pluie
+// prend la teinte de l'identifiant et accélère (rush), comme un flux de données.
+function StarRain() {
+  const pts = useRef<THREE.Points>(null);
+  const mat = useRef<THREE.PointsMaterial>(null);
+  const reduced = useReducedMotion();
+  const { positions, speeds } = useMemo(() => {
+    const N = 260;
+    const positions = new Float32Array(N * 3);
+    const speeds = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      positions[i * 3]     = (Math.random() - 0.5) * 4.6; // large : entoure la carte
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 3.4;
+      positions[i * 3 + 2] = -0.9 + Math.random() * 1.4;  // devant ET derrière la carte
+      speeds[i] = 0.25 + Math.random() * 0.55;
+    }
+    return { positions, speeds };
+  }, []);
+  const cur = useRef(new THREE.Color(RAIN_BASE));
+  const tgt = useRef(new THREE.Color());
+
+  useFrame((_, dt) => {
+    const p = pts.current, m = mat.current;
+    if (!p || !m) return;
+    const store = useSceneStore.getState();
+    const hovered = store.contactIdHovered;
+    const reveal = clamp(((store.endSessionProgress ?? 0) - 0.85) / 0.15, 0, 1);
+    const k = 1 - Math.pow(0.002, dt); // lissage indépendant du framerate
+
+    // teinte + taille : réagissent au survol d'une coordonnée
+    tgt.current.set(hovered ? (RAIN_TINTS[hovered] ?? RAIN_BASE) : RAIN_BASE);
+    cur.current.lerp(tgt.current, k);
+    m.color.copy(cur.current);
+    m.size = THREE.MathUtils.lerp(m.size, hovered ? 0.05 : 0.028, k);
+    m.opacity = reveal * 0.8; // la pluie naît avec la carte
+
+    if (reduced) return; // reduced-motion : étoiles fixes (constellation)
+    const rush = hovered ? 3 : 1; // survol = le flux s'accélère
+    const arr = p.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < speeds.length; i++) {
+      let y = arr.getY(i) - speeds[i] * rush * dt;
+      if (y < -1.7) y = 1.7;
+      arr.setY(i, y);
+    }
+    arr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={pts}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        ref={mat}
+        color={RAIN_BASE}
+        size={0.028}
+        transparent
+        opacity={0}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
 
 // Carte "artefact" de la fin de session — LA MÊME pièce que la carte du hero
 // (IdCardMesh partagé), retrouvée éteinte puis réactivée par la scanline.
@@ -76,6 +153,7 @@ export default function ContactCard() {
       <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
       <Suspense fallback={null}>
         <CardModel />
+        <StarRain />
       </Suspense>
     </Canvas>
   );
