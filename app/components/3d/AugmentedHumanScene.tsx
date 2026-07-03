@@ -52,10 +52,22 @@ const PROJECTS_POV = true;
 //   POV_EYE  : décalage libre de la position de l'œil (x = droite, y = haut, z = avant)
 const POV_ZOOM = 0.08;
 const POV_LOOK = new THREE.Vector3(0, 0.1, 0);
-const POV_EYE  = new THREE.Vector3(0, 0, 0);
+const POV_EYE  = new THREE.Vector3(0, 0.1, 0.06);
 
 // PREVIEW : afficher l'hologramme du globe dans la paume, entouré des cubes (false = masqué)
 const PROJECTS_SHOW_GLOBE = true;
+
+// 👉 CHORÉGRAPHIE CAMÉRA — AJUSTE ICI :
+//   Entre deux stations, la caméra s'écarte en "plan large" (on revoit l'humain entier,
+//   la signature du site) puis replonge vers la station suivante. Nul aux extrémités.
+//   WIDE_PULL     : recul du plan large (unités monde ; 0 = désactivé)
+//   WIDE_RETARGET : 0..1 — combien le regard glisse vers le corps entier pendant le voyage
+//   WIDE_BODY_Y   : hauteur visée sur le corps pendant le plan large
+//   BREATH        : respiration de la caméra à la station (0 = désactivée)
+const WIDE_PULL = 2.6;
+const WIDE_RETARGET = 0.85;
+const WIDE_BODY_Y = 1.0;
+const BREATH = 0.012;
 
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
@@ -64,7 +76,7 @@ const GLOBE_URL = '/3d/earth_globe_hologram_2mb_looping_animation.glb';
 // Largeur du PALIER : portion de chaque segment où l'on reste posé sur la station.
 // Le reste (1 − 2×HOLD) = durée de la TRANSITION. Baisse HOLD → transition plus longue.
 // (la durée absolue dépend aussi de la hauteur des sections : SECTION_VH dans le Showcase)
-const HOLD = 0.3;
+const HOLD = 0.22; // 0.3 → 0.22 : voyages plus amples (plan large lisible entre les stations)
 
 // Remap scroll → station : palier aux deux extrémités de chaque segment, transition douce au milieu.
 // Utilisé À LA FOIS par la caméra (SceneContents) et la boîte du canvas (Showcase) → synchro garantie.
@@ -407,6 +419,8 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const _eyes = useRef(new THREE.Vector3());     // POV : position des yeux (os tête)
   const _hand = useRef(new THREE.Vector3());     // POV : position de la main (os paume)
   const _dir = useRef(new THREE.Vector3());      // POV : direction œil → main
+  const _pull = useRef(new THREE.Vector3());     // plan large : axe de recul caméra
+  const _wideTgt = useRef(new THREE.Vector3());  // plan large : point visé (corps entier)
   const mzRef = useRef(0); // 0 → 1 : matérialisation du corps au montage (boot)
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
@@ -473,6 +487,25 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _eyes.current.add(POV_EYE);                             // décalage libre de l'œil
       _base.current.lerp(_eyes.current, heartW);
       _baseTgt.current.lerp(_hand.current, heartW);
+    }
+
+    // PLAN LARGE : au cœur du voyage entre deux stations, le regard glisse vers le
+    // corps entier et la caméra recule en cloche (établit la signature du site),
+    // puis replonge. sin(πf) = 0 aux stations → aucune incidence sur les paliers.
+    const wide = Math.sin(Math.PI * f);
+    if (wide > 0.001 && WIDE_PULL > 0) {
+      _wideTgt.current.set(0, WIDE_BODY_Y, 0);
+      _baseTgt.current.lerp(_wideTgt.current, wide * WIDE_RETARGET);
+      _pull.current.subVectors(_base.current, _baseTgt.current).normalize();
+      _base.current.addScaledVector(_pull.current, wide * WIDE_PULL);
+    }
+
+    // respiration : très légère dérive à la station — l'image ne fige jamais
+    if (!reduced && BREATH > 0) {
+      const tb = built.timeUniform.value;
+      const idle = 1 - wide;
+      _base.current.x += Math.sin(tb * 0.4) * BREATH * idle;
+      _base.current.y += Math.sin(tb * 0.27 + 1.7) * BREATH * 0.6 * idle;
     }
 
     // fin de session : la caméra recule vers le plan "corps entier"
