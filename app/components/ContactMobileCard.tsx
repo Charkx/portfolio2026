@@ -60,7 +60,7 @@ export default function ContactMobileCard() {
         onTouchMove={onTouchMove}
         aria-hidden="true"
         className="card-glitch-in relative w-[280px] aspect-[1.6/1] rounded-lg border border-cyan-400/40 bg-cover bg-center shadow-[0_0_40px_rgba(34,211,238,0.25)]"
-        style={{ backgroundImage: 'url(/images/id_card.png)', transformStyle: 'preserve-3d', willChange: 'transform' }}
+        style={{ backgroundImage: 'url(/images/id_card.jpg)', transformStyle: 'preserve-3d', willChange: 'transform' }}
       >
         <span className="absolute top-2 right-3 h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_8px_lime]" />
       </div>

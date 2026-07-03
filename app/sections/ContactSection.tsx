@@ -18,7 +18,7 @@ const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
 // Repli image (WebGL indisponible / reduced-motion)
 function CardImage() {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src="/images/id_card.png" alt="Carte d'identité — Charly Menthiller" className="w-[300px] max-w-full rounded-lg border border-cyan-400/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]" />;
+  return <img src="/images/id_card.jpg" alt="Carte d'identité — Charly Menthiller" className="w-[300px] max-w-full rounded-lg border border-cyan-400/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]" />;
 }
 
 export default function ContactSection() {

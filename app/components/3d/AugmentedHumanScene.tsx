@@ -10,6 +10,7 @@ import { BrainModel } from './CognitiveProfil';
 import DNAHelix from './DNAHelix';
 import DataCubes from './DataCubes';
 import { useSceneStore } from '../../store/sceneStore';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { TECH_STACK } from '../../utils/constants';
 
 // focuses des modules embarqués (= stations 1..4)
@@ -388,8 +389,8 @@ function relaxRot(focus: string, active: boolean, dt: number) {
 
 // --- Contenu du Canvas ---
 export function SceneContents({ progressRef, coverRef, debug = false, linear = false }: { progressRef: RefObject<number>; coverRef?: RefObject<number>; debug?: boolean; linear?: boolean }) {
-  const { scene } = useGLTF(HUMAN_URL);
-  const globe = useGLTF(GLOBE_URL);
+  const { scene } = useGLTF(HUMAN_URL, true); // true = décodeur Draco (GLB compressés)
+  const globe = useGLTF(GLOBE_URL, true);
   // cfgKey en dépendance → toute modif de CFG reconstruit la scène (sinon useMemo reste figé
   // car les modèles chargés ne changent pas de référence au Fast Refresh).
   const cfgKey = JSON.stringify(CFG);
@@ -398,6 +399,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     [scene, globe.scene, globe.animations, cfgKey]
   );
   const camera = useThree((s) => s.camera);
+  const reduced = useReducedMotion(); // mouvement réduit : pas d'idle, matérialisation instantanée
 
   const _t = useRef(new THREE.Vector3());
   const _base = useRef(new THREE.Vector3());     // position caméra de station (avant override finale)
@@ -409,10 +411,14 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
   useFrame((_, dt) => {
-    built.timeUniform.value += dt;
-    if (built.globeMixer) built.globeMixer.update(dt);
+    // reduced-motion : bandes du shader figées, globe sans animation interne
+    if (!reduced) {
+      built.timeUniform.value += dt;
+      if (built.globeMixer) built.globeMixer.update(dt);
+    }
 
-    // matérialisation : monte de 0 à 1 en ~1.6s (instantané en mode calibrage)
+    // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage/reduced-motion)
+    if (reduced) mzRef.current = 1;
     if (!debug && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
     const mz = debug ? 1 : mzRef.current;
     // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection
@@ -430,7 +436,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const bgEase = bgT * bgT * (3 - 2 * bgT); // smoothstep
     built.skyMat.opacity = bgEase;
     built.dustMat.opacity = bgEase * 0.8;
-    built.backdrop.rotation.y += dt * 0.01; // dérive lente
+    if (!reduced) built.backdrop.rotation.y += dt * 0.01; // dérive lente
 
     // Mode calibrage : corps + tous les modules visibles, caméra libre (OrbitControls)
     if (debug) {
@@ -570,6 +576,6 @@ export default function AugmentedHumanScene() {
   );
 }
 
-useGLTF.preload(HUMAN_URL);
+useGLTF.preload(HUMAN_URL, true);
 useGLTF.preload(BRAIN_URL, true);
-useGLTF.preload(GLOBE_URL);
+useGLTF.preload(GLOBE_URL, true);

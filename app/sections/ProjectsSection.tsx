@@ -9,80 +9,15 @@ import { audioEngine } from '../lib/audioEngine';
 import { useProjectManager } from '../hooks/useProjectManager';
 import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import ProjectCaseStudy from '../components/ui/ProjectCaseStudy';
 import ProjectMobileCubes from '../components/ProjectMobileCubes';
+import { PROJECTS_DATA } from '../utils/projectsData';
 import type { Project } from '@/app/utils/types';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// --- Données ---
-
-const PROJECTS_DATA: Project[] = [
-  {
-    title:          'Arrakis Player Cards',
-    description:    'Plateforme communautaire pour une association gaming de 2000 membres. Système de cartes joueurs façon FIFA, alimenté par les performances réelles en compétition.',
-    contribution:   'Architecture complète, parseur Excel custom, algorithme de scoring calibré sur données réelles, animations Framer Motion, CI/CD Vercel.',
-    tech:           ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Vercel'],
-    highlights:     ['Livré seul de bout en bout', 'Données réelles', 'Déployé en production'],
-    status:         'COMPLETED',
-    memId:          'PRJ.001',
-    classification: 'PRODUCTION',
-    extractionTime: 600,
-    github:         'https://github.com/Charkx/arrakis-cards',
-    demo:           'https://arrakis-cards.vercel.app/',
-    image:          '/projects/arrakis.png',
-    context:        'ASSO',
-    short:          'Arrakis',
-  },
-  {
-    title:          "L'Œil Artistique",
-    description:    'Site vitrine moderne avec animations avancées, conçu et déployé de bout en bout.',
-    contribution:   'Design, développement et déploiement complet.',
-    tech:           ['Next.js', 'Tailwind CSS', 'GSAP', 'Vercel'],
-    highlights:     ['Animations avancées', 'Performance', 'Déployé en production'],
-    status:         'OPERATIONAL',
-    memId:          'PRJ.002',
-    classification: 'LIVE',
-    extractionTime: 600,
-    github:         'https://github.com/Charkx/oeilartistique',
-    demo:           'https://oeilartistique.vercel.app',
-    image:          '/projects/oeil-artistique.png',
-    context:        'PRO',
-    short:          "L'Œil",
-  },
-  {
-    title:          'Expérience 3D Interactive',
-    description:    'Expérience interactive 3D navigable directement dans le navigateur (ce portfolio même).',
-    contribution:   'Scènes WebGL temps réel, interactions et animations 3D, intégration React.',
-    tech:           ['Three.js', 'React Three Fiber', 'React'],
-    highlights:     ['WebGL', 'Animations 3D temps réel'],
-    status:         'ACTIVE',
-    memId:          'PRJ.003',
-    classification: 'EXPERIMENTAL',
-    extractionTime: 600,
-    github:         'https://github.com/Charkx/components_library_react',
-    demo:           '',
-    image:          '/projects/portfolio-3d.png',
-    context:        'PERSO',
-    short:          'Exp. 3D',
-  },
-  {
-    title:          'Poly\'tendo',
-    description:    'BDE Polytech Marseille : site web vitrine pour la campagne de BDE.',
-    contribution:   'React, Tailwind CSS, animations GSAP, intégration de contenus dynamiques.',
-    tech:           ['React', 'Tailwind CSS', 'GSAP'],
-    highlights:     ['React', 'IU/UX'],
-    status:         'ACTIVE',
-    memId:          'PRJ.004',
-    classification: 'EXPERIMENTAL',
-    extractionTime: 600,
-    github:         'https://github.com/Charkx/Poly-tendo',
-    demo:           'https://poly-tendo.vercel.app/',
-    image:          '/projects/polytendo.png',
-    context:        'ECOLE',
-    short:          "Poly'tendo",
-  },
-];
+// (données projets → app/utils/projectsData.ts, partagées avec le bloc SEO serveur)
 
 // --- Constantes ---
 
@@ -231,6 +166,7 @@ export function ProjectsSection() {
 
   // null = pas encore détecté (SSR safe), évite le flash hydration
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const reducedMotion = useReducedMotion();
 
   const {
     selectedProject,
@@ -272,6 +208,7 @@ export function ProjectsSection() {
   // cibles (.project-card en desktop) existent réellement dans le DOM.
   useEffect(() => {
     if (isMobile === null) return; // détection pas encore faite
+    if (reducedMotion) return;     // reduced-motion : contenu affiché tel quel, sans entrée animée
 
     const ctx = gsap.context(() => {
       gsap.set(['.projects-title', '.projects-hint'], { opacity: 0, y: 20 });
@@ -301,7 +238,7 @@ export function ProjectsSection() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [isMobile]);
+  }, [isMobile, reducedMotion]);
 
   const handleProjectSelect = useCallback((index: number) => {
     audioEngine.play('ignition');       // cue "wow" de la section Projets

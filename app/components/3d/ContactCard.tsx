@@ -13,7 +13,7 @@ function CardModel() {
   const group = useRef<THREE.Group>(null);
   const scan = useRef<THREE.Mesh>(null);
   const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
-  const tex = useLoader(THREE.TextureLoader, '/images/id_card.png');
+  const tex = useLoader(THREE.TextureLoader, '/images/id_card.jpg');
 
   // même contour découpé que la carte du hero
   const geometry = useMemo(() => {

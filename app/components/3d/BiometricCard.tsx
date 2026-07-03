@@ -16,7 +16,7 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
   const [isScanning, setIsScanning] = useState(false);
   const [glitchText, setGlitchText] = useState("ID: CHARLY MENTHILLER")
   const [glitchActive, setGlitchActive] = useState(false)
-  const backgroundTexture = useLoader(THREE.TextureLoader, '/images/id_card.png');
+  const backgroundTexture = useLoader(THREE.TextureLoader, '/images/id_card.jpg');
 
   useCursor(hovered);
 

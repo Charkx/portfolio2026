@@ -1,143 +1,61 @@
-"use client"
+import ClientApp from "./ClientApp"
+import { PROFILE } from "./utils/constants"
+import { PROJECTS_DATA } from "./utils/projectsData"
 
-// Doit s'exécuter avant le montage de tout <Canvas> R3F (corrige le crash
-// "Invalid argument not valid semver" de l'extension React DevTools).
-import "./lib/devtoolsSemverGuard"
-
-import { useEffect, useState } from "react"
-import dynamic from "next/dynamic"
-import HeroSection from "./sections/HeroSection"
-import { CyberpunkLoader } from "./components/ui/LoadingScreen"
-import { useOptimizedScroll } from "./hooks/useOptimizedScroll"
-import { usePortfolioStore } from "./store/portfolioStore"
-import { useModalStore } from "./store/modalStore"
-import ARInterface from "./components/ui/ARInterface"
-import CustomCursor from "./components/ui/CustomCursor"
-import SmoothScroll from "./components/SmoothScroll"
-import ModalRoot from "./components/ui/ModalRoot"
-import LegalContent from "./components/LegalContent"
-import { preloadAssets } from "./lib/preloadAssets"
-import { ErrorBoundary } from "./hooks/ErrorBoundary"
-
-// Modèles 3D lourds préchargés pendant l'écran de chargement (progression réelle).
-const HEAVY_ASSETS = [
-  "/3d/holograming_man.glb",
-  "/3d/brain_hologram.glb",
-  "/3d/earth_globe_hologram_2mb_looping_animation.glb",
-]
-
-// Petit fallback pendant le chargement client des sections 3D
-function SectionFallback() {
-  return (
-    <div className="min-h-[40vh] flex items-center justify-center text-cyan-400/60 font-mono text-sm">
-      <span className="animate-pulse">{"// loading module..."}</span>
-    </div>
-  )
-}
-
-// Sections lourdes (Three.js) chargées côté client uniquement (ssr:false) :
-// code-split hors du bundle initial, montées dès l'hydratation de la page.
-const AboutSection = dynamic(() => import("./sections/AboutSection"), {
-  ssr: false,
-  loading: SectionFallback,
-})
-const SkillsSection = dynamic(() => import("./sections/SkillsSection"), {
-  ssr: false,
-  loading: SectionFallback,
-})
-const ProjectsSection = dynamic(
-  () => import("./sections/ProjectsSection").then((m) => m.ProjectsSection),
-  { ssr: false, loading: SectionFallback }
-)
-const ContactSection = dynamic(() => import("./sections/ContactSection"), {
-  ssr: false,
-  loading: SectionFallback,
-})
-// Canvas 3D partagé (humain holographique) — se niche dans les slots des sections migrées
-const AugmentedHumanLayer = dynamic(() => import("./components/3d/AugmentedHumanLayer"), {
-  ssr: false,
-})
-
-export default function CyberpunkLanding() {
-  const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
-  const openModal = useModalStore((s) => s.open)
-  const [progress, setProgress] = useState(0)
-
-  // Hook pour améliorer le scroll (expérience utilisateur)
-  useOptimizedScroll()
-
-  // Vrai chargement : précharge les modèles 3D (le loader reflète la progression réelle).
-  useEffect(() => {
-    let done = false
-    const start = performance.now()
-    const finish = () => {
-      if (done) return
-      done = true
-      setProgress(100)
-      setIsLoading(false)
-    }
-    preloadAssets(HEAVY_ASSETS, (p) => setProgress(p)).finally(() => {
-      // affichage minimum de 900 ms pour ne pas "flasher"
-      window.setTimeout(finish, Math.max(0, 900 - (performance.now() - start)))
-    })
-    const cap = window.setTimeout(finish, 6000) // filet : ne bloque jamais >6 s
-    return () => window.clearTimeout(cap)
-  }, [setIsLoading])
-
-  if (isLoading) {
-    return (
-      <div aria-live="polite">
-        <CyberpunkLoader progress={progress} />
-      </div>
-    )
+// Page serveur : rend un résumé indexable (SEO + lecteurs d'écran) dans le HTML
+// initial — l'expérience 3D interactive (ClientApp) se superpose côté client.
+export default function Page() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: PROFILE.name,
+    jobTitle: "Développeur Full Stack",
+    description: `${PROFILE.title} — ${PROFILE.availability}`,
+    email: `mailto:${PROFILE.email}`,
+    url: "https://charlymenthiller.vercel.app",
+    sameAs: [PROFILE.github, PROFILE.linkedin],
   }
 
   return (
-    <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      <SmoothScroll />
-      <CustomCursor />
-      <ARInterface />
-      <main className="relative z-10">
-        <HeroSection
-          onScan={() => { if (introPhase === "LOCKED") setIntroPhase("SCANNING") }}
-        />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
-        {introPhase === "UNLOCKED" && (
-          <>
-              <AugmentedHumanLayer />
-              <ErrorBoundary fallback={null}>
-                <AboutSection />
-              </ErrorBoundary>
-              <ErrorBoundary fallback={null}>
-                <SkillsSection />
-              </ErrorBoundary>
-              <ErrorBoundary fallback={null}>
-                <ProjectsSection />
-              </ErrorBoundary>
-              <ErrorBoundary fallback={null}>
-                <ContactSection />
-              </ErrorBoundary>
-          </>
-        )}
+      {/* Résumé accessible et indexable (sr-only : lu par les crawlers et lecteurs
+          d'écran, invisible à l'écran). Liens en tabIndex -1 : pas de tab fantôme. */}
+      <section className="sr-only" aria-label="Résumé du portfolio">
+        <h1>{PROFILE.name} — Développeur Full Stack</h1>
+        <p>{PROFILE.title} · {PROFILE.availability}</p>
+        <p>{PROFILE.subtitle} · {PROFILE.location}</p>
+        <p>
+          Portfolio interactif 3D construit avec React, Next.js, TypeScript,
+          Three.js (React Three Fiber), Node.js et Tailwind CSS.
+        </p>
 
-        <footer className="relative z-10 py-6 text-center text-cyan-100/30 font-mono text-xs">
-          <span>© {new Date().getFullYear()} Charly Menthiller</span>
-          <span className="mx-2">·</span>
-          {/* href = repli sans JS (page indexable) · onClick = modale sans quitter la page */}
-          <a
-            href="/mentions-legales"
-            onClick={(e) => {
-              e.preventDefault()
-              openModal({ title: "Mentions légales", size: "md", content: <LegalContent /> })
-            }}
-            className="hover:text-cyan-300 transition-colors underline"
-          >
-            Mentions légales
-          </a>
-        </footer>
-      </main>
+        <h2>Projets</h2>
+        <ul>
+          {PROJECTS_DATA.map((p) => (
+            <li key={p.memId}>
+              {p.title} ({p.tech.join(", ")}) — {p.description}{" "}
+              {p.github && <a href={p.github} tabIndex={-1}>code source</a>}
+              {p.demo && <> · <a href={p.demo} tabIndex={-1}>démo en ligne</a></>}
+            </li>
+          ))}
+        </ul>
 
-      <ModalRoot />
-    </div>
+        <h2>Contact</h2>
+        <p>
+          <a href={`mailto:${PROFILE.email}`} tabIndex={-1}>{PROFILE.email}</a>
+          {" · "}
+          <a href={PROFILE.github} tabIndex={-1}>{PROFILE.githubLabel}</a>
+          {" · "}
+          <a href={PROFILE.linkedin} tabIndex={-1}>{PROFILE.linkedinLabel}</a>
+        </p>
+      </section>
+
+      <ClientApp />
+    </>
   )
 }
