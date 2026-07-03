@@ -22,6 +22,10 @@ export interface Project {
   image?:         string;   // aperçu visuel (screenshot/GIF) — ex: '/projects/arrakis.png'
   context:        'PRO' | 'ASSO' | 'ECOLE' | 'PERSO'; // cadre du projet (badge)
   short:          string;   // libellé court (onglet)
+  // Étude de cas détaillée (facultatif, rédigé plus tard — on affiche l'existant en attendant)
+  probleme?:      string;   // CONTEXTE / problème
+  solution?:      string;   // MA CONTRIBUTION / approche
+  resultat?:      string;   // RÉSULTAT / impact
 }
 
 export type IntroPhase = 'LOCKED' | 'SCANNING' | 'BOOTING' | 'UNLOCKED';

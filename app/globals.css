@@ -38,6 +38,31 @@ body.custom-cursor * {
   .card-glitch-in { animation: none; }
 }
 
+/* Matérialisation du panneau étude de cas (projets) : balayage scanline + glitch bref
+   (les éclats du cube convergent, le panneau se matérialise à leur arrivée ~400 ms) */
+@keyframes cs-materialize {
+  0%   { opacity: 0; clip-path: inset(0 0 100% 0); filter: brightness(1.8) hue-rotate(40deg); }
+  40%  { opacity: 1; clip-path: inset(0 0 0 0); }
+  55%  { clip-path: inset(0 0 28% 0); }
+  70%  { clip-path: inset(0 0 0 0); filter: brightness(1.15); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); filter: none; }
+}
+.cs-materialize { animation: cs-materialize 0.42s ease-out both; }
+@keyframes cs-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-materialize { animation: cs-fade 0.2s ease-out both; }
+}
+
+/* Data Cube mobile (CSS 3D) : rotation lente continue — figée en reduced-motion */
+@keyframes cube-spin {
+  from { transform: rotateX(-16deg) rotateY(0deg); }
+  to   { transform: rotateX(-16deg) rotateY(360deg); }
+}
+.cube-spin { animation: cube-spin 16s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cube-spin { animation: none; transform: rotateX(-16deg) rotateY(35deg); }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

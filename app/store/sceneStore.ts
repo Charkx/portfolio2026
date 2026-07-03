@@ -35,6 +35,9 @@ interface SceneState {
   // pont canvas → React : clic sur une carte flottante → sélection (via useProjectManager)
   requestSelectProject: ((i: number) => void) | null
   setRequestSelectProject: (fn: ((i: number) => void) | null) => void
+  // projet dont le panneau d'étude de cas est déployé (cube explosé) · null = aucun
+  projectDeployed: number | null
+  setProjectDeployed: (i: number | null) => void
 
   // Rotation manuelle des modules à la souris (drag sur le slot de section)
   manualRot: Record<string, { x: number; y: number }> // rotation accumulée par focus
@@ -76,6 +79,8 @@ export const useSceneStore = create<SceneState>((set) => ({
   setProjectCards: (c) => set({ projectCards: c }),
   requestSelectProject: null,
   setRequestSelectProject: (fn) => set({ requestSelectProject: fn }),
+  projectDeployed: null,
+  setProjectDeployed: (i) => set({ projectDeployed: i }),
 
   manualRot: {},
   nudgeRot: (focus, dx, dy) => set((s) => {

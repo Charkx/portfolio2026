@@ -8,6 +8,7 @@ import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.j
 import * as THREE from 'three';
 import { BrainModel } from './CognitiveProfil';
 import DNAHelix from './DNAHelix';
+import DataCubes from './DataCubes';
 import { useSceneStore } from '../../store/sceneStore';
 import { TECH_STACK } from '../../utils/constants';
 
@@ -35,9 +36,25 @@ const FINALE_TGT = new THREE.Vector3(0, 0.95, 0);
 const CFG = {
   brain: { scale: 0.05, x: 0.01, y: 1.14, z: 0.14, zoom: 0.7, ox: 0, oy: 0 },
   adn:   { scale: 0.01, x: 0.325, y: 0.75, z: 0.00, zoom: 0.15, ox: 0, oy: 0 },
-  heart: { scale: 0.03, x: 0.00, y: 0.85, z: 0.23, zoom: 0.8, ox: 0, oy: 0 },
-  globe: { scale: 0.14, x: -0.30, y: 1.00, z: 0.70, zoom: 1.2, ox: 0, oy: 0 },
+  // station projets : dézoom CORPS ENTIER (les Data Cubes s'ancrent sur la paume droite levée)
+  heart: { scale: 0.20, x: -0.30, y: 1.00, z: 0.70, zoom: 0.1, ox: 0.0, oy: 0.0 },
+  globe: { scale: 0.20, x: -0.30, y: 0.5, z: 0.70, zoom: 1.2, ox: 0, oy: 0 },
 } as const;
+
+// Station projets : caméra à la place des yeux de l'hologramme, regardant sa main levée.
+// Mettre false pour revenir au cadrage frontal "corps entier".
+const PROJECTS_POV = true;
+
+// 👉 RÉGLAGES VUE SUBJECTIVE (POV) — AJUSTE ICI :
+//   POV_ZOOM : avance l'œil vers la main. ↑ = plus près des cubes (zoom avant) · négatif = recul (zoom arrière)
+//   POV_LOOK : DIRECTION du regard = décalage du point visé autour de la main (x = droite, y = haut, z = avant)
+//   POV_EYE  : décalage libre de la position de l'œil (x = droite, y = haut, z = avant)
+const POV_ZOOM = 0.08;
+const POV_LOOK = new THREE.Vector3(0, 0.1, 0);
+const POV_EYE  = new THREE.Vector3(0, 0, 0);
+
+// PREVIEW : afficher l'hologramme du globe dans la paume, entouré des cubes (false = masqué)
+const PROJECTS_SHOW_GLOBE = true;
 
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
@@ -123,84 +140,13 @@ function normalizeModule(obj: THREE.Object3D): THREE.Group {
   return wrap;
 }
 
-function makeReactor() {
-  const g = new THREE.Group();
-  const cm = (op: number) => new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: op, side: THREE.DoubleSide });
-  // (6) LOGEMENT CREUSÉ : puits conique qui s'enfonce dans le torse → profondeur 3D
-  const housing = new THREE.Group();
-  // paroi du puits : cône (rayon avant > arrière) ; dégradé additif sombre au fond → se fond dans le noir
-  const wellGeo = new THREE.CylinderGeometry(0.95, 0.72, 0.5, 48, 1, true);
-  wellGeo.rotateX(Math.PI / 2); // axe le long de Z (z ∈ [-0.25, +0.25])
-  const wpos = wellGeo.attributes.position;
-  const wcol = new Float32Array(wpos.count * 3);
-  const cyl = new THREE.Color(CYAN);
-  for (let i = 0; i < wpos.count; i++) {
-    const t = THREE.MathUtils.clamp((wpos.getZ(i) + 0.25) / 0.5, 0, 1); // 0 = fond, 1 = bord avant
-    const k = 0.06 + 0.94 * t * t;                                      // sombre au fond → vif au bord
-    wcol[i * 3] = cyl.r * k; wcol[i * 3 + 1] = cyl.g * k; wcol[i * 3 + 2] = cyl.b * k;
-  }
-  wellGeo.setAttribute('color', new THREE.BufferAttribute(wcol, 3));
-  const well = new THREE.Mesh(wellGeo, new THREE.MeshBasicMaterial({
-    vertexColors: true, transparent: true, opacity: 0.9,
-    side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false,
-  }));
-  well.position.z = -0.25; housing.add(well); // recule dans le torse (rim à z=0, fond à z=-0.5)
-  // anneaux étagés EN PROFONDEUR (nervures du puits) → renforcent le relief
-  ([[-0.07, 0.9, 0.45], [-0.21, 0.84, 0.3], [-0.36, 0.78, 0.16]] as const).forEach(([z, r, op]) => {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.025, r, 48), new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    ring.position.z = z; housing.add(ring);
-  });
-  g.add(housing);
+// (réacteur retiré : la station projets utilise désormais DataCubes ancrés sur la paume)
 
-  // noyau (bat) + halo (respire) → animés séparément (cf. HoloReactor)
-  const core = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), cm(0.9));
-  core.position.z = 0.04; // flotte en avant du puits → parallaxe quand le corps bouge
-  g.add(core); g.userData.core = core;
-  const gl = new THREE.Mesh(new THREE.CircleGeometry(0.8, 40), new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false }));
-  gl.position.z = 0.02; g.add(gl); g.userData.glow = gl;
-  [0.62, 0.95].forEach((r, i) => g.add(new THREE.Mesh(new THREE.RingGeometry(r, r + 0.03, 64), cm(i ? 0.5 : 0.8))));
-  const coils = new THREE.Group(); const NC = 20, st = (Math.PI * 2) / NC;
-  for (let i = 0; i < NC; i++) coils.add(new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 2, 1, i * st + 0.03, st - 0.06), cm(0.18)));
-  g.add(coils); g.userData.coils = coils;
-  g.add(new THREE.Mesh(new THREE.RingGeometry(1.45, 1.5, 80), cm(0.6)));
-  const CHIPS = 8; // nb de puces autour du réacteur
-  const HEX = new THREE.CylinderGeometry(0.3, 0.3, 0.14, 6); HEX.rotateX(Math.PI / 2);
-  const chips: THREE.Mesh[] = [];
-  const baseZ = 0.12;
-  for (let i = 0; i < CHIPS; i++) {
-    const a = Math.PI / 2 + i * (Math.PI * 2 / CHIPS);
-    const c = new THREE.Mesh(HEX, cm(0.5)); // matériau propre à chaque puce → recoloration indépendante
-    c.position.set(Math.cos(a) * 1.25, Math.sin(a) * 1.25, baseZ);
-    c.rotation.z = a; // chaque puce orientée vers l'extérieur
-    c.userData.angle = a; c.userData.baseZ = baseZ;
-    g.add(c); chips.push(c);
-  }
-  g.userData.chips = chips; // puces interactives (4 premières = projets)
-
-  // faisceau de données : noyau → puce sélectionnée (orienté à la volée)
-  const beam = new THREE.Group();
-  const beamMat = new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-  const beamMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.08), beamMat);
-  beamMesh.position.set(0.83, 0, 0.06); // entre le bord du noyau (~0.5) et la puce (~1.1)
-  beam.add(beamMesh);
-  beam.userData.mat = beamMat;
-  g.add(beam); g.userData.beam = beam;
-
-  // onde de choc : anneau qui jaillit du noyau (allumage + sélection projet)
-  const shock = new THREE.Mesh(
-    new THREE.RingGeometry(0.9, 1.05, 64),
-    new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
-  );
-  shock.position.z = 0.05; shock.visible = false;
-  g.add(shock); g.userData.shock = shock;
-  return g;
-}
-
-// Courbe de battement « lub-dub » : deux pics rapprochés puis repos, sur une phase 0..1.
-function heartbeat(p: number): number {
-  const b1 = Math.exp(-Math.pow((p - 0.10) / 0.045, 2));        // systole (gros pic)
-  const b2 = Math.exp(-Math.pow((p - 0.27) / 0.055, 2)) * 0.6;  // diastole (rebond)
-  return Math.min(1, b1 + b2);
+// première occurrence d'un os dont le nom matche la regex (recherche tolérante après import GLTF)
+function findBone(root: THREE.Object3D, re: RegExp): THREE.Object3D | null {
+  let found: THREE.Object3D | null = null;
+  root.traverse((o) => { if (!found && re.test(o.name)) found = o; });
+  return found;
 }
 
 type Station = { camPos: THREE.Vector3; target: THREE.Vector3; body: number; focus: string };
@@ -244,6 +190,10 @@ function buildScene(srcScene: THREE.Object3D, srcGlobe: THREE.Object3D, globeAni
   const H = b2.max.y - b2.min.y;
   human.position.y -= b2.min.y;
   human.position.x -= (b2.min.x + b2.max.x) / 2;
+
+  // NB : GLTFLoader retire les points des noms ('hand.R_032' → 'handR_032') → regex sans point
+  const palmBone = findBone(human, /hand\.?r/i);      // main droite levée → ancrage Data Cubes
+  const headBone = findBone(human, /head(?!.*end)/i); // tête (hors 'head_end') → yeux POV projets
 
   const pos = {
     brain: new THREE.Vector3(CFG.brain.x, H * CFG.brain.y, CFG.brain.z),
@@ -316,21 +266,21 @@ function buildScene(srcScene: THREE.Object3D, srcGlobe: THREE.Object3D, globeAni
   // body = opacité du corps À la station : pleine sur l'intro, ~0 sur chaque module
   // (le corps reste visible PENDANT les voyages via le "bulge" dans useFrame)
   // station de focus d'un module : caméra droit devant, décalée par ox/oy (composition dans le cadre)
-  const frame = (key: keyof typeof pos): Station => {
+  const frame = (key: keyof typeof pos, body = 0.0): Station => {
     const c = CFG[key], p = pos[key];
     const ax = p.x + c.ox, ay = p.y + c.oy;
-    return { camPos: new THREE.Vector3(ax, ay, c.zoom), target: new THREE.Vector3(ax, ay, 0), body: 0.0, focus: key };
+    return { camPos: new THREE.Vector3(ax, ay, c.zoom), target: new THREE.Vector3(ax, ay, 0), body, focus: key };
   };
 
   const stations: Station[] = [
     { camPos: new THREE.Vector3(0, H * 0.55, 4.4), target: new THREE.Vector3(0, H * 0.55, 0), body: 0.5, focus: '' },
     frame('brain'),
     frame('adn'),
-    frame('heart'),
+    frame('heart', 0.55), // corps entier visible pour la manipulation de réalité
     frame('globe'),
   ];
 
-  return { root, human, organs, pos, stations, bodyMats, timeUniform, globeMixer, backdrop, skyMat, dustMat };
+  return { root, human, palmBone, headBone, organs, pos, stations, bodyMats, timeUniform, globeMixer, backdrop, skyMat, dustMat };
 }
 
 // --- Wrapper de fondu pour un module React embarqué (cerveau, ADN…) ---
@@ -422,179 +372,6 @@ function HoloDNA({ position, baseScale, weightsRef }: {
   );
 }
 
-// Réacteur Iron Man interactif (HoloReactor) — puces = projets, piloté par le store.
-// Gère son propre fondu/échelle (poids "heart") ET la mise en valeur des puces.
-function HoloReactor({ position, baseScale, weightsRef }: {
-  position: THREE.Vector3; baseScale: number; weightsRef: RefObject<Record<string, number>>;
-}) {
-  const sel = useSceneStore((s) => s.projectSelected);
-  const hov = useSceneStore((s) => s.projectHovered);
-  const colors = useSceneStore((s) => s.projectColors);
-  const cards = useSceneStore((s) => s.projectCards);
-
-  const built = useMemo(() => {
-    const g = makeReactor();
-    const chips = g.userData.chips as THREE.Mesh[];
-    const beam = g.userData.beam as THREE.Group;
-    const coils = g.userData.coils as THREE.Group;
-    const core = g.userData.core as THREE.Mesh;
-    const glow = g.userData.glow as THREE.Mesh;
-    const shock = g.userData.shock as THREE.Mesh;
-    const beamMat = beam.userData.mat as THREE.MeshBasicMaterial;
-    const coreMat = core.material as THREE.MeshBasicMaterial;
-    const glowMat = glow.material as THREE.MeshBasicMaterial;
-    const shockMat = shock.material as THREE.MeshBasicMaterial;
-    const chipMats = new Set(chips.map((c) => c.material as THREE.Material));
-    // matériaux de "fond" (anneaux/bobines) → fondus par le poids ; noyau/halo/puces/faisceau/onde gérés à part
-    const exclude = new Set<THREE.Material>([...chipMats, beamMat, coreMat, glowMat, shockMat]);
-    const baseMats: { m: THREE.MeshBasicMaterial; base: number }[] = [];
-    g.traverse((o) => {
-      const mm = (o as THREE.Mesh).material as THREE.Material | undefined;
-      if (!mm || Array.isArray(mm)) return;
-      if (exclude.has(mm)) return;
-      baseMats.push({ m: mm as THREE.MeshBasicMaterial, base: (mm as THREE.MeshBasicMaterial).opacity });
-    });
-    return { g, chips, beam, coils, core, glow, shock, beamMat, coreMat, glowMat, shockMat, baseMats };
-  }, []);
-
-  const _col = useRef(new THREE.Color());
-  const tRef = useRef(0);
-  const beatRef = useRef(0);        // phase du battement 0..1
-  const bootRef = useRef(0);        // séquence d'allumage 0→1 (1 = terminée) — démarre éteint
-  const prevW = useRef(0);          // poids précédent → détecte l'arrivée (front montant)
-  const prevSel = useRef<number | null>(null);
-  const shockT = useRef(1);         // progression de l'onde 0→1 (1 = au repos)
-  const shockColor = useRef(new THREE.Color(CYAN));
-  const surgeRef = useRef(1);       // pic d'allumage au choix d'un projet : 0 (déclenché) → 1 (repos)
-
-  const triggerShock = useCallback((hex?: string) => {
-    shockT.current = 0;
-    shockColor.current.set(hex ?? '#22d3ee');
-  }, []);
-
-  useFrame((_, dt) => {
-    tRef.current += dt;
-
-    const w = THREE.MathUtils.clamp(weightsRef.current.heart ?? 0, 0, 1);
-
-    // (2) ALLUMAGE : front montant à l'arrivée (w franchit 0.5) → relance la séquence + onde
-    if (w > 0.5 && prevW.current <= 0.5) { bootRef.current = 0; triggerShock(); }
-    if (w < 0.05) bootRef.current = 0; // hors section → reste éteint jusqu'au prochain allumage
-    prevW.current = w;
-    // ne progresse qu'une fois arrivé (w > 0.5) → reste éteint pendant le voyage d'approche
-    if (w > 0.5 && bootRef.current < 1) bootRef.current = Math.min(1, bootRef.current + dt / 1.1);
-    const boot = bootRef.current;                       // 0→1
-    const bootEase = boot * boot * (3 - 2 * boot);       // smoothstep
-    const bootPop = Math.sin(boot * Math.PI);            // bosse de surbrillance au démarrage
-
-    // bobines : spin-up rapide pendant l'allumage, puis vitesse de croisière
-    built.coils.rotation.z += dt * 0.6 * (1 + (1 - bootEase) * 5);
-
-    built.g.visible = w > 0.004;
-    if (!built.g.visible) return;
-    built.g.scale.setScalar(baseScale * (0.92 + w * 0.3));
-    // balancement doux (face lisible) + rotation manuelle à la souris (drag → met le balancement en pause)
-    const st = useSceneStore.getState();
-    const mr = st.manualRot.heart;
-    const osc = st.dragFocus === 'heart' ? 0 : 1;
-    built.g.rotation.y = osc * Math.sin(tRef.current * 0.5) * 0.35 * w + (mr?.y ?? 0);
-    built.g.rotation.x = osc * Math.sin(tRef.current * 0.37) * 0.12 * w + (mr?.x ?? 0);
-    // le fond s'allume avec la séquence de boot (réacteur qui "prend vie")
-    built.baseMats.forEach(({ m, base }) => { m.opacity = base * w * bootEase; });
-
-    // IGNITION : au choix d'un projet, le cœur s'emballe ~1.2 s (surge 1 → 0)
-    if (surgeRef.current < 1) surgeRef.current = Math.min(1, surgeRef.current + dt / 1.2);
-    const surge = 1 - surgeRef.current;
-
-    // (1) BATTEMENT : lub-dub à ~66 BPM, accéléré + amplifié pendant l'ignition
-    beatRef.current = (beatRef.current + dt * 1.1 * (1 + surge * 2.2)) % 1;
-    const beat = heartbeat(beatRef.current) * bootEase;
-    const amp = 1 + surge * 1.4;
-    built.core.scale.setScalar(1 + beat * 0.10 * amp + bootPop * 0.12);
-    built.coreMat.opacity = Math.min(1, 0.7 + 0.3 * beat + 0.3 * bootPop + surge * 0.2) * w;
-    built.glow.scale.setScalar(1 + beat * 0.18 * amp + bootPop * 0.2);
-    built.glowMat.opacity = (0.18 + 0.5 * beat + 0.4 * bootPop + surge * 0.3) * w;
-
-    // (3) ONDE DE CHOC : à la sélection d'un projet (change de cible) + à l'allumage
-    const nProj = colors.length;
-    if (sel !== prevSel.current) {
-      if (sel !== null && sel < nProj) { triggerShock(colors[sel]); surgeRef.current = 0; }
-      prevSel.current = sel;
-    }
-    if (shockT.current < 1) {
-      shockT.current = Math.min(1, shockT.current + dt / 0.7);
-      const e = shockT.current;
-      built.shock.visible = true;
-      built.shock.scale.setScalar(THREE.MathUtils.lerp(0.3, 2.6, e * e * (3 - 2 * e)));
-      built.shockMat.color.copy(shockColor.current);
-      built.shockMat.opacity = (1 - e) * 0.7 * w;
-    } else if (built.shock.visible) {
-      built.shock.visible = false;
-    }
-
-    const pulse = 0.5 + 0.5 * Math.sin(tRef.current * 4);
-    const n = colors.length; // nb de projets (= nb de puces "actives")
-
-    built.chips.forEach((chip, ci) => {
-      const mat = chip.material as THREE.MeshBasicMaterial;
-      let op: number, scale: number, z = chip.userData.baseZ as number;
-      // projets répartis 1 puce sur 2 (paires) → haut/gauche/bas/droite ; impaires = déco
-      const p = ci % 2 === 0 ? ci / 2 : -1;
-      if (p >= 0 && p < n) {
-        mat.color.copy(_col.current.set(colors[p]));
-        if (sel === p)      { op = 0.85 + 0.15 * pulse; scale = 1.32 + surge * 0.28; z += 0.12 + surge * 0.08; } // sélectionnée : avance + pulse (+ pic d'ignition)
-        else if (hov === p) { op = 0.80;                scale = 1.15; z += 0.06; } // survolée : highlight
-        else                { op = 0.55;                scale = 1.0;            }
-      } else {
-        mat.color.setHex(CYAN); op = 0.18; scale = 1.0; // puces déco
-      }
-      mat.opacity = op * w * bootEase;
-      chip.scale.setScalar(THREE.MathUtils.lerp(chip.scale.x, scale, 0.2));
-      chip.position.z = THREE.MathUtils.lerp(chip.position.z, z, 0.2);
-    });
-
-    // faisceau noyau → puce sélectionnée (projet p → puce 2p)
-    if (sel !== null && sel < n) {
-      built.beam.rotation.z = built.chips[sel * 2].userData.angle as number;
-      built.beamMat.color.set(colors[sel]);
-      built.beamMat.opacity = (0.35 + 0.25 * pulse) * w * bootEase;
-    } else {
-      built.beamMat.opacity = THREE.MathUtils.lerp(built.beamMat.opacity, 0, 0.2);
-    }
-  });
-
-  // Pattern "ADN" : les puces (3D) sont cliquables via des zones transparentes qui les
-  // suivent (enfants du réacteur). Le TEXTE du projet s'affiche en bas du canvas (HTML
-  // dans ProjectsSection, au clic) — comme le panneau de décodage de l'ADN.
-  return (
-    <primitive object={built.g} position={position}>
-      {cards.map((card, i) => {
-        const a = built.chips[i * 2]?.userData.angle as number | undefined; // projet i → puce 2i
-        if (a === undefined) return null;
-        return (
-          <Html
-            key={card.id}
-            position={[Math.cos(a) * 1.25, Math.sin(a) * 1.25, 0.25]}
-            center
-            zIndexRange={[14, 0]}
-            style={{ pointerEvents: 'auto' }}
-          >
-            <button
-              type="button"
-              title={card.title}
-              aria-label={card.title}
-              onClick={() => useSceneStore.getState().requestSelectProject?.(i)}
-              onPointerOver={() => useSceneStore.getState().setProjectHovered(i)}
-              onPointerOut={() => useSceneStore.getState().setProjectHovered(null)}
-              className="block w-11 h-11 rounded-full cursor-pointer bg-transparent"
-            />
-          </Html>
-        );
-      })}
-    </primitive>
-  );
-}
-
 // Retour fluide d'un module à sa position initiale quand on quitte sa section.
 // On ne touche pas à la rotation tant que le module est actif (w > .5) ou en cours de drag :
 // dès qu'on s'en éloigne, la rotation manuelle accumulée se relâche en douceur vers 0.
@@ -625,6 +402,9 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const _t = useRef(new THREE.Vector3());
   const _base = useRef(new THREE.Vector3());     // position caméra de station (avant override finale)
   const _baseTgt = useRef(new THREE.Vector3());  // cible caméra de station
+  const _eyes = useRef(new THREE.Vector3());     // POV : position des yeux (os tête)
+  const _hand = useRef(new THREE.Vector3());     // POV : position de la main (os paume)
+  const _dir = useRef(new THREE.Vector3());      // POV : direction œil → main
   const mzRef = useRef(0); // 0 → 1 : matérialisation du corps au montage (boot)
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
@@ -671,6 +451,24 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
 
     _base.current.lerpVectors(A.camPos, B.camPos, f);
     _baseTgt.current.lerpVectors(A.target, B.target, f);
+
+    // Vue subjective "yeux de l'hologramme" à la station projets : la caméra glisse
+    // vers la tête et regarde la main levée (là où gravitent les cubes).
+    let heartW = 0;
+    if (A.focus === 'heart') heartW += 1 - f;
+    if (B.focus === 'heart') heartW += f;
+    const head = built.headBone, palm = built.palmBone;
+    if (PROJECTS_POV && heartW > 0.001 && head && palm) {
+      head.getWorldPosition(_eyes.current);
+      palm.getWorldPosition(_hand.current);
+      _hand.current.add(POV_LOOK);                            // DIRECTION : point visé (autour de la main)
+      _dir.current.subVectors(_hand.current, _eyes.current).normalize();
+      _eyes.current.addScaledVector(_dir.current, POV_ZOOM);  // ZOOM : avance l'œil vers la main
+      _eyes.current.add(POV_EYE);                             // décalage libre de l'œil
+      _base.current.lerp(_eyes.current, heartW);
+      _baseTgt.current.lerp(_hand.current, heartW);
+    }
+
     // fin de session : la caméra recule vers le plan "corps entier"
     camera.position.lerpVectors(_base.current, FINALE_POS, esAppear);
     _t.current.lerpVectors(_baseTgt.current, FINALE_TGT, esAppear);
@@ -702,8 +500,21 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     // modules impératifs (globe) — le cerveau/ADN/cœur sont des composants React dédiés
     (Object.keys(organs)).forEach((key) => {
       const o = organs[key];
-      const w = weightsRef.current[o.focus] ?? 0;
-      const tgt = o.base * (0.92 + w * 0.30);
+      let w = weightsRef.current[o.focus] ?? 0;
+
+      // PREVIEW : le globe apparaît dans la paume à la station projets (entouré des cubes)
+      const inPalm = o.focus === 'globe' && PROJECTS_SHOW_GLOBE && (weightsRef.current.heart ?? 0) > 0.001 && !!palm;
+      if (inPalm && palm) {
+        palm.getWorldPosition(_hand.current);
+        _hand.current.y += 0.1;                         // un peu au-dessus de la paume
+        o.group.position.lerp(_hand.current, 0.3);
+        w = Math.max(w, weightsRef.current.heart ?? 0);
+      } else if (o.focus === 'globe') {
+        o.group.position.lerp(built.pos.globe, 0.2);     // retour à la station contact
+      }
+
+      const previewScale = inPalm ? 0.35 : 1;            // globe réduit dans la paume
+      const tgt = o.base * previewScale * (0.92 + w * 0.30);
       o.group.scale.setScalar(THREE.MathUtils.lerp(o.group.scale.x, tgt, 0.2));
       // le globe s'efface pendant la fin de session (place au corps qui se désintègre)
       o.mats.forEach(({ m, base }) => { m.opacity = base * w * (o.focus === 'globe' ? (1 - esAppear) : 1); });
@@ -718,7 +529,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       <primitive object={built.root} />
       <HoloBrain position={built.pos.brain} baseScale={CFG.brain.scale} weightsRef={weightsRef} />
       <HoloDNA position={built.pos.adn} baseScale={CFG.adn.scale} weightsRef={weightsRef} />
-      <HoloReactor position={built.pos.heart} baseScale={CFG.heart.scale} weightsRef={weightsRef} />
+      <DataCubes position={built.pos.heart} baseScale={CFG.heart.scale} weightsRef={weightsRef} palmBone={built.palmBone} />
       {debug && <OrbitControls target={[0, 0.9, 0]} />}
     </>
   );
