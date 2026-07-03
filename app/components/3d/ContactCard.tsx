@@ -6,7 +6,8 @@ import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '../../store/sceneStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import IdCardMesh, { makeCardMaterial } from './IdCardMesh';
+import { Environment } from '@react-three/drei';
+import { IDCardVisual } from './BiometricCard';
 
 const clamp = THREE.MathUtils.clamp;
 
@@ -86,21 +87,23 @@ function StarRain() {
   );
 }
 
-// Carte "artefact" de la fin de session — LA MÊME pièce que la carte du hero
-// (IdCardMesh partagé), retrouvée éteinte puis réactivée par la scanline.
-// La boucle est bouclée : le site commence et finit sur cet objet.
+// Carte "artefact" de la fin de session — LA MÊME carte que le hero (IDCardVisual
+// partagé), retrouvée puis révélée par la scanline. La boucle est bouclée :
+// le site commence et finit sur cet objet.
 function CardModel() {
   const group = useRef<THREE.Group>(null);
   const scan = useRef<THREE.Mesh>(null);
   const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
-  const cardMat = useMemo(makeCardMaterial, []);
 
   useFrame((state) => {
     const g = group.current; if (!g) return;
     const store = useSceneStore.getState();
     const es = store.endSessionProgress ?? 0;
-    const reveal = clamp((es - 0.85) / 0.15, 0, 1); // 0→1 : la carte se réactive
+    const reveal = clamp((es - 0.85) / 0.15, 0, 1); // 0→1 : la carte se matérialise
     const t = state.clock.elapsedTime;
+
+    // matérialisation : la carte n'apparaît qu'avec la scanline
+    g.visible = reveal > 0.02;
 
     // animation finale (message envoyé) : un tour + pulse
     if (store.endSessionSent && sentAt.current === null) sentAt.current = t;
@@ -112,14 +115,11 @@ function CardModel() {
       pulse = Math.sin(e * Math.PI) * 0.12;
     }
 
-    // flottement + légère inclinaison (+ flip final)
+    // flottement + légère inclinaison (+ flip final) ; échelle qui accompagne le reveal
     g.rotation.y = -0.32 + Math.sin(t * 0.5) * 0.06 + flip;
     g.rotation.x = -0.12 + Math.cos(t * 0.4) * 0.04;
     g.position.y = Math.sin(t * 0.8) * 0.03;
-    g.scale.setScalar(1.35 * (1 + pulse));
-
-    // activation : émissif qui monte (même matériau que la carte du hero)
-    cardMat.emissiveIntensity = reveal * 0.7;
+    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse));
 
     // scanline qui traverse la carte une fois
     if (scan.current) {
@@ -132,13 +132,13 @@ function CardModel() {
 
   return (
     <group ref={group} scale={1.35}>
-      <IdCardMesh material={cardMat}>
+      <IDCardVisual>
         {/* scanline d'activation */}
         <mesh ref={scan} position={[0, 0.52, 0.024]}>
           <planeGeometry args={[1.6, 0.03]} />
           <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
-      </IdCardMesh>
+      </IDCardVisual>
     </group>
   );
 }
@@ -152,6 +152,7 @@ export default function ContactCard() {
       <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
       <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
       <Suspense fallback={null}>
+        <Environment preset="night" />
         <CardModel />
         <StarRain />
       </Suspense>

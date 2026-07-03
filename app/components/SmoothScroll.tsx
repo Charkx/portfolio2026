@@ -17,6 +17,9 @@ export function scrollToId(id: string) {
 export const lenisStop = () => lenis?.stop()
 export const lenisStart = () => lenis?.start()
 
+// Accès à l'instance (SectionSnap) — null si reduced-motion (scroll natif, pas de snap)
+export const getLenis = () => lenis
+
 /** Monté une fois : active le smooth scroll Lenis (sauf prefers-reduced-motion). */
 export default function SmoothScroll() {
   useEffect(() => {

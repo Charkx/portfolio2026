@@ -1,52 +1,46 @@
+'use client';
+
 import React, { useRef, useEffect, useState, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Text, useCursor } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Environment } from '@react-three/drei'
 
-gsap.registerPlugin(ScrollTrigger);
+const glitchChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+const BASE_TEXT = "ID: CHARLY MENTHILLER";
 
-const glitchChars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-
-const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigger }) => {
-  const cardRef = useRef<THREE.Group>(null);
-  const [hovered, setHovered] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [glitchText, setGlitchText] = useState("ID: CHARLY MENTHILLER")
-  const [glitchActive, setGlitchActive] = useState(false)
+/**
+ * Visuel de LA carte d'identité — partagé entre le hero (clé d'entrée du site)
+ * et la fin de session (artefact retrouvé) : un seul composant 3D, pas de doublon.
+ * Les interactions (scan au clic, révélation scanline) restent chez les parents.
+ */
+export function IDCardVisual({ onClick, onPointerOver, onPointerOut, children }: {
+  onClick?: () => void;
+  onPointerOver?: () => void;
+  onPointerOut?: () => void;
+  children?: React.ReactNode;
+}) {
+  const [glitchText, setGlitchText] = useState(BASE_TEXT);
+  const [glitchActive, setGlitchActive] = useState(false);
   const backgroundTexture = useLoader(THREE.TextureLoader, '/images/id_card.jpg');
 
-  useCursor(hovered);
-
-  // Glitch loop effect for the name
+  // Glitch périodique du nom
   useEffect(() => {
     const interval = setInterval(() => {
-      setGlitchActive(true)
-      let glitched = ""
-      const baseText = "ID: CHARLY MENTHILLER"
-
-      for (let i = 0; i < baseText.length; i++) {
-        if (Math.random() < 0.2) {
-          glitched += glitchChars[Math.floor(Math.random() * glitchChars.length)]
-        } else {
-          glitched += baseText[i]
-        }
+      setGlitchActive(true);
+      let glitched = "";
+      for (let i = 0; i < BASE_TEXT.length; i++) {
+        glitched += Math.random() < 0.2
+          ? glitchChars[Math.floor(Math.random() * glitchChars.length)]
+          : BASE_TEXT[i];
       }
+      setGlitchText(glitched);
+      setTimeout(() => { setGlitchText(BASE_TEXT); setGlitchActive(false); }, 120);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
 
-      setGlitchText(glitched)
-
-      setTimeout(() => {
-        setGlitchText("ID: CHARLY MENTHILLER")
-        setGlitchActive(false)
-      }, 120)
-    }, 2800)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Custom polygon shape for the card outline.
+  // Contour de carte à coins crantés.
   // Mémoïsé : sinon une nouvelle géométrie est créée à CHAQUE rendu (glitch,
   // chargement de texture…) sans libérer l'ancienne → fuite mémoire GPU →
   // perte du contexte WebGL → canvas blanc.
@@ -68,60 +62,21 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
     return new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
   }, []);
 
-  useFrame((state) => {
-    if (cardRef.current && !isScanning) {
-      cardRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
-      cardRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.3) * 0.05;
-    }
-  });
-
-  const handleClick = () => {
-    if (isScanning) return;
-    setIsScanning(true);
-
-    gsap.to(cardRef.current!.rotation, {
-      y: Math.PI * 2,
-      duration: 1.5,
-      ease: 'power2.inOut',
-    });
-
-    gsap.to(cardRef.current!.scale, {
-      x: 1.1,
-      y: 1.1,
-      z: 1.1,
-      yoyo: true,
-      repeat: 1,
-      duration: 1,
-      ease: 'sine.inOut',
-    });
-
-    setTimeout(() => {
-      onScanTrigger();
-      setIsScanning(false);
-    }, 2000);
-  };
-
   return (
-    <group ref={cardRef} position={[0, 0, 0]}>
-
-      {/* Card Body */}
-      <mesh
-        onClick={handleClick}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-        castShadow
-        receiveShadow
-      >
+    <group>
+      {/* Corps de la carte */}
+      <mesh onClick={onClick} onPointerOver={onPointerOver} onPointerOut={onPointerOut} castShadow receiveShadow>
         <primitive object={geometry} attach="geometry" />
         <meshStandardMaterial color="#0000FF" metalness={0.9} roughness={0.25} />
       </mesh>
 
+      {/* Photo au dos */}
       <mesh position={[0, 0, -0.001]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[1.5, 0.8]} />
-        <meshBasicMaterial map={backgroundTexture} toneMapped={false} transparent opacity={0.8}/>
+        <meshBasicMaterial map={backgroundTexture} toneMapped={false} transparent opacity={0.8} />
       </mesh>
 
-      {/* Pulsing overlay for glitch */}
+      {/* Voile magenta pendant le glitch */}
       {glitchActive && (
         <mesh position={[0, 0, 0.021]}>
           <planeGeometry args={[1.5, 0.9]} />
@@ -129,7 +84,7 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
         </mesh>
       )}
 
-      {/* Glitch bar stack */}
+      {/* Code-barres */}
       {Array.from({ length: 20 }).map((_, i) => (
         <mesh
           key={i}
@@ -141,79 +96,14 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
         </mesh>
       ))}
 
-      {/* Circuits lumineux (fins rectangles lumineux) */}
-      {/* {[...Array(5)].map((_, i) => (
-        <mesh key={`circuit-light-${i}`} position={[-0.5 + i * 0.25, -0.3, 0.021]}>
-          <boxGeometry args={[0.2, 0.005, 0.002]} />
-          <meshBasicMaterial color="#00ffff" />
-        </mesh>
-      ))} */}
-
-      {/* Puces RAM stylisées */}
-      {/* {[...Array(3)].map((_, i) => (
-        <group key={`ram-chip-${i}`} position={[-0.6 + i * 0.5, -0.15, 0.03]}> */}
-          {/* Corps principal */}
-          {/* <mesh>
-            <boxGeometry args={[0.15, 0.07, 0.01]} />
-            <meshStandardMaterial color="#0ff" metalness={0.7} roughness={0.3} />
-          </mesh> */}
-
-          {/* Broches supérieures */}
-          {/* {[...Array(4)].map((_, j) => (
-            <mesh key={`pin-top-${j}`} position={[-0.09 + j * 0.06, 0.045, 0.008]}>
-              <boxGeometry args={[0.01, 0.005, 0.005]} />
-              <meshStandardMaterial color="#00ffff" />
-            </mesh>
-          ))} */}
-
-          {/* Broches inférieures */}
-          {/* {[...Array(4)].map((_, j) => (
-            <mesh key={`pin-bottom-${j}`} position={[-0.09 + j * 0.06, -0.045, 0.008]}>
-              <boxGeometry args={[0.01, 0.005, 0.005]} />
-              <meshStandardMaterial color="#00ffff" />
-            </mesh>
-          ))}
-        </group>
-      ))} */}
-
-      {/* Petite LED lumineuse */}
+      {/* LED d'activité */}
       <mesh position={[0.68, 0.45, 0.0105]}>
         <sphereGeometry args={[0.025, 16, 16]} />
         <meshBasicMaterial color="lime" />
       </mesh>
 
-      {/* Modules additionnels: petits rectangles en relief (type condensateurs) */}
-      {/* {[...Array(4)].map((_, i) => (
-        <mesh key={`module-${i}`} position={[-0.25 + i * 0.2, 0.35 - i * 0.05, 0.03]}>
-          <boxGeometry args={[0.1, 0.04, 0.012]} />
-          <meshStandardMaterial color="#004466" metalness={0.8} roughness={0.15} />
-        </mesh>
-      ))} */}
-
-      {/* Circuits imprimés (pistes en relief) */}
-      {/* {[...Array(7)].map((_, i) => (
-        <mesh key={`circuit-track-${i}`} position={[-0.7 + i * 0.22, -0.1 + (i % 2) * 0.05, 0.022]}>
-          <boxGeometry args={[0.18, 0.008, 0.002]} />
-          <meshBasicMaterial color="#0ff" />
-        </mesh>
-      ))} */}
-
-      {/* Decorative line blocks */}
-      {/* {Array.from({ length: 5 }).map((_, i) => (
-        <mesh key={`decor-line-${i}`} position={[-0.75 + i * 0.1, -0.42, 0.021]}>
-          <boxGeometry args={[0.07, 0.02, 0.005]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
-      ))} */}
-
       {/* Texte glitch */}
-      <Text
-        fontSize={0.08}
-        color={glitchActive ? "red" : "#ffffff"}
-        position={[-0.68, 0.32, 0.021]}
-        anchorX="left"
-        
-      >
+      <Text fontSize={0.08} color={glitchActive ? "red" : "#ffffff"} position={[-0.68, 0.32, 0.021]} anchorX="left">
         {glitchText}
       </Text>
 
@@ -236,40 +126,87 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
       <Text fontSize={0.025} color="#888" position={[0.30, 0.45, 0.021]} anchorX="left">
         ALTERNANCE 09/2026
       </Text>
-       <Text fontSize={0.025} color="#888" position={[0.60, 0.45, -0.001]} anchorX="left" rotation={[0, Math.PI, 0]}>
+      <Text fontSize={0.025} color="#888" position={[0.60, 0.45, -0.001]} anchorX="left" rotation={[0, Math.PI, 0]}>
         ALTERNANCE 09/2026
       </Text>
       <Text fontSize={0.025} color="#888" position={[-0.68, -0.48, 0.021]} anchorX="left">
         Polytech Marseille | CODA Avignon
       </Text>
+
+      {children}
+    </group>
+  );
+}
+
+// Carte du hero : flottement + scan au clic (tour complet → déverrouille le site)
+const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigger }) => {
+  const cardRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
+  useCursor(hovered);
+
+  useFrame((state) => {
+    if (cardRef.current && !isScanning) {
+      cardRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+      cardRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.3) * 0.05;
+    }
+  });
+
+  const handleClick = () => {
+    if (isScanning) return;
+    setIsScanning(true);
+
+    gsap.to(cardRef.current!.rotation, {
+      y: Math.PI * 2,
+      duration: 1.5,
+      ease: 'power2.inOut',
+    });
+
+    gsap.to(cardRef.current!.scale, {
+      x: 1.1, y: 1.1, z: 1.1,
+      yoyo: true, repeat: 1,
+      duration: 1,
+      ease: 'sine.inOut',
+    });
+
+    setTimeout(() => {
+      onScanTrigger();
+      setIsScanning(false);
+    }, 2000);
+  };
+
+  return (
+    <group ref={cardRef}>
+      <IDCardVisual
+        onClick={handleClick}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+      />
     </group>
   );
 };
+
 interface BiometricCardProps {
   onScan: () => void;
 }
 
 export default function BiometricCard({ onScan }: BiometricCardProps) {
-
   return (
-          <Canvas>
-            <PerspectiveCamera makeDefault position={[0, 0, 2]} />
-            <OrbitControls enableZoom={false} enablePan={false} />
-            <ambientLight intensity={0.9} />
-            <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
-            <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
-            <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
-            
-            
-            {/* Suspense interne : le chargement de texture (useLoader) est contenu
-                ICI, sans faire démonter/remonter tout le Canvas. */}
-            <Suspense fallback={null}>
-              <Environment preset="night" />
-              <CyberpunkIDCard onScanTrigger={() => {
-                onScan();
-              }} />
-            </Suspense>
-          </Canvas>
-  );
-};
+    <Canvas>
+      <PerspectiveCamera makeDefault position={[0, 0, 2]} />
+      <OrbitControls enableZoom={false} enablePan={false} />
+      <ambientLight intensity={0.9} />
+      <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
+      <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
+      <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
 
+      {/* Suspense interne : le chargement de texture (useLoader) est contenu
+          ICI, sans faire démonter/remonter tout le Canvas. */}
+      <Suspense fallback={null}>
+        <Environment preset="night" />
+        <CyberpunkIDCard onScanTrigger={onScan} />
+      </Suspense>
+    </Canvas>
+  );
+}

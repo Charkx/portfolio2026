@@ -79,10 +79,11 @@ export default function AugmentedHumanLayer() {
           // caméra (SceneContents en mode linear → suit exactement progressRef)
           progressRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, fe);
 
-          // voile : le contenu HTML s'efface au cœur du voyage (plan large sans obstacle)
-          // et revient à la station. sin(πfe) = 0 aux paliers.
+          // voile : le contenu HTML s'efface pendant TOUT le voyage (fenêtre large :
+          // le texte de la section suivante n'apparaît qu'à l'arrivée de la caméra,
+          // jamais en cours de route). sin(πfe) = 0 aux paliers.
           const travel = Math.sin(Math.PI * fe);
-          const vT = clamp01((travel - 0.45) / 0.4);
+          const vT = clamp01((travel - 0.12) / 0.28);
           const veil = vT * vT * (3 - 2 * vT); // smoothstep
           document.documentElement.style.setProperty('--holo-veil', veil.toFixed(3));
         }

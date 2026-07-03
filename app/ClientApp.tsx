@@ -14,6 +14,7 @@ import { useModalStore } from "./store/modalStore"
 import ARInterface from "./components/ui/ARInterface"
 import CustomCursor from "./components/ui/CustomCursor"
 import SmoothScroll from "./components/SmoothScroll"
+import SectionSnap from "./components/SectionSnap"
 import ModalRoot from "./components/ui/ModalRoot"
 import LegalContent from "./components/LegalContent"
 import { preloadAssets } from "./lib/preloadAssets"
@@ -107,6 +108,8 @@ export default function ClientApp() {
 
         {introPhase === "UNLOCKED" && (
           <>
+              {/* amorcer le scroll suffit : le site pose l'utilisateur sur la section suivante */}
+              <SectionSnap />
               <ErrorBoundary fallback={null}>
                 <AboutSection />
               </ErrorBoundary>
