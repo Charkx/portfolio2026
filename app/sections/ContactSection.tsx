@@ -116,8 +116,9 @@ export default function ContactSection() {
   }
 
   // --- DESKTOP : cinématique complète (désintégration → carte → formulaire) ---
+  // fond transparent : le monde 3D permanent (canvas derrière le contenu) sert de décor
   return (
-    <section id="contact" ref={sectionRef} className="relative bg-black scroll-mt-20">
+    <section id="contact" ref={sectionRef} className="relative bg-transparent scroll-mt-20">
       <h2 className="sr-only">Contact</h2>
 
       {/* étage fin de session : le canvas partagé s'y niche plein écran et le corps s'y désintègre */}

@@ -61,6 +61,15 @@ export default function ARInterface() {
   { prefix: "UPLINK",           label: "CONTACT",  section: "contact" },
 ] as const;
 
+  // Chapitres narratifs : le voyage se lit dans le HUD (change avec la section active)
+  const CHAPTERS: Record<string, string> = {
+    hero:     "01 · IDENTIFICATION",
+    about:    "02 · MÉMOIRE.PROFIL",
+    skills:   "03 · STRUCTURE.ADN",
+    projects: "04 · MANIPULATION.RÉALITÉ",
+    contact:  "05 · DÉCONNEXION",
+  };
+
   // Son du déverrouillage (system power-on) / re-verrouillage (power-down) — no-op si son coupé
   const prevPhase = useRef(introPhase);
   useEffect(() => {
@@ -137,6 +146,13 @@ export default function ARInterface() {
               DEG LEVEL: <span className={booted ? "hud-reveal text-red-400" : "opacity-0"} style={{ '--i': 2 } as React.CSSProperties}>+5</span>
             </div>
             </div>
+
+          {/* Chapitre courant — centré, re-révélé à chaque changement de section */}
+          <div aria-hidden="true" className="absolute left-1/2 -translate-x-1/2 top-0 h-16 hidden md:flex items-center">
+            <span key={currentSection} className="hud-reveal font-mono text-xs tracking-[0.35em] text-cyan-300/90">
+              {CHAPTERS[currentSection] ?? CHAPTERS.hero}
+            </span>
+          </div>
 
           <div className="flex hidden sm:flex items-center space-x-6">
             <div>

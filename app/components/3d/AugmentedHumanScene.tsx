@@ -35,8 +35,9 @@ const FINALE_TGT = new THREE.Vector3(0, 0.95, 0);
 //   zoom = distance caméra (plus petit = plus près)
 //   ox,oy = décalage du module DANS le cadre (composition : >0 ox le pousse à gauche, >0 oy vers le bas)
 const CFG = {
-  brain: { scale: 0.05, x: 0.01, y: 1.14, z: 0.14, zoom: 0.7, ox: 0, oy: 0 },
-  adn:   { scale: 0.01, x: 0.325, y: 0.75, z: 0.00, zoom: 0.15, ox: 0, oy: 0 },
+  // canvas permanent : ox compose le module DANS l'écran (contenu About à gauche → cerveau à droite, etc.)
+  brain: { scale: 0.05, x: 0.01, y: 1.14, z: 0.14, zoom: 0.7, ox: -0.20, oy: 0 },
+  adn:   { scale: 0.01, x: 0.325, y: 0.75, z: 0.00, zoom: 0.15, ox: 0.05, oy: 0 },
   // station projets : dézoom CORPS ENTIER (les Data Cubes s'ancrent sur la paume droite levée)
   heart: { scale: 0.20, x: -0.30, y: 1.00, z: 0.70, zoom: 0.1, ox: 0.0, oy: 0.0 },
   globe: { scale: 0.20, x: -0.30, y: 0.5, z: 0.70, zoom: 1.2, ox: 0, oy: 0 },

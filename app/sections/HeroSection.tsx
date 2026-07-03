@@ -29,7 +29,7 @@ export default function HeroSection({
   return (
     <section
       id="hero"
-      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"
+      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20 md:bg-none"
     >
       {/* Slot corps-entier : le canvas partagé (page) s'y matérialise une fois la carte scannée.
           Une fois déverrouillé, on peut faire pivoter l'hologramme à la souris (le terminal reste au-dessus). */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { gsap } from 'gsap';
@@ -87,6 +87,12 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
   // en quittant la section (démontage), on referme le panneau éventuellement déployé
   // (l'ouverture/fermeture au clavier + Échap est gérée par le panneau DOM ProjectCaseStudy)
   useEffect(() => () => { useSceneStore.getState().setProjectDeployed(null); }, []);
+
+  // canvas permanent DERRIÈRE le contenu (z-5 < main z-10) → les boutons des cubes
+  // sont portés sur <body> avec un z supérieur, sinon ils seraient incliquables
+  const portalRef = useRef<HTMLElement>(null!);
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { portalRef.current = document.body; setPortalReady(true); }, []);
 
   useFrame((_, dt) => {
     tRef.current += dt;
@@ -201,13 +207,15 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
               <lineBasicMaterial color={brighten(hex)} transparent opacity={0.9} />
             </lineSegments>
             {/* bouton DOM transparent (canvas en pointer-events:none) → survol/clic souris */}
-            <Html center zIndexRange={[14, 0]} style={{ pointerEvents: 'auto' }}>
-              <button
-                type="button" tabIndex={-1} aria-hidden="true" title={card.title}
-                onPointerOver={onOver(i)} onPointerOut={onOut} onClick={onClick(i)}
-                style={{ width: 54, height: 54, borderRadius: 10, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
-              />
-            </Html>
+            {portalReady && (
+              <Html center portal={portalRef} zIndexRange={[20, 15]} style={{ pointerEvents: 'auto' }}>
+                <button
+                  type="button" tabIndex={-1} aria-hidden="true" title={card.title}
+                  onPointerOver={onOver(i)} onPointerOut={onOut} onClick={onClick(i)}
+                  style={{ width: 54, height: 54, borderRadius: 10, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+                />
+              </Html>
+            )}
           </group>
         );
       })}

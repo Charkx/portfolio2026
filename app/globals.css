@@ -168,12 +168,37 @@ body {
   }
 }
 
+/* Panneau de verre : rend le contenu lisible par-dessus le monde 3D permanent.
+   Sur fond sombre, le verre se lit par ses BORDS (liseré haut lumineux, bordure
+   cyan) et son reflet en dégradé — pas par sa teinte. Mobile : fond simple. */
+.glass-panel {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+}
+@media (min-width: 768px) {
+  .glass-panel {
+    background: linear-gradient(165deg, rgba(34, 211, 238, 0.09) 0%, rgba(5, 14, 22, 0.72) 32%, rgba(3, 10, 16, 0.8) 100%);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    box-shadow:
+      inset 0 1px 0 rgba(34, 211, 238, 0.28),   /* liseré lumineux en haut (reflet) */
+      inset 0 0 60px rgba(34, 211, 238, 0.04),
+      0 0 30px rgba(34, 211, 238, 0.08),
+      0 24px 60px rgba(0, 0, 0, 0.5);            /* le panneau se détache du vide */
+  }
+}
+
 /* Voile de transition : le contenu HTML des sections se dématérialise/rematérialise
    en synchro avec le fond du canvas (var --holo-veil pilotée par AugmentedHumanLayer :
    0 = section dockée, contenu visible · 1 = canvas plein écran, contenu masqué). */
 .holo-veil-fade {
   opacity: calc(1 - var(--holo-veil, 0));
   will-change: opacity;
+  /* will-change crée un stacking context → sans z-index, la section resterait
+     PEINTE SOUS le canvas permanent (z 5) et son contenu disparaîtrait sous la
+     voûte opaque. z 20 : le contenu flotte au-dessus du monde 3D. */
+  position: relative;
+  z-index: 20;
 }
 @media (prefers-reduced-motion: reduce) {
   .holo-veil-fade { opacity: 1; }

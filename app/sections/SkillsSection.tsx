@@ -102,7 +102,7 @@ export default function SkillsSection() {
   return (
     <section
       id="skills"
-      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-32 relative scroll-mt-[100px]"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-32 relative scroll-mt-[100px] md:bg-none"
     >
       <h2 className="text-4xl font-bold text-cyan-400 mb-2 font-display z-10 text-center">
         SKILLS:DNA_MODULE_ANALYSIS
@@ -200,6 +200,7 @@ export default function SkillsSection() {
           )}
         </div>
 
+        <div className="glass-panel rounded-xl md:p-5">
         <TechList
           selectedTech={selectedTech}
           hoveredTech={hoveredTech}
@@ -207,6 +208,7 @@ export default function SkillsSection() {
           onTechClick={handleTechClick}
           onTechHover={handleTechHover}
         />
+        </div>
       </div>
 
       {/* Légende : les 2 brins de l'hélice (ce qui relie les langages) */}

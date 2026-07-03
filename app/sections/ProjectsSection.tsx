@@ -267,7 +267,7 @@ export function ProjectsSection() {
       id="projects"
       ref={sectionRef}
       className="holo-veil-fade min-h-screen py-20 bg-gradient-to-br from-purple-900/20
-                 via-pink-900/20 to-blue-900/20 relative overflow-hidden"
+                 via-pink-900/20 to-blue-900/20 md:bg-none relative overflow-hidden"
       aria-labelledby="projects-title"
     >
       {/* Fond */}
@@ -300,7 +300,7 @@ export function ProjectsSection() {
           <div className={`grid grid-cols-1 gap-12 items-start w-full mx-auto
                            ${PROJECTS_LAYOUT === 'split' ? 'lg:grid-cols-2 max-w-6xl' : 'max-w-5xl'}`}>
             {/* Gauche (toujours) : ligne terminal + sélecteur (chemin clavier de référence) */}
-            <div className="flex flex-col gap-4">
+            <div className="glass-panel flex flex-col gap-4 rounded-xl p-4 md:p-5">
               <div className="text-cyan-300/80 text-xs font-mono tracking-wider" aria-hidden="true">
                 <GlitchText text="> ACCÈS MÉMOIRE.PROJETS — MANIPULATION DE RÉALITÉ" duration={900} />
               </div>

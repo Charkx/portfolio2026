@@ -37,7 +37,7 @@ export default function AboutSection() {
   return (
     <section
       id="about"
-      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20 md:bg-none"
     >
       <h2 className="text-4xl text-cyan-400 font-bold font-display mb-12 z-10">
         ABOUT:COGNITIVE_PROFILE
@@ -70,7 +70,7 @@ export default function AboutSection() {
           </div>
 
           {/* --- Panneau : texte révélé en machine à écrire --- */}
-          <div className="min-h-[30rem] border border-cyan-400/30 rounded p-4 bg-black/50">
+          <div className="glass-panel min-h-[30rem] rounded p-4">
             <h3 className={`${active.color} text-sm mb-3 font-mono`}>
               &gt;&gt; {active.title}
             </h3>
