@@ -264,112 +264,85 @@ const CUES: Record<Cue, () => void> = {
   release: () => tone({ type: 'sine', f0: 120, f1: 210, dur: 0.07, peak: 0.035, send: 0.2 }),
 }
 
-// --- Nappe d'ambiance (site déverrouillé) : deux accords qui respirent l'un dans l'autre ---
-// Am ↔ G en fondu croisé sur ~26 s (jamais statique), souffle d'air filtré, étincelles
-// réverbérées espacées. Niveau très bas : présence, pas musique.
-let drone: { stop: () => void } | null = null
+// --- Musique générative : un seul motif Am↔F, deux relectures ---
+// 'entry' (avant le scan) : arpège cyberpunk affirmé — sawtooth filtré, basse, hat.
+// 'site'  (déverrouillé)  : le MÊME thème en variante hologramme — tempo ralenti,
+// notes triangle à l'octave, silences, enveloppes lentes, grande réverbe. Les notes
+// étant courtes, la réverbe reste propre (pas de grésillement de nappe tenue).
+type MusicMode = 'entry' | 'site'
 
-function startDrone() {
-  if (!ctx || !master || !reverbIn || drone) return
-  const c = ctx
-  // PAS de bruit ni d'envoi réverbe continu : sur une nappe tenue, la réverbe à
-  // IR bruitée produit un grésillement permanent. Ici : sinus purs uniquement.
-  const bus = c.createGain(); bus.gain.value = 0.0001
-  const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 260; flt.Q.value = 0.7
-  flt.connect(bus); bus.connect(master)
-  const oscs: OscillatorNode[] = []
-
-  // un LFO unique pilote le fondu croisé : accord A en phase, accord B en opposition (gain inversé)
-  const xfade = c.createOscillator(); xfade.frequency.value = 1 / 26; xfade.start(); oscs.push(xfade)
-  const mkChord = (freqs: number[], invert: boolean) => {
-    const g = c.createGain(); g.gain.value = 0.5
-    const depth = c.createGain(); depth.gain.value = invert ? -0.45 : 0.45
-    xfade.connect(depth); depth.connect(g.gain)
-    freqs.forEach((f, i) => {
-      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f
-      o.detune.value = (i - 1) * 2.5 // très léger désaccord → battements lents "vivants"
-      o.connect(g); o.start(); oscs.push(o)
-    })
-    g.connect(flt)
-  }
-  mkChord([55, 82.4, 130.8], false) // Am (A1 · E2 · C3)
-  mkChord([49, 73.4, 123.5], true)  // G  (G1 · D2 · B2)
-
-  // étincelles réverbérées, espacées et aléatoires — courtes, donc la réverbe reste propre
-  const sparkle = window.setInterval(() => {
-    if (!enabled || Math.random() > 0.7) return
-    tone({ f0: 1200 + Math.random() * 1600, dur: 0.4, peak: 0.014, send: 0.8 })
-  }, 9000)
-
-  const now = c.currentTime
-  bus.gain.setValueAtTime(0.0001, now)
-  bus.gain.exponentialRampToValueAtTime(0.026, now + 2.5)
-  drone = {
-    stop: () => {
-      window.clearInterval(sparkle)
-      const t = c.currentTime
-      bus.gain.cancelScheduledValues(t)
-      bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), t)
-      bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.7)
-      oscs.forEach((o) => o.stop(t + 0.8))
-    },
-  }
+const MUSIC_CFG = {
+  entry: {
+    bpm: 92, wave: 'sawtooth' as OscillatorType,
+    fltF: 950, fltQ: 6, sweep: 480, sweepRate: 0.045, // balayage du filtre : le motif évolue
+    arpPeak: 0.045, attack: 0.012, release: 0.9,
+    bassPeak: 0.11, bassFreqs: [55, 43.65], hat: true,
+    bus: 0.85, send: 0.5, sparkle: false, fadeIn: 1.4,
+    patterns: [
+      [110, 130.81, 164.81, 220, 261.63, 220, 164.81, 130.81],   // Am : A2 C3 E3 A3 C4…
+      [87.31, 130.81, 174.61, 220, 261.63, 220, 174.61, 130.81], // F  : F2 C3 F3 A3 C4…
+    ],
+  },
+  site: {
+    bpm: 66, wave: 'triangle' as OscillatorType,
+    fltF: 1500, fltQ: 1.4, sweep: 350, sweepRate: 0.03,
+    arpPeak: 0.026, attack: 0.05, release: 1.8, // attaque douce, longue traîne → legato aérien
+    bassPeak: 0.05, bassFreqs: [110, 87.31], hat: false,
+    bus: 0.8, send: 0.7, sparkle: true, fadeIn: 2.5,
+    patterns: [
+      [220, 0, 261.63, 329.63, 0, 440, 329.63, 0], // Am à l'octave, aéré (0 = silence)
+      [220, 0, 261.63, 349.23, 0, 440, 349.23, 0], // F à l'octave
+    ],
+  },
 }
 
-function stopDrone() {
-  if (!drone) return
-  drone.stop(); drone = null
-}
-
-// --- Musique d'entrée (avant le scan) : arpège cyberpunk minimal en La mineur ---
-// Séquenceur lookahead (croches à 92 BPM), Am ↔ F par mesure, basse + hat discret,
-// filtre balayé très lentement. Sert aussi de mire : l'utilisateur règle son volume dessus.
 let music: { stop: () => void } | null = null
 
-function startEntryMusic() {
+function startMusic(mode: MusicMode) {
   if (!ctx || !master || !reverbIn || music) return
+  const cfg = MUSIC_CFG[mode]
   const c = ctx
   const bus = c.createGain(); bus.gain.value = 0.0001; bus.connect(master)
-  const send = c.createGain(); send.gain.value = 0.5; bus.connect(send); send.connect(reverbIn)
+  const send = c.createGain(); send.gain.value = cfg.send; bus.connect(send); send.connect(reverbIn)
 
   // filtre commun de l'arpège, balayé lentement → le motif évolue sans changer de notes
-  const arpFlt = c.createBiquadFilter(); arpFlt.type = 'lowpass'; arpFlt.Q.value = 6; arpFlt.frequency.value = 950
-  const fLfo = c.createOscillator(); fLfo.frequency.value = 0.045
-  const fLg = c.createGain(); fLg.gain.value = 480
+  const arpFlt = c.createBiquadFilter(); arpFlt.type = 'lowpass'; arpFlt.Q.value = cfg.fltQ; arpFlt.frequency.value = cfg.fltF
+  const fLfo = c.createOscillator(); fLfo.frequency.value = cfg.sweepRate
+  const fLg = c.createGain(); fLg.gain.value = cfg.sweep
   fLfo.connect(fLg); fLg.connect(arpFlt.frequency); fLfo.start()
   arpFlt.connect(bus)
 
-  const STEP = 60 / 92 / 2 // croches à 92 BPM
-  const AM = [110, 130.81, 164.81, 220, 261.63, 220, 164.81, 130.81] // A2 C3 E3 A3 C4…
-  const FM = [87.31, 130.81, 174.61, 220, 261.63, 220, 174.61, 130.81] // F2 C3 F3 A3 C4…
+  const STEP = 60 / cfg.bpm / 2 // croches
   let step = 0
   let nextT = c.currentTime + 0.1
   const iv = window.setInterval(() => {
     // planifie ~0.2 s en avance (précis à l'échantillon, insensible au jitter du timer JS)
     while (nextT < c.currentTime + 0.2) {
       const t = nextT
-      const bar = Math.floor(step / 8) % 2 === 0
-      const pat = bar ? AM : FM
-      // arpège
-      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = pat[step % 8]
-      const g = c.createGain()
-      g.gain.setValueAtTime(0.0001, t)
-      g.gain.exponentialRampToValueAtTime(0.045, t + 0.012)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + STEP * 0.9)
-      o.connect(g); g.connect(arpFlt)
-      o.start(t); o.stop(t + STEP)
+      const bar = Math.floor(step / 8) % 2
+      const f = cfg.patterns[bar][step % 8]
+      // arpège (0 = silence)
+      if (f > 0) {
+        const o = c.createOscillator(); o.type = cfg.wave; o.frequency.value = f
+        const g = c.createGain()
+        g.gain.setValueAtTime(0.0001, t)
+        g.gain.exponentialRampToValueAtTime(cfg.arpPeak, t + cfg.attack)
+        g.gain.exponentialRampToValueAtTime(0.0001, t + STEP * cfg.release)
+        o.connect(g); g.connect(arpFlt)
+        o.start(t); o.stop(t + STEP * cfg.release + 0.05)
+      }
       // basse : fondamentale au début de chaque mesure
       if (step % 8 === 0) {
-        const b = c.createOscillator(); b.type = 'sine'; b.frequency.value = bar ? 55 : 43.65
+        const b = c.createOscillator(); b.type = 'sine'; b.frequency.value = cfg.bassFreqs[bar]
         const bg = c.createGain()
         bg.gain.setValueAtTime(0.0001, t)
-        bg.gain.exponentialRampToValueAtTime(0.11, t + 0.03)
+        bg.gain.exponentialRampToValueAtTime(cfg.bassPeak, t + 0.03)
         bg.gain.exponentialRampToValueAtTime(0.0001, t + STEP * 7)
         b.connect(bg); bg.connect(bus)
         b.start(t); b.stop(t + STEP * 8)
       }
-      // hat discret sur les contretemps
-      if (step % 2 === 1) {
+      // hat discret sur les contretemps (variante entrée uniquement)
+      if (cfg.hat && step % 2 === 1) {
         const src = c.createBufferSource(); src.buffer = noiseBuffer(c)
         const hf = c.createBiquadFilter(); hf.type = 'highpass'; hf.frequency.value = 7000
         const hg = c.createGain()
@@ -384,12 +357,21 @@ function startEntryMusic() {
     }
   }, 60)
 
+  // étincelles réverbérées espacées (variante site) : ponctuent le thème hologramme
+  const sparkle = cfg.sparkle
+    ? window.setInterval(() => {
+        if (!enabled || Math.random() > 0.7) return
+        tone({ f0: 1200 + Math.random() * 1600, dur: 0.4, peak: 0.012, send: 0.8 })
+      }, 9000)
+    : 0
+
   const now = c.currentTime
   bus.gain.setValueAtTime(0.0001, now)
-  bus.gain.exponentialRampToValueAtTime(0.85, now + 1.4)
+  bus.gain.exponentialRampToValueAtTime(cfg.bus, now + cfg.fadeIn)
   music = {
     stop: () => {
       window.clearInterval(iv)
+      if (sparkle) window.clearInterval(sparkle)
       const t = c.currentTime
       bus.gain.cancelScheduledValues(t)
       bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), t)
@@ -400,17 +382,16 @@ function startEntryMusic() {
   }
 }
 
-function stopEntryMusic() {
+function stopMusic() {
   if (!music) return
   music.stop(); music = null
 }
 
-// scène sonore courante : 'entry' (verrouillé → musique) ou 'site' (déverrouillé → nappe)
-let sceneMode: 'entry' | 'site' = 'entry'
+// scène sonore courante : 'entry' (verrouillé) ou 'site' (déverrouillé)
+let sceneMode: MusicMode = 'entry'
 
 function startAmbience() {
-  if (sceneMode === 'entry') startEntryMusic()
-  else startDrone()
+  startMusic(sceneMode)
 }
 
 let lastHover = 0 // throttle du cue hover (évite le mitraillage)
@@ -422,14 +403,14 @@ export const audioEngine = {
     enabled = true
     startAmbience()
   },
-  disable() { enabled = false; stopDrone(); stopEntryMusic() },
+  disable() { enabled = false; stopMusic() },
   isEnabled: () => enabled,
-  // bascule musique d'entrée ↔ nappe du site (appelé quand l'introPhase change)
+  // bascule entre les deux variantes du thème (appelé quand l'introPhase change)
   setScene(mode: 'entry' | 'site') {
     if (mode === sceneMode) return
     sceneMode = mode
     if (!enabled) return
-    stopDrone(); stopEntryMusic()
+    stopMusic()
     startAmbience()
   },
   // volume global 0..1 (rampe courte pour éviter les clics) — mémorisé même avant la création du contexte
