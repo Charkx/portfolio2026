@@ -18,6 +18,9 @@ export const PROJECTS_DATA: Project[] = [
     image:          '/projects/arrakis.png',
     context:        'ASSO',
     short:          'Arrakis',
+    probleme:       "Une association gaming de 2 000 membres suivait les performances de ses joueurs en compétition dans des fichiers Excel : aucune vue d'ensemble, aucun moyen pour un joueur de se situer ou de suivre sa progression.",
+    solution:       "J'ai conçu et livré la plateforme seul, de bout en bout : parseur Excel custom pour ingérer les données existantes, algorithme de scoring calibré sur les performances réelles, cartes joueurs façon FIFA animées avec Framer Motion, base PostgreSQL et déploiement continu sur Vercel.",
+    resultat:       "En production et utilisée par la communauté : chaque joueur a sa carte alimentée par ses vraies statistiques de compétition. Mon premier projet porté seul en conditions réelles, de la donnée brute au produit déployé.",
   },
   {
     title:          "L'Œil Artistique",
@@ -34,6 +37,9 @@ export const PROJECTS_DATA: Project[] = [
     image:          '/projects/oeil-artistique.png',
     context:        'PRO',
     short:          "L'Œil",
+    probleme:       "Un projet professionnel : créer une vitrine en ligne à la hauteur d'une identité visuelle artistique — un site rapide, moderne, avec de vraies animations, à concevoir entièrement.",
+    solution:       "J'ai porté le projet du design au déploiement : maquette, développement Next.js + Tailwind CSS, animations GSAP orchestrées au scroll, optimisation des médias et mise en ligne sur Vercel.",
+    resultat:       "Site en ligne, performant et animé, livré en autonomie complète — du brief à la production.",
   },
   {
     title:          'Expérience 3D Interactive',
@@ -50,6 +56,9 @@ export const PROJECTS_DATA: Project[] = [
     image:          '/projects/portfolio-3d.png',
     context:        'PERSO',
     short:          'Exp. 3D',
+    probleme:       "Comment se démarquer parmi des centaines de portfolios de développeurs ? Plutôt que de lister mes compétences front, j'ai voulu que le site lui-même en soit la démonstration : une expérience 3D temps réel navigable au scroll, directement dans le navigateur.",
+    solution:       "Scène WebGL pilotée par le scroll (React Three Fiber) : un hologramme humain traversé de station en station, modules 3D interactifs par section, shaders custom, design sonore en synthèse WebAudio — intégré à Next.js avec de vrais replis d'accessibilité (reduced-motion, navigation clavier, contenu rendu côté serveur).",
+    resultat:       "Le site que vous êtes en train de visiter : assets 3D compressés (Draco), SEO server-side, et un terrain d'expérimentation permanent pour le rendu temps réel.",
   },
   {
     title:          'Poly\'tendo',
@@ -66,5 +75,8 @@ export const PROJECTS_DATA: Project[] = [
     image:          '/projects/polytendo.png',
     context:        'ECOLE',
     short:          "Poly'tendo",
+    probleme:       "Campagne BDE à Polytech Marseille : l'équipe avait besoin d'un site vitrine marquant pour porter sa campagne, dans le temps court imposé par l'événement.",
+    solution:       "Développement React + Tailwind CSS, animations GSAP pour donner l'énergie de la campagne, intégration des contenus de l'équipe (programme, membres, événements).",
+    resultat:       "Site en ligne pendant la campagne, vitrine de l'équipe auprès des étudiants.",
   },
 ];
