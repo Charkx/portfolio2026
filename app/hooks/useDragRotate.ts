@@ -9,7 +9,7 @@ import { audioEngine } from '../lib/audioEngine';
  * Permet de faire pivoter à la souris le module 3D embarqué dans le canvas partagé.
  * Le canvas est `pointer-events:none` → le drag est capté sur le SLOT HTML de la
  * section (dessous), et traduit en rotation de l'objet (pas de la caméra, qui reste
- * pilotée par le scroll). `focus` = clé du module (brain / adn / heart / globe / human).
+ * pilotée par le scroll). `focus` = clé du module (brain / adn / heart / human).
  */
 export function useDragRotate(focus: string) {
   const nudgeRot = useSceneStore((s) => s.nudgeRot);

@@ -3,12 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useDragRotate } from '../hooks/useDragRotate';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { ErrorBoundary } from '../hooks/ErrorBoundary';
 import { useSceneStore } from '../store/sceneStore';
 import ContactCard from '../components/3d/ContactCard';
-import ContactForm from '../components/ui/ContactForm';
+import ContactForm, { NetworkIdentifiers } from '../components/ui/ContactForm';
 import ContactMobileCard from '../components/ContactMobileCard';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -27,7 +26,7 @@ export default function ContactSection() {
   const termRef = useRef<HTMLDivElement>(null);        // terminal "fin de session"
   const cardStageRef = useRef<HTMLDivElement>(null);   // overlay carte (canvas dédié)
   const formRef = useRef<HTMLDivElement>(null);        // panneau formulaire (fondu tardif)
-  const dragGlobe = useDragRotate('globe');
+  const infoRef = useRef<HTMLDivElement>(null);        // identifiants réseau sous la carte (même fondu)
   const reducedMotion = useReducedMotion();
   const setEndSession = useSceneStore((s) => s.setEndSessionProgress);
   const setCardActive = useSceneStore((s) => s.setEndSessionCardActive);
@@ -74,6 +73,10 @@ export default function ContactSection() {
           formRef.current.style.opacity = String(clamp((p - 0.93) / 0.07, 0, 1));
           formRef.current.style.pointerEvents = p > 0.96 ? 'auto' : 'none';
         }
+        if (infoRef.current) {
+          infoRef.current.style.opacity = String(clamp((p - 0.93) / 0.07, 0, 1));
+          infoRef.current.style.pointerEvents = p > 0.96 ? 'auto' : 'none';
+        }
       },
     });
     return () => {
@@ -93,7 +96,7 @@ export default function ContactSection() {
         <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative">
           <h2 className="sr-only">Contact</h2>
           {isMobile === false ? (
-            <div data-holo="contact" className="h-72 cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragGlobe} />
+            <div data-holo="contact" className="h-72" />
           ) : (
             <div className="flex justify-center"><CardImage /></div>
           )}
@@ -125,24 +128,29 @@ export default function ContactSection() {
       {isMobile === false && (
         <div ref={stageRef} className="relative" style={{ height: '260vh' }}>
           <div className="sticky top-0 h-screen overflow-hidden">
-            <div
-              data-holo="contact"
-              className="absolute inset-0 cursor-grab touch-none"
-              title="Glisse pour faire pivoter"
-              {...dragGlobe}
-            />
+            <div data-holo="contact" className="absolute inset-0" />
           </div>
         </div>
       )}
 
-      {/* carte "artefact" + formulaire ancré dessus (canvas dédié, canvas partagé gelé) */}
+      {/* carte "artefact" à GAUCHE + formulaire à DROITE (zones disjointes : le texte
+          ne recouvre jamais le composant 3D — canvas dédié, canvas partagé gelé) */}
       {isMobile === false && cardPhase && (
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black" style={{ opacity: 0 }}>
-          <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
-            <ContactCard />
-          </ErrorBoundary>
-          <div ref={formRef} className="absolute inset-0 flex items-center justify-center p-4" style={{ opacity: 0, pointerEvents: 'none' }}>
-            <ContactForm />
+          {/* moitié gauche : carte 3D + identifiants réseau en dessous */}
+          <div className="absolute inset-y-0 left-0 w-1/2 flex flex-col items-center justify-center gap-2 p-8">
+            <div className="relative w-full h-[60vh]">
+              <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
+                <ContactCard />
+              </ErrorBoundary>
+            </div>
+            <div ref={infoRef} className="w-full max-w-md" style={{ opacity: 0, pointerEvents: 'none' }}>
+              <NetworkIdentifiers />
+            </div>
+          </div>
+          {/* moitié droite : formulaire (identifiants déjà sous la carte) */}
+          <div ref={formRef} className="absolute inset-y-0 right-0 w-1/2 flex items-center justify-center p-8" style={{ opacity: 0, pointerEvents: 'none' }}>
+            <ContactForm showNetwork={false} />
           </div>
         </div>
       )}

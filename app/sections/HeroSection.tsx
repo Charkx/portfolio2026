@@ -40,11 +40,11 @@ export default function HeroSection({
         {...(unlocked ? dragHuman : {})}
       />
 
-      <div className="container w-full mx-auto px-4 flex flex-col gap-6 items-center z-10">
+      <div className="container w-full mx-auto px-4 flex flex-col gap-4 items-center z-10">
         {/* Carte biométrique 3D = clé d'entrée du site. Une fois scannée (UNLOCKED),
             elle s'estompe pour laisser place à l'hologramme humain. */}
         <div
-          className="w-full h-[72vh] relative transition-opacity duration-700"
+          className="w-full h-[52vh] md:h-[56vh] relative transition-opacity duration-700"
           style={{ opacity: unlocked ? 0 : 1, pointerEvents: unlocked ? "none" : "auto" }}
         >
           <LazyMount className="w-full h-full relative">

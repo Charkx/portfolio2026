@@ -23,7 +23,6 @@ import { ErrorBoundary } from "./hooks/ErrorBoundary"
 const HEAVY_ASSETS = [
   "/3d/holograming_man.glb",
   "/3d/brain_hologram.glb",
-  "/3d/earth_globe_hologram_2mb_looping_animation.glb",
 ]
 
 // Petit fallback pendant le chargement client des sections 3D

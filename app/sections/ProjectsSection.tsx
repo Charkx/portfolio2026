@@ -38,11 +38,6 @@ const CONTEXT_HEX: Record<ProjectContext, string> = {
   PERSO: '#a855f7', // violet
 };
 
-// 👉 LAYOUT desktop — compare les deux puis on tranche :
-//   'split' = sélecteur à gauche + canvas à droite (2 colonnes)
-//   'full'  = 1 colonne : sélecteur compact au-dessus, canvas pleine largeur
-const PROJECTS_LAYOUT: 'split' | 'full' = 'split';
-
 // --- GlitchText : décodage scramble → résolution gauche→droite (thème "extraction") ---
 
 const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/01';
@@ -184,6 +179,16 @@ export function ProjectsSection() {
   const setProjectDeployed = useSceneStore((s) => s.setProjectDeployed);
   const dragReactor        = useDragRotate('heart');
 
+  // Le panneau attend la fin de l'explosion du cube : les éclats convergent vers
+  // l'écran (~650 ms), PUIS l'étude de cas se matérialise — le lien 3D → DOM se lit.
+  const [panelVisible, setPanelVisible] = useState(false);
+  useEffect(() => {
+    if (projectDeployed === null) { setPanelVisible(false); return; }
+    if (reducedMotion) { setPanelVisible(true); return; }
+    const t = window.setTimeout(() => setPanelVisible(true), 650);
+    return () => window.clearTimeout(t);
+  }, [projectDeployed, reducedMotion]);
+
   // Couleurs de statut + données des cartes flottantes → réacteur (données statiques)
   useEffect(() => {
     setProjectColors(PROJECTS_DATA.map((p) => CONTEXT_HEX[p.context]));
@@ -251,6 +256,13 @@ export function ProjectsSection() {
     setProjectDeployed(index);
   }, [handleProjectSelect, setProjectDeployed]);
 
+  // survol d'un chip → prévisualise : arc d'énergie (projectHovered) + sélection SILENCIEUSE
+  // (fiche express + cube mis en avant, sans le son ignition réservé au clic)
+  const handleHoverPreview = useCallback((i: number | null) => {
+    setProjectHovered(i);
+    if (i !== null) selectProject(i, () => {});
+  }, [setProjectHovered, selectProject]);
+
   // Expose la sélection au réacteur 3D (clic sur une carte flottante → sélectionne ici)
   useEffect(() => {
     setRequestSelectProject(handleProjectSelect);
@@ -266,7 +278,7 @@ export function ProjectsSection() {
     <section
       id="projects"
       ref={sectionRef}
-      className="holo-veil-fade min-h-screen py-20 bg-gradient-to-br from-purple-900/20
+      className="holo-veil-fade min-h-screen py-20 lg:h-screen lg:py-0 bg-gradient-to-br from-purple-900/20
                  via-pink-900/20 to-blue-900/20 md:bg-none relative overflow-hidden"
       aria-labelledby="projects-title"
     >
@@ -275,13 +287,16 @@ export function ProjectsSection() {
         <div className="scanlines" />
       </div>
 
-      <div className="container mx-auto px-4 flex flex-col gap-8">
+      <div className="container mx-auto px-4 flex flex-col gap-8 lg:h-full lg:justify-center lg:gap-6">
 
         {/* Titre */}
-        <div className="text-center pt-8">
+        <div className="text-center pt-8 lg:pt-14">
+          <div className="text-cyan-300/80 text-xs font-mono tracking-[0.25em] mb-2" aria-hidden="true">
+            <GlitchText text="> ACCÈS MÉMOIRE.PROJETS — MANIPULATION DE RÉALITÉ" duration={900} />
+          </div>
           <h2
             id="projects-title"
-            className="projects-title text-3xl md:text-5xl font-bold
+            className="projects-title text-3xl md:text-4xl font-bold
                        text-cyan-400 font-display"
           >
             PROJECTS:MANIPULATION_REALITE
@@ -294,82 +309,74 @@ export function ProjectsSection() {
           </p>
         </div>
 
-        {/* Contenu — fonctionne SANS le canvas : sélecteur HTML + fiche (toujours présents).
-            Desktop : réacteur 3D en bonus à droite · Mobile : 1 colonne (pas de canvas). */}
+        {/* Sélecteur : chemin clavier de référence, centré sous le titre — sans cadre,
+            la scène POV occupe tout l'écran et reste entièrement interactive */}
         {isMobile === null ? null : (
-          <div className={`grid grid-cols-1 gap-12 items-start w-full mx-auto
-                           ${PROJECTS_LAYOUT === 'split' ? 'lg:grid-cols-2 max-w-6xl' : 'max-w-5xl'}`}>
-            {/* Gauche (toujours) : ligne terminal + sélecteur (chemin clavier de référence) */}
-            <div className="glass-panel flex flex-col gap-4 rounded-xl p-4 md:p-5">
-              <div className="text-cyan-300/80 text-xs font-mono tracking-wider" aria-hidden="true">
-                <GlitchText text="> ACCÈS MÉMOIRE.PROJETS — MANIPULATION DE RÉALITÉ" duration={900} />
-              </div>
-
+          <>
+            <div className="flex justify-center">
               <ProjectSelector
                 projects={PROJECTS_DATA}
                 selected={selectedProject}
                 onSelect={handleProjectSelect}
                 onOpen={handleOpen}
-                onHover={handleHover}
+                onHover={handleHoverPreview}
               />
-
-              {/* Mobile : carrousel de Data Cubes CSS 3D (le panneau se déploie au tap) */}
-              {isMobile && (
-                <div className="pt-8">
-                  <ProjectMobileCubes
-                    items={PROJECTS_DATA.map((p) => ({ id: p.memId, title: p.title, short: p.short, color: CONTEXT_HEX[p.context] }))}
-                    index={selectedProject ?? 0}
-                    onChange={(i) => selectProject(i, () => {})}
-                    onOpen={handleOpen}
-                  />
-                </div>
-              )}
             </div>
 
-            {/* Droite (desktop only) : réacteur 3D + décodage en BAS du canvas (façon ADN) */}
-            {isMobile === false && (
-              <div className="relative w-full" style={{ height: '80vh' }}>
+            {/* fiche express centrée sous les chips — prévisualisation survol/clavier */}
+            {isMobile === false && selectedProject !== null && (() => {
+              const p = PROJECTS_DATA[selectedProject];
+              const c = CONTEXT_HEX[p.context];
+              return (
                 <div
-                  data-holo="projects"
-                  className="w-full h-full rounded-2xl overflow-hidden border border-cyan-400/20 cursor-grab touch-none"
-                  title="Glisse pour faire pivoter"
-                  {...dragReactor}
-                />
+                  key={selectedProject}
+                  className="hud-reveal mx-auto w-96 max-w-full rounded-lg border bg-black/60 p-3 font-mono pointer-events-none"
+                  style={{ borderColor: `${c}66`, boxShadow: `0 0 16px ${c}40` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c, boxShadow: `0 0 8px ${c}` }} />
+                    <span className="text-pink-400/70 text-[10px]">{p.memId}</span>
+                    <span className="text-cyan-200 text-sm truncate flex-1">
+                      <GlitchText text={p.title} duration={p.extractionTime} />
+                    </span>
+                    <span className="text-[10px] font-bold tracking-wider shrink-0" style={{ color: c }}>
+                      {CONTEXT_LABEL[p.context]}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {p.tech.map((t) => (
+                      <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-pink-900/50 text-pink-300 border border-pink-400/30">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <DecodeProgress duration={p.extractionTime} color={c} runKey={selectedProject} />
+                </div>
+              );
+            })()}
 
-                {selectedProject !== null && (() => {
-                  const p = PROJECTS_DATA[selectedProject];
-                  const c = CONTEXT_HEX[p.context];
-                  return (
-                    <div
-                      key={selectedProject}
-                      className="hud-reveal absolute bottom-3 left-3 right-3 rounded-lg border bg-black/85
-                                 backdrop-blur-sm p-3 font-mono pointer-events-none"
-                      style={{ borderColor: `${c}66`, boxShadow: `0 0 16px ${c}40` }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c, boxShadow: `0 0 8px ${c}` }} />
-                        <span className="text-pink-400/70 text-[10px]">{p.memId}</span>
-                        <span className="text-cyan-200 text-sm truncate flex-1">
-                          <GlitchText text={p.title} duration={p.extractionTime} />
-                        </span>
-                        <span className="text-[10px] font-bold tracking-wider shrink-0" style={{ color: c }}>
-                          {CONTEXT_LABEL[p.context]}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {p.tech.map((t) => (
-                          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-pink-900/50 text-pink-300 border border-pink-400/30">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                      <DecodeProgress duration={p.extractionTime} color={c} runKey={selectedProject} />
-                    </div>
-                  );
-                })()}
+            {/* Mobile : carrousel de Data Cubes CSS 3D (le panneau se déploie au tap) */}
+            {isMobile && (
+              <div className="pt-6 flex justify-center">
+                <ProjectMobileCubes
+                  items={PROJECTS_DATA.map((p) => ({ id: p.memId, title: p.title, short: p.short, color: CONTEXT_HEX[p.context] }))}
+                  index={selectedProject ?? 0}
+                  onChange={(i) => selectProject(i, () => {})}
+                  onOpen={handleOpen}
+                />
               </div>
             )}
-          </div>
+
+            {/* Desktop : toute la zone restante = scène 3D libre (drag de rotation) */}
+            {isMobile === false && (
+              <div
+                data-holo="projects"
+                className="w-full grow min-h-[40vh] cursor-grab touch-none"
+                title="Glisse pour faire pivoter"
+                {...dragReactor}
+              />
+            )}
+          </>
         )}
 
         {/* Indicateur de transition */}
@@ -394,8 +401,8 @@ export function ProjectsSection() {
       </div>
 
       {/* panneau étude de cas — déployé à l'explosion d'un cube (ou sélection) */}
-      {projectDeployed !== null && PROJECTS_DATA[projectDeployed] && (
-        <ProjectCaseStudy project={PROJECTS_DATA[projectDeployed]} onClose={() => setProjectDeployed(null)} />
+      {projectDeployed !== null && panelVisible && PROJECTS_DATA[projectDeployed] && (
+        <ProjectCaseStudy project={PROJECTS_DATA[projectDeployed]} accent={CONTEXT_HEX[PROJECTS_DATA[projectDeployed].context]} onClose={() => setProjectDeployed(null)} />
       )}
     </section>
   );

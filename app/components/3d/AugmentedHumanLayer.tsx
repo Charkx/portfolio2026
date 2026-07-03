@@ -17,7 +17,7 @@ const ANCHORS = [
   { sel: '[data-holo="about"]',    prog: 0.25 }, // cerveau (tête)
   { sel: '[data-holo="skills"]',   prog: 0.5 },  // ADN (tronc)
   { sel: '[data-holo="projects"]', prog: 0.75 }, // paume + Data Cubes (POV)
-  { sel: '[data-holo="contact"]',  prog: 1.0 },  // globe (main)
+  { sel: '[data-holo="contact"]',  prog: 1.0 },  // fin de session
 ];
 
 // aligné sur la scène : paliers courts, voyages amples

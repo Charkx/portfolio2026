@@ -11,14 +11,35 @@ import { PdfViewer } from './ModalViewers';
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
 
-// Panneau de contact holographique — partagé desktop (sur la carte 3D) et mobile.
-export default function ContactForm() {
+// Identifiants réseau + repli mailto — bloc autonome : intégré au formulaire (mobile)
+// ou affiché sous la carte 3D (desktop, fin de session).
+export function NetworkIdentifiers() {
+  const openModal = useModalStore((s) => s.open);
+  const openCv = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
+  };
+  return (
+    <div className="font-mono">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
+        <a href={`mailto:${PROFILE.email}`} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.email}</a>
+        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.githubLabel}</a>
+        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.linkedinLabel}</a>
+        <a href={PROFILE.cv} onClick={openCv} className="text-pink-300 underline hover:text-pink-200 cursor-pointer">CV</a>
+      </div>
+      <div className="mt-2 text-[10px] text-gray-500 text-center">⏳ {PROFILE.availability}</div>
+    </div>
+  );
+}
+
+// Panneau de contact holographique — partagé desktop (à côté de la carte 3D) et mobile.
+// showNetwork=false quand les identifiants sont affichés ailleurs (sous la carte).
+export default function ContactForm({ showNetwork = true }: { showNetwork?: boolean }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const setSent = useSceneStore((s) => s.setEndSessionSent);
-  const openModal = useModalStore((s) => s.open);
 
   const mailto = `mailto:${PROFILE.email}?subject=${encodeURIComponent(`Contact portfolio — ${name || 'message'}`)}&body=${encodeURIComponent(`${message}\n\n— ${name}${email ? ` (${email})` : ''}`)}`;
 
@@ -29,11 +50,6 @@ export default function ContactForm() {
     const ok = await sendMessage({ name, email, message });
     if (ok) { setStatus('sent'); setSent(true); audioEngine.play('success'); }
     else { setStatus('error'); }
-  };
-
-  const openCv = (e: React.MouseEvent) => {
-    e.preventDefault();
-    openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
   };
 
   const input = 'w-full bg-black/50 border border-cyan-400/30 rounded px-3 py-2 text-cyan-200 font-mono text-sm focus:border-cyan-300 focus:shadow-[0_0_12px_rgba(34,211,238,0.35)] focus:outline-none transition-shadow';
@@ -85,14 +101,12 @@ export default function ContactForm() {
         </div>
       )}
 
-      {/* Identifiants réseaux + repli — toujours visibles */}
-      <div className="mt-5 pt-4 border-t border-cyan-400/15 flex flex-wrap gap-x-4 gap-y-1 text-xs font-mono">
-        <a href={`mailto:${PROFILE.email}`} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.email}</a>
-        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.githubLabel}</a>
-        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.linkedinLabel}</a>
-        <a href={PROFILE.cv} onClick={openCv} className="text-pink-300 underline hover:text-pink-200 cursor-pointer">CV</a>
-      </div>
-      <div className="mt-2 text-[10px] text-gray-500 font-mono">⏳ {PROFILE.availability}</div>
+      {/* Identifiants réseaux + repli — masqués si affichés sous la carte 3D */}
+      {showNetwork && (
+        <div className="mt-5 pt-4 border-t border-cyan-400/15">
+          <NetworkIdentifiers />
+        </div>
+      )}
     </div>
   );
 }

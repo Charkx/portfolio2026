@@ -14,9 +14,10 @@ import { audioEngine } from '../../lib/audioEngine';
 // d'éclats GSAP) qui déploie le panneau DOM (store: projectDeployed). Un seul useFrame.
 
 const CUBE = 0.16;       // arête du cube (unités monde ; le corps fait 1.8)
-const ORBIT_R = 0.34;    // rayon d'orbite autour de la paume
+const ORBIT_R = 0.5;     // rayon d'orbite : couronne assez large pour éviter les doigts,
+                         // assez serrée pour rester dans le cadre POV
 const BOB = 0.05;        // amplitude du bobbing vertical
-const LIFT = 0.14;       // hauteur du nuage au-dessus de l'os de la main
+const LIFT = 0.18;       // hauteur du nuage au-dessus de la paume
 const SHARDS = 24;       // éclats par explosion (pool réutilisé, jamais recréé)
 const SHARD_SIZE = 0.03; // taille d'un éclat
 const UP = new THREE.Vector3(0, 1, 0);
@@ -53,6 +54,9 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
   const _v = useRef(new THREE.Vector3());
   const _tmp = useRef(new THREE.Vector3());
   const _dummy = useRef(new THREE.Object3D());
+  const _camLocal = useRef(new THREE.Vector3()); // caméra en repère local (cible de convergence)
+  const _gatherPt = useRef(new THREE.Vector3()); // point de rassemblement des éclats
+  const _shardPos = useRef(new THREE.Vector3());
 
   const n = cards.length;
 
@@ -76,7 +80,10 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
       if (g) deployOrigin.current.copy(g.position); // fige le point d'émission
       audioEngine.play('ignition');
       if (reducedMotion) d.t = 0;                    // reduced-motion : pas d'explosion
-      else gsap.to(d, { t: 1, duration: 0.6, ease: 'power3.out' });
+      // t linéaire (easing par phase dans useFrame). S'arrête à 0.65 = l'instant où le
+      // panneau apparaît (650 ms, sync ProjectsSection) → l'explosion SE FIGE dans cet
+      // état tant que le panneau est ouvert, et refluera depuis là à la fermeture.
+      else gsap.to(d, { t: 0.65, duration: 0.65, ease: 'none' });
     } else if (reducedMotion) {
       d.t = 0; d.index = -1;
     } else {
@@ -89,13 +96,25 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
   useEffect(() => () => { useSceneStore.getState().setProjectDeployed(null); }, []);
 
   // canvas permanent DERRIÈRE le contenu (z-5 < main z-10) → les boutons des cubes
-  // sont portés sur <body> avec un z supérieur, sinon ils seraient incliquables
+  // sont portés dans un conteneur FIXE plein écran avec un z supérieur.
+  // (pas <body> : drei positionne en coordonnées viewport → sur body, le scroll
+  // de la page les décalerait de plusieurs écrans → boutons incliquables)
   const portalRef = useRef<HTMLElement>(null!);
   const [portalReady, setPortalReady] = useState(false);
-  useEffect(() => { portalRef.current = document.body; setPortalReady(true); }, []);
+  useEffect(() => {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:18;';
+    document.body.appendChild(el);
+    portalRef.current = el;
+    setPortalReady(true);
+    return () => { document.body.removeChild(el); };
+  }, []);
 
-  useFrame((_, dt) => {
-    tRef.current += dt;
+  useFrame((state, dt) => {
+    // panneau déployé → LE TEMPS S'ARRÊTE : orbite, bobbing et rotations figés
+    // (l'horloge ne repart qu'à la fermeture, l'explosion reflue depuis son état gelé)
+    const frozen = useSceneStore.getState().projectDeployed !== null;
+    if (!frozen) tRef.current += dt;
     const a = anchor.current;
     if (!a) return;
     const w = THREE.MathUtils.clamp(weightsRef.current.heart ?? 0, 0, 1);
@@ -121,10 +140,10 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
         const ang = spin + (i / n) * Math.PI * 2;
         const bob = reducedMotion ? 0 : Math.sin(tRef.current * 1.3 + i * 1.7) * BOB;
         g.position.set(Math.cos(ang) * ORBIT_R, bob, Math.sin(ang) * ORBIT_R);
-        if (!reducedMotion) { g.rotation.y += dt * 0.5; g.rotation.x = Math.sin(tRef.current * 0.6 + i) * 0.25; }
+        if (!reducedMotion && !frozen) { g.rotation.y += dt * 0.5; g.rotation.x = Math.sin(tRef.current * 0.6 + i) * 0.25; }
       }
       let target = sel === i ? 1.32 : hov === i ? 1.2 : 1;
-      if (isDeploying) target *= 1 - d.t; // le cube rétrécit en explosant
+      if (isDeploying) target *= 1 - Math.min(d.t / 0.5, 1); // le cube a fini de se dissoudre à mi-explosion
       const cur = scaleRefs.current[i] ?? 1;
       const next = THREE.MathUtils.lerp(cur, target, reducedMotion ? 1 : 0.2);
       scaleRefs.current[i] = next;
@@ -152,23 +171,35 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
       }
     }
 
-    // --- éclats : nuage d'explosion pendant le déploiement ---
+    // --- éclats : explosion en 2 temps — éclatement, puis CONVERGENCE vers l'écran
+    // (le panneau DOM se matérialise à l'arrivée des éclats → le lien 3D → DOM se lit)
     const shards = shardsRef.current;
     if (shards) {
       if (d.index >= 0 && d.t > 0.001 && !reducedMotion) {
         shards.visible = true;
         const origin = deployOrigin.current;
+        // cible : vers la caméra (l'écran), en repère local de l'ancre
+        _camLocal.current.copy(state.camera.position);
+        a.worldToLocal(_camLocal.current);
+        _gatherPt.current.lerpVectors(origin, _camLocal.current, 0.55);
+        const burst = Math.min(d.t / 0.4, 1);
+        const be = 1 - Math.pow(1 - burst, 3);                        // éclatement (ease-out)
+        const gather = THREE.MathUtils.clamp((d.t - 0.4) / 0.6, 0, 1);
+        const ge = gather * gather * (3 - 2 * gather);                // convergence (smooth)
         for (let s = 0; s < SHARDS; s++) {
           const sd = shardData[s];
-          _dummy.current.position.copy(origin).addScaledVector(sd.dir, d.t * sd.dist);
+          _shardPos.current.copy(origin).addScaledVector(sd.dir, be * sd.dist);
+          _shardPos.current.lerp(_gatherPt.current, ge);
+          _dummy.current.position.copy(_shardPos.current);
           _dummy.current.rotation.set(sd.rot.x * d.t * 6, sd.rot.y * d.t * 6, sd.rot.z * d.t * 6);
-          _dummy.current.scale.setScalar(SHARD_SIZE * (0.35 + 0.65 * (1 - d.t)));
+          _dummy.current.scale.setScalar(SHARD_SIZE * (0.4 + 0.6 * (1 - d.t)) * (1 - ge * 0.7));
           _dummy.current.updateMatrix();
           shards.setMatrixAt(s, _dummy.current.matrix);
         }
         shards.instanceMatrix.needsUpdate = true;
-        (shards.material as THREE.MeshBasicMaterial).color.set(colors[d.index] ?? '#22d3ee');
-        (shards.material as THREE.MeshBasicMaterial).opacity = 0.85 * Math.min(1, d.t * 4);
+        const m = shards.material as THREE.MeshBasicMaterial;
+        m.color.set(colors[d.index] ?? '#22d3ee');
+        m.opacity = 0.9 * Math.min(1, d.t * 5) * (1 - ge * 0.85);     // s'éteint en convergeant
       } else {
         shards.visible = false;
       }

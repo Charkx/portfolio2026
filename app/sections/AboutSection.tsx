@@ -100,7 +100,7 @@ export default function AboutSection() {
         {/* desktop : slot où le canvas partagé (page) se niche pour la station cerveau
             mobile : cerveau local (3D conservé) */}
         {isMobile === false ? (
-          <div data-holo="about" className="h-[80vh] w-full cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragBrain} />
+          <div data-holo="about" className="h-[68vh] w-full cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragBrain} />
         ) : isMobile ? (
           <LazyMount className="h-[80vh] w-full">
             <CognitiveProfile selected={selected} color={activeColor} count={ABOUT_TEXT.length} />

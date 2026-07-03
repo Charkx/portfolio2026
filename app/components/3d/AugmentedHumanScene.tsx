@@ -13,8 +13,8 @@ import { useSceneStore } from '../../store/sceneStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { TECH_STACK } from '../../utils/constants';
 
-// focuses des modules embarqués (= stations 1..4)
-const FOCI = ['brain', 'adn', 'heart', 'globe'] as const;
+// focuses des modules embarqués (= stations 1..3 ; la station contact n'a pas de module)
+const FOCI = ['brain', 'adn', 'heart'] as const;
 
 // tables techs (pour l'ADN embarqué) : id minuscule → niveau
 const ALL_TECHS = Object.values(TECH_STACK).flat();
@@ -37,10 +37,11 @@ const FINALE_TGT = new THREE.Vector3(0, 0.95, 0);
 const CFG = {
   // canvas permanent : ox compose le module DANS l'écran (contenu About à gauche → cerveau à droite, etc.)
   brain: { scale: 0.05, x: 0.01, y: 1.14, z: 0.14, zoom: 0.7, ox: -0.20, oy: 0 },
-  adn:   { scale: 0.01, x: 0.325, y: 0.75, z: 0.00, zoom: 0.15, ox: 0.05, oy: 0 },
+  adn:   { scale: 0.01, x: 0.325, y: 0.75, z: 0.00, zoom: 0.21, ox: 0.05, oy: 0 },
   // station projets : dézoom CORPS ENTIER (les Data Cubes s'ancrent sur la paume droite levée)
   heart: { scale: 0.20, x: -0.30, y: 1.00, z: 0.70, zoom: 0.1, ox: 0.0, oy: 0.0 },
-  globe: { scale: 0.20, x: -0.30, y: 0.5, z: 0.70, zoom: 1.2, ox: 0, oy: 0 },
+  // station contact : cadrage caméra seul (aucun module — la fin de session prend le relais)
+  contact: { scale: 0.20, x: -0.30, y: 0.5, z: 0.70, zoom: 1.2, ox: 0, oy: 0 },
 } as const;
 
 // Station projets : caméra à la place des yeux de l'hologramme, regardant sa main levée.
@@ -52,11 +53,8 @@ const PROJECTS_POV = true;
 //   POV_LOOK : DIRECTION du regard = décalage du point visé autour de la main (x = droite, y = haut, z = avant)
 //   POV_EYE  : décalage libre de la position de l'œil (x = droite, y = haut, z = avant)
 const POV_ZOOM = 0.08;
-const POV_LOOK = new THREE.Vector3(0, 0.1, 0);
-const POV_EYE  = new THREE.Vector3(0, 0.1, 0.06);
-
-// PREVIEW : afficher l'hologramme du globe dans la paume, entouré des cubes (false = masqué)
-const PROJECTS_SHOW_GLOBE = true;
+const POV_LOOK = new THREE.Vector3(0, 0.22, 0);   // vise le centre de la couronne de cubes
+const POV_EYE  = new THREE.Vector3(-0.05, 0.08, 0.1); // œil légèrement reculé → main moins envahissante
 
 // 👉 CHORÉGRAPHIE CAMÉRA — AJUSTE ICI :
 //   Entre deux stations, la caméra s'écarte en "plan large" (on revoit l'humain entier,
@@ -72,7 +70,6 @@ const BREATH = 0.012;
 
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
-const GLOBE_URL = '/3d/earth_globe_hologram_2mb_looping_animation.glb';
 
 // Largeur du PALIER : portion de chaque segment où l'on reste posé sur la station.
 // Le reste (1 − 2×HOLD) = durée de la TRANSITION. Baisse HOLD → transition plus longue.
@@ -137,23 +134,6 @@ function makeHolo(timeUniform: { value: number }) {
   return m;
 }
 
-// --- Modules procéduraux ---
-// normalise un module GLB chargé → centré à l'origine, diamètre ~2 (rayon ~1),
-// pour qu'il garde la taille calibrée (CFG.*.scale) comme les anciens placeholders.
-function normalizeModule(obj: THREE.Object3D): THREE.Group {
-  const box = new THREE.Box3().setFromObject(obj);
-  const size = new THREE.Vector3(); box.getSize(size);
-  const maxDim = Math.max(size.x, size.y, size.z) || 1;
-  // on normalise l'OBJET (pas le wrap) → diamètre ~2 ; le wrap reste libre pour CFG.*.scale
-  obj.scale.multiplyScalar(2 / maxDim);
-  const box2 = new THREE.Box3().setFromObject(obj);
-  const c = new THREE.Vector3(); box2.getCenter(c);
-  obj.position.sub(c);
-  const wrap = new THREE.Group();
-  wrap.add(obj);
-  return wrap;
-}
-
 // (réacteur retiré : la station projets utilise désormais DataCubes ancrés sur la paume)
 
 // première occurrence d'un os dont le nom matche la regex (recherche tolérante après import GLTF)
@@ -164,26 +144,9 @@ function findBone(root: THREE.Object3D, re: RegExp): THREE.Object3D | null {
 }
 
 type Station = { camPos: THREE.Vector3; target: THREE.Vector3; body: number; focus: string };
-type MatRef = { m: THREE.Material & { opacity: number }; base: number };
-type Organ = { group: THREE.Object3D; base: number; focus: string; mats: MatRef[] };
 
-// récupère tous les matériaux d'un module + leur opacité de base (pour les fondre)
-function collectMats(obj: THREE.Object3D): MatRef[] {
-  const out: MatRef[] = [];
-  obj.traverse((o) => {
-    const mat = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
-    if (!mat) return;
-    (Array.isArray(mat) ? mat : [mat]).forEach((mm) => {
-      mm.transparent = true;
-      const m = mm as THREE.Material & { opacity: number };
-      out.push({ m, base: m.opacity ?? 1 });
-    });
-  });
-  return out;
-}
-
-// --- Construction de la scène (humain + organes + stations) ---
-function buildScene(srcScene: THREE.Object3D, srcGlobe: THREE.Object3D, globeAnims: THREE.AnimationClip[]) {
+// --- Construction de la scène (humain + stations) ---
+function buildScene(srcScene: THREE.Object3D) {
   const timeUniform = { value: 0 };
   const bodyMats: THREE.Material[] = [];
 
@@ -210,33 +173,14 @@ function buildScene(srcScene: THREE.Object3D, srcGlobe: THREE.Object3D, globeAni
   const headBone = findBone(human, /head(?!.*end)/i); // tête (hors 'head_end') → yeux POV projets
 
   const pos = {
-    brain: new THREE.Vector3(CFG.brain.x, H * CFG.brain.y, CFG.brain.z),
-    adn:   new THREE.Vector3(CFG.adn.x,   H * CFG.adn.y,   CFG.adn.z),
-    heart: new THREE.Vector3(CFG.heart.x, H * CFG.heart.y, CFG.heart.z),
-    globe: new THREE.Vector3(CFG.globe.x, H * CFG.globe.y, CFG.globe.z),
+    brain:   new THREE.Vector3(CFG.brain.x,   H * CFG.brain.y,   CFG.brain.z),
+    adn:     new THREE.Vector3(CFG.adn.x,     H * CFG.adn.y,     CFG.adn.z),
+    heart:   new THREE.Vector3(CFG.heart.x,   H * CFG.heart.y,   CFG.heart.z),
+    contact: new THREE.Vector3(CFG.contact.x, H * CFG.contact.y, CFG.contact.z),
   };
-
-  // NB : cerveau (CognitiveProfil), ADN (DNAHelix) ET réacteur (HoloReactor) sont des
-  // composants React interactifs embarqués séparément → pas dans les organes impératifs.
-  const globe = normalizeModule(skeletonClone(srcGlobe));
-
-  // animation embarquée du globe ("Scene")
-  let globeMixer: THREE.AnimationMixer | null = null;
-  if (globeAnims.length) {
-    globeMixer = new THREE.AnimationMixer(globe);
-    globeMixer.clipAction(globeAnims[0]).play();
-  }
-
-  const organs: Record<string, Organ> = {
-    globe: { group: globe, base: CFG.globe.scale, focus: 'globe', mats: collectMats(globe) },
-  };
-  (Object.keys(organs) as ('globe')[]).forEach((k) => {
-    organs[k].group.position.copy(pos[k]);
-    organs[k].group.scale.setScalar(organs[k].base);
-  });
 
   const root = new THREE.Group();
-  root.add(human, globe);
+  root.add(human);
 
   // --- ENVIRONNEMENT : voûte sombre + poussière holographique ---
   // But : masquer la page lorsque le canvas passe en plein écran (boot + transitions).
@@ -291,10 +235,10 @@ function buildScene(srcScene: THREE.Object3D, srcGlobe: THREE.Object3D, globeAni
     frame('brain'),
     frame('adn'),
     frame('heart', 0.55), // corps entier visible pour la manipulation de réalité
-    frame('globe'),
+    frame('contact'),
   ];
 
-  return { root, human, palmBone, headBone, organs, pos, stations, bodyMats, timeUniform, globeMixer, backdrop, skyMat, dustMat };
+  return { root, human, palmBone, headBone, pos, stations, bodyMats, timeUniform, backdrop, skyMat, dustMat };
 }
 
 // --- Wrapper de fondu pour un module React embarqué (cerveau, ADN…) ---
@@ -403,14 +347,10 @@ function relaxRot(focus: string, active: boolean, dt: number) {
 // --- Contenu du Canvas ---
 export function SceneContents({ progressRef, coverRef, debug = false, linear = false }: { progressRef: RefObject<number>; coverRef?: RefObject<number>; debug?: boolean; linear?: boolean }) {
   const { scene } = useGLTF(HUMAN_URL, true); // true = décodeur Draco (GLB compressés)
-  const globe = useGLTF(GLOBE_URL, true);
   // cfgKey en dépendance → toute modif de CFG reconstruit la scène (sinon useMemo reste figé
   // car les modèles chargés ne changent pas de référence au Fast Refresh).
   const cfgKey = JSON.stringify(CFG);
-  const built = useMemo(
-    () => buildScene(scene, globe.scene, globe.animations),
-    [scene, globe.scene, globe.animations, cfgKey]
-  );
+  const built = useMemo(() => buildScene(scene), [scene, cfgKey]);
   const camera = useThree((s) => s.camera);
   const reduced = useReducedMotion(); // mouvement réduit : pas d'idle, matérialisation instantanée
 
@@ -426,11 +366,8 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
   useFrame((_, dt) => {
-    // reduced-motion : bandes du shader figées, globe sans animation interne
-    if (!reduced) {
-      built.timeUniform.value += dt;
-      if (built.globeMixer) built.globeMixer.update(dt);
-    }
+    // reduced-motion : bandes du shader figées
+    if (!reduced) built.timeUniform.value += dt;
 
     // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage/reduced-motion)
     if (reduced) mzRef.current = 1;
@@ -458,15 +395,10 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       built.skyMat.opacity = 0; built.dustMat.opacity = 0;
       built.bodyMats.forEach((m) => { if (m.userData.uOp) m.userData.uOp.value = 0.4; });
       FOCI.forEach((k) => { weightsRef.current[k] = 1; });
-      (Object.keys(built.organs)).forEach((key) => {
-        const o = built.organs[key];
-        o.group.scale.setScalar(o.base);
-        o.mats.forEach(({ m, base }) => { m.opacity = base; });
-      });
       return;
     }
 
-    const { stations, bodyMats, organs } = built;
+    const { stations, bodyMats } = built;
     const { i, f } = (linear ? linearStation : easedStation)(progressRef.current, stations.length);
     const A = stations[i], B = stations[i + 1];
 
@@ -536,32 +468,6 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const mrH = stH.manualRot.human;
     built.human.rotation.y = mrH?.y ?? 0;
     built.human.rotation.x = mrH?.x ?? 0;
-
-    // modules impératifs (globe) — le cerveau/ADN/cœur sont des composants React dédiés
-    (Object.keys(organs)).forEach((key) => {
-      const o = organs[key];
-      let w = weightsRef.current[o.focus] ?? 0;
-
-      // PREVIEW : le globe apparaît dans la paume à la station projets (entouré des cubes)
-      const inPalm = o.focus === 'globe' && PROJECTS_SHOW_GLOBE && (weightsRef.current.heart ?? 0) > 0.001 && !!palm;
-      if (inPalm && palm) {
-        palm.getWorldPosition(_hand.current);
-        _hand.current.y += 0.1;                         // un peu au-dessus de la paume
-        o.group.position.lerp(_hand.current, 0.3);
-        w = Math.max(w, weightsRef.current.heart ?? 0);
-      } else if (o.focus === 'globe') {
-        o.group.position.lerp(built.pos.globe, 0.2);     // retour à la station contact
-      }
-
-      const previewScale = inPalm ? 0.35 : 1;            // globe réduit dans la paume
-      const tgt = o.base * previewScale * (0.92 + w * 0.30);
-      o.group.scale.setScalar(THREE.MathUtils.lerp(o.group.scale.x, tgt, 0.2));
-      // le globe s'efface pendant la fin de session (place au corps qui se désintègre)
-      o.mats.forEach(({ m, base }) => { m.opacity = base * w * (o.focus === 'globe' ? (1 - esAppear) : 1); });
-      // rotation manuelle (l'anim interne du globe joue sur ses nœuds enfants → le wrap est libre)
-      const mr = stH.manualRot[o.focus];
-      if (mr) { o.group.rotation.y = mr.y; o.group.rotation.x = mr.x; }
-    });
   });
 
   return (
@@ -612,4 +518,3 @@ export default function AugmentedHumanScene() {
 
 useGLTF.preload(HUMAN_URL, true);
 useGLTF.preload(BRAIN_URL, true);
-useGLTF.preload(GLOBE_URL, true);

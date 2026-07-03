@@ -1,40 +1,28 @@
 'use client';
 
 import { Suspense, useMemo, useRef } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { PerspectiveCamera, Text } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '../../store/sceneStore';
+import IdCardMesh, { makeCardMaterial } from './IdCardMesh';
 
 const clamp = THREE.MathUtils.clamp;
 
-// Carte d'identité "artefact" — état éteint → lumineux via une scanline (piloté par endSessionProgress).
+// Carte "artefact" de la fin de session — LA MÊME pièce que la carte du hero
+// (IdCardMesh partagé), retrouvée éteinte puis réactivée par la scanline.
+// La boucle est bouclée : le site commence et finit sur cet objet.
 function CardModel() {
   const group = useRef<THREE.Group>(null);
   const scan = useRef<THREE.Mesh>(null);
   const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
-  const tex = useLoader(THREE.TextureLoader, '/images/id_card.jpg');
-
-  // même contour découpé que la carte du hero
-  const geometry = useMemo(() => {
-    const s = new THREE.Shape();
-    s.moveTo(-0.75, -0.5); s.lineTo(-0.05, -0.5); s.lineTo(0, -0.45); s.lineTo(0.6, -0.45);
-    s.lineTo(0.65, -0.5); s.lineTo(0.75, -0.5); s.lineTo(0.75, 0.5); s.lineTo(0.05, 0.5);
-    s.lineTo(0, 0.45); s.lineTo(-0.6, 0.45); s.lineTo(-0.65, 0.5); s.lineTo(-0.75, 0.5); s.lineTo(-0.75, -0.5);
-    return new THREE.ExtrudeGeometry(s, { depth: 0.02, bevelEnabled: false });
-  }, []);
-
-  // metalness modéré : la carte reste éclairée par les point lights sans HDRI (pas d'async → pas de "pop")
-  const cardMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#0a1a80', metalness: 0.55, roughness: 0.4, emissive: new THREE.Color('#0a1a66'), emissiveIntensity: 0 }),
-    []
-  );
+  const cardMat = useMemo(makeCardMaterial, []);
 
   useFrame((state) => {
     const g = group.current; if (!g) return;
     const store = useSceneStore.getState();
     const es = store.endSessionProgress ?? 0;
-    const reveal = clamp((es - 0.85) / 0.15, 0, 1); // 0→1 : la carte s'active
+    const reveal = clamp((es - 0.85) / 0.15, 0, 1); // 0→1 : la carte se réactive
     const t = state.clock.elapsedTime;
 
     // animation finale (message envoyé) : un tour + pulse
@@ -53,7 +41,7 @@ function CardModel() {
     g.position.y = Math.sin(t * 0.8) * 0.03;
     g.scale.setScalar(1.35 * (1 + pulse));
 
-    // activation : émissif qui monte
+    // activation : émissif qui monte (même matériau que la carte du hero)
     cardMat.emissiveIntensity = reveal * 0.7;
 
     // scanline qui traverse la carte une fois
@@ -67,27 +55,13 @@ function CardModel() {
 
   return (
     <group ref={group} scale={1.35}>
-      <mesh geometry={geometry} material={cardMat} />
-      {/* face imprimée */}
-      <mesh position={[0, 0, 0.012]}>
-        <planeGeometry args={[1.5, 0.8]} />
-        <meshBasicMaterial map={tex} toneMapped={false} transparent opacity={0.9} />
-      </mesh>
-      {/* scanline d'activation */}
-      <mesh ref={scan} position={[0, 0.52, 0.022]}>
-        <planeGeometry args={[1.6, 0.03]} />
-        <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      {/* LED */}
-      <mesh position={[0.68, 0.45, 0.022]}>
-        <sphereGeometry args={[0.02, 12, 12]} />
-        <meshBasicMaterial color="lime" />
-      </mesh>
-      {/* textes identité */}
-      <Text fontSize={0.075} color="#ffffff" position={[-0.68, 0.30, 0.022]} anchorX="left">ID: CHARLY MENTHILLER</Text>
-      <Text fontSize={0.033} color="#aaaaaa" position={[-0.68, 0.16, 0.022]} anchorX="left">&gt; FULL STACK DEVELOPER</Text>
-      <Text fontSize={0.03} color="#00ffcc" position={[-0.38, -0.26, 0.022]} anchorX="left">&gt; STATUS: AVAILABLE</Text>
-      <Text fontSize={0.03} color="#66ff88" position={[-0.38, -0.35, 0.022]} anchorX="left">&gt; MODE: ALTERNANCE</Text>
+      <IdCardMesh material={cardMat}>
+        {/* scanline d'activation */}
+        <mesh ref={scan} position={[0, 0.52, 0.024]}>
+          <planeGeometry args={[1.6, 0.03]} />
+          <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+      </IdCardMesh>
     </group>
   );
 }

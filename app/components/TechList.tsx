@@ -18,14 +18,15 @@ export default function TechList({
   onTechHover,
 }: Props) {
   return (
-    <div className="space-y-8">
+    // compact : TOUTES les catégories visibles d'un coup (pas de scroll caché)
+    <div className="space-y-5">
       {Object.entries(TECH_STACK).map(([category, items]) => (
         <div key={category} className="skill-category">
-          <h3 className="text-lg font-mono text-pink-400 mb-4">
+          <h3 className="text-sm font-mono text-pink-400 mb-2">
             &gt;&gt; {category}
           </h3>
 
-          <div className="grid grid-cols-4 gap-3 text-white">
+          <div className="grid grid-cols-4 gap-2 text-white">
             {items.map((tech) => {
               const id = tech.name.toLowerCase();
               const isSelected = selectedTech === id;
@@ -61,13 +62,13 @@ export default function TechList({
                   <img
                     src={`https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${tech.icon}/${tech.icon}-original.svg`}
                     alt={`${tech.name} logo`}
-                    width={40}
-                    height={40}
-                    className="w-10 h-10"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8"
                     loading="lazy"
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
                   />
-                  <span className="mt-1.5 text-xs font-mono text-cyan-300 text-center leading-tight">
+                  <span className="mt-1 text-[11px] font-mono text-cyan-300 text-center leading-tight">
                     {tech.name}
                   </span>
                   <div className="mt-1 flex gap-0.5 text-[8px] leading-none" aria-label={`Niveau ${tech.level} sur 3`}>

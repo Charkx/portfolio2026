@@ -102,18 +102,18 @@ export default function SkillsSection() {
   return (
     <section
       id="skills"
-      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-32 relative scroll-mt-[100px] md:bg-none"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-12 relative scroll-mt-[100px] md:bg-none"
     >
-      <h2 className="text-4xl font-bold text-cyan-400 mb-2 font-display z-10 text-center">
+      <h2 className="text-3xl md:text-4xl font-bold text-cyan-400 mb-2 font-display z-10 text-center">
         SKILLS:DNA_MODULE_ANALYSIS
       </h2>
-      <p className="text-lg text-cyan-100 mb-12 max-w-2xl text-center z-10">
+      <p className="text-sm md:text-base text-cyan-100 mb-4 max-w-3xl text-center z-10">
         Chaque technologie que j&apos;apprends devient un fragment de mon ADN de développeur.
         Cette section explore les modules qui composent mon code génétique professionnel.
       </p>
 
       {/* Filtre par niveau de maîtrise */}
-      <div className="flex flex-wrap justify-center gap-2 mb-12 z-10" role="group" aria-label="Filtrer par niveau">
+      <div className="flex flex-wrap justify-center gap-2 mb-6 z-10" role="group" aria-label="Filtrer par niveau">
         {LEVEL_FILTERS.map((f) => {
           const isActive = levelFilter === f.value;
           return (
@@ -133,11 +133,11 @@ export default function SkillsSection() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 z-10 w-full max-w-6xl relative">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 z-10 w-full max-w-6xl relative">
         <div className="relative w-full">
           {isMobile === false ? (
             // desktop : emplacement où le canvas partagé (page) se niche pour la station ADN
-            <div data-holo="skills" className="w-full cursor-grab touch-none" style={{ height: 'clamp(500px, 60vh, 800px)' }} title="Glisse pour faire pivoter" {...dragDNA} />
+            <div data-holo="skills" className="w-full cursor-grab touch-none" style={{ height: 'clamp(360px, 44vh, 520px)' }} title="Glisse pour faire pivoter" {...dragDNA} />
           ) : isMobile ? (
             <LazyMount className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }}>
               <DNAAnalysis
@@ -200,47 +200,37 @@ export default function SkillsSection() {
           )}
         </div>
 
-        <div className="glass-panel rounded-xl md:p-5">
-        <TechList
-          selectedTech={selectedTech}
-          hoveredTech={hoveredTech}
-          levelFilter={levelFilter}
-          onTechClick={handleTechClick}
-          onTechHover={handleTechHover}
-        />
+        <div className="flex flex-col gap-4 min-w-0">
+          <div className="glass-panel rounded-xl p-4 md:p-5">
+            <TechList
+              selectedTech={selectedTech}
+              hoveredTech={hoveredTech}
+              levelFilter={levelFilter}
+              onTechClick={handleTechClick}
+              onTechHover={handleTechHover}
+            />
+          </div>
+
+          {/* Légende : les 2 brins de l'hélice — dans la colonne texte (la zone 3D reste libre) */}
+          <div className="glass-panel rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {HELIX_STRANDS.map((strand) => (
+              <div key={strand.label} className="border-l-2 pl-3" style={{ borderColor: strand.color }}>
+                <h3 className="flex items-center gap-2 font-mono text-xs mb-2" style={{ color: strand.color }}>
+                  <span>●</span> {strand.label}
+                </h3>
+                <ul className="flex flex-wrap gap-1.5">
+                  {strand.items.map((item) => (
+                    <li key={item} className="text-[10px] px-2 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200 font-mono">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Légende : les 2 brins de l'hélice (ce qui relie les langages) */}
-      <div className="z-10 w-full max-w-6xl mt-14">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-          {HELIX_STRANDS.map((strand) => (
-            <div
-              key={strand.label}
-              className="border-l-2 pl-4"
-              style={{ borderColor: strand.color }}
-            >
-              <h3
-                className="flex items-center gap-2 font-mono text-sm mb-3"
-                style={{ color: strand.color }}
-              >
-                <span>●</span> {strand.label}
-              </h3>
-              <ul className="flex flex-wrap gap-2">
-                {strand.items.map((item) => (
-                  <li
-                    key={item}
-                    className="text-xs px-3 py-1.5 rounded-full border border-cyan-400/30
-                               bg-cyan-400/5 text-cyan-200 font-mono"
-                  >
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

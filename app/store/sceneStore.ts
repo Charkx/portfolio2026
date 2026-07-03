@@ -4,7 +4,7 @@ import { create } from "zustand"
 
 /**
  * État interactif partagé entre les contrôles HTML des sections et les modules
- * 3D embarqués dans le canvas humain (cerveau, ADN, globe…).
+ * 3D embarqués dans le canvas humain (cerveau, ADN, cubes…).
  * Le HTML écrit, le module 3D lit → l'interactivité est préservée dans l'humain.
  */
 interface SceneState {
