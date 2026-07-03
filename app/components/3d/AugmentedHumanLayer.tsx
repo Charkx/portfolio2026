@@ -34,9 +34,8 @@ const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
 
 export default function AugmentedHumanLayer() {
   const [desktop, setDesktop] = useState(false);
-  const cardActive = useSceneStore((s) => s.endSessionCardActive); // carte révélée → on gèle ce canvas
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef(0.5);
+  const progressRef = useRef(0); // station hero au départ (écran verrouillé : environnement seul)
   const coverRef = useRef(1); // canvas permanent → l'environnement (voûte/poussière) est toujours visible
 
   useEffect(() => {
@@ -54,12 +53,7 @@ export default function AugmentedHumanLayer() {
     const loop = () => {
       const w = wrapperRef.current;
       if (w) {
-        // carte révélée (fin de session) → canvas masqué + gelé (frameloop:never)
-        if (useSceneStore.getState().endSessionCardActive) {
-          w.style.opacity = '0';
-          raf = requestAnimationFrame(loop);
-          return;
-        }
+        // l'environnement reste visible même pendant la carte finale (fin de session)
         w.style.opacity = '1';
         const mid = window.innerHeight / 2;
         // (re)résout les slots tant qu'ils ne sont pas trouvés
@@ -109,7 +103,7 @@ export default function AugmentedHumanLayer() {
       style={{ position: 'fixed', inset: 0, zIndex: 5, pointerEvents: 'none', opacity: 0, transition: 'opacity .6s' }}>
       {/* pointerEvents:none explicite → R3F met `auto` par défaut sur son conteneur et
           intercepterait le drag destiné aux slots HTML (rotation manuelle des modules). */}
-      <Canvas frameloop={cardActive ? 'never' : 'always'} style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas frameloop="always" style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
         <ambientLight intensity={1} />
         <Suspense fallback={<Loader />}>
           <SceneContents progressRef={progressRef} coverRef={coverRef} linear />

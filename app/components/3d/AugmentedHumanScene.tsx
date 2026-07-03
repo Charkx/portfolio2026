@@ -10,6 +10,7 @@ import { BrainModel } from './CognitiveProfil';
 import DNAHelix from './DNAHelix';
 import DataCubes from './DataCubes';
 import { useSceneStore } from '../../store/sceneStore';
+import { usePortfolioStore } from '../../store/portfolioStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { TECH_STACK } from '../../utils/constants';
 
@@ -370,9 +371,12 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     // reduced-motion : bandes du shader figées
     if (!reduced) built.timeUniform.value += dt;
 
-    // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage/reduced-motion)
-    if (reduced) mzRef.current = 1;
-    if (!debug && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
+    // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage/reduced-motion).
+    // Tant que l'accès est verrouillé, le corps reste invisible : le canvas permanent
+    // ne montre que l'environnement (voûte + poussière) derrière la carte biométrique.
+    const unlocked = usePortfolioStore.getState().introPhase === 'UNLOCKED';
+    if (reduced) mzRef.current = unlocked ? 1 : 0;
+    if (!debug && unlocked && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
     const mz = debug ? 1 : mzRef.current;
     // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection
     const es = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);

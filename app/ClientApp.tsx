@@ -97,13 +97,16 @@ export default function ClientApp() {
       <CustomCursor />
       <ARInterface />
       <main className="relative z-10">
+        {/* environnement permanent (voûte + poussière cyan) : présent du verrouillage
+            à la carte finale — le corps holographique ne se matérialise qu'au déverrouillage */}
+        <AugmentedHumanLayer />
+
         <HeroSection
           onScan={() => { if (introPhase === "LOCKED") setIntroPhase("SCANNING") }}
         />
 
         {introPhase === "UNLOCKED" && (
           <>
-              <AugmentedHumanLayer />
               <ErrorBoundary fallback={null}>
                 <AboutSection />
               </ErrorBoundary>

@@ -272,10 +272,11 @@ let drone: { stop: () => void } | null = null
 function startDrone() {
   if (!ctx || !master || !reverbIn || drone) return
   const c = ctx
+  // PAS de bruit ni d'envoi réverbe continu : sur une nappe tenue, la réverbe à
+  // IR bruitée produit un grésillement permanent. Ici : sinus purs uniquement.
   const bus = c.createGain(); bus.gain.value = 0.0001
-  const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 340; flt.Q.value = 1.6
+  const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 260; flt.Q.value = 0.7
   flt.connect(bus); bus.connect(master)
-  const s = c.createGain(); s.gain.value = 0.35; bus.connect(s); s.connect(reverbIn)
   const oscs: OscillatorNode[] = []
 
   // un LFO unique pilote le fondu croisé : accord A en phase, accord B en opposition (gain inversé)
@@ -285,8 +286,8 @@ function startDrone() {
     const depth = c.createGain(); depth.gain.value = invert ? -0.45 : 0.45
     xfade.connect(depth); depth.connect(g.gain)
     freqs.forEach((f, i) => {
-      const o = c.createOscillator(); o.type = i === 2 ? 'triangle' : 'sine'; o.frequency.value = f
-      o.detune.value = (i - 1) * 4 // léger désaccord → battements lents "vivants"
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f
+      o.detune.value = (i - 1) * 2.5 // très léger désaccord → battements lents "vivants"
       o.connect(g); o.start(); oscs.push(o)
     })
     g.connect(flt)
@@ -294,24 +295,15 @@ function startDrone() {
   mkChord([55, 82.4, 130.8], false) // Am (A1 · E2 · C3)
   mkChord([49, 73.4, 123.5], true)  // G  (G1 · D2 · B2)
 
-  // souffle d'air très discret (respire avec le fondu)
-  const air = c.createBufferSource(); air.buffer = noiseBuffer(c); air.loop = true
-  const airFlt = c.createBiquadFilter(); airFlt.type = 'bandpass'; airFlt.frequency.value = 320; airFlt.Q.value = 0.8
-  const airG = c.createGain(); airG.gain.value = 0.012
-  const airDepth = c.createGain(); airDepth.gain.value = 0.008
-  xfade.connect(airDepth); airDepth.connect(airG.gain)
-  air.connect(airFlt); airFlt.connect(airG); airG.connect(bus)
-  air.start()
-
-  // étincelles réverbérées, espacées et aléatoires — l'espace semble habité
+  // étincelles réverbérées, espacées et aléatoires — courtes, donc la réverbe reste propre
   const sparkle = window.setInterval(() => {
     if (!enabled || Math.random() > 0.7) return
-    tone({ f0: 1200 + Math.random() * 1600, dur: 0.4, peak: 0.018, send: 0.8 })
+    tone({ f0: 1200 + Math.random() * 1600, dur: 0.4, peak: 0.014, send: 0.8 })
   }, 9000)
 
   const now = c.currentTime
   bus.gain.setValueAtTime(0.0001, now)
-  bus.gain.exponentialRampToValueAtTime(0.032, now + 2)
+  bus.gain.exponentialRampToValueAtTime(0.026, now + 2.5)
   drone = {
     stop: () => {
       window.clearInterval(sparkle)
@@ -320,7 +312,6 @@ function startDrone() {
       bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), t)
       bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.7)
       oscs.forEach((o) => o.stop(t + 0.8))
-      air.stop(t + 0.8)
     },
   }
 }
