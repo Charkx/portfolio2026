@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useMemo } from "react"
 import { usePortfolioStore} from "../store/portfolioStore"
 
 
@@ -19,8 +19,10 @@ function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T 
 export function useOptimizedScroll() {
   const { setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel, setScrollProgress} = usePortfolioStore()
 
-  const handleScroll = useCallback(
-    throttle(() => {
+  // useMemo (pas useCallback) : la fonction throttlée n'est créée qu'une fois,
+  // sinon throttle() serait ré-exécuté à chaque render
+  const handleScroll = useMemo(
+    () => throttle(() => {
       const scrollY = window.scrollY
       const windowHeight = window.innerHeight
       const documentHeight = document.documentElement.scrollHeight
@@ -54,6 +56,7 @@ export function useOptimizedScroll() {
     }, 16), // ~60fps
     [setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel, setScrollProgress],
   )
+
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true })

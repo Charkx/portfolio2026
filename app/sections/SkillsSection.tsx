@@ -63,7 +63,7 @@ export default function SkillsSection() {
       });
     });
     return () => ctx.revert();
-  }, []);
+  }, [setVisibleTechs]);
 
   // -- Clic sur une tech (depuis la liste ou le canvas) --
   const handleTechClick = useCallback((techName: string) => {
@@ -74,15 +74,15 @@ export default function SkillsSection() {
     audioEngine.play('molecular');
   }, []);
 
-  // Donnée de la techno sélectionnée (pour le panneau de décodage)
-  const decoded = useMemo(() => {
-    if (!selectedTech) return null;
+  // Donnée de la techno sélectionnée (pour le panneau de décodage) — calcul trivial,
+  // pas de useMemo : le React Compiler mémoïse mieux sans contrainte manuelle
+  let decoded: { tech: (typeof ALL_TECHS)[number]; category: string } | null = null;
+  if (selectedTech) {
     for (const [category, items] of Object.entries(TECH_STACK)) {
       const tech = items.find((t) => t.name.toLowerCase() === selectedTech);
-      if (tech) return { tech, category };
+      if (tech) { decoded = { tech, category }; break; }
     }
-    return null;
-  }, [selectedTech]);
+  }
 
   // Techs affichées dans l'hélice : révélées au scroll ET au niveau filtré
   const shownTechs = useMemo(
@@ -96,7 +96,7 @@ export default function SkillsSection() {
   // -- Hover --
   const handleTechHover = useCallback((techName: string | null) => {
     setHoveredTech(techName ? techName.toLowerCase() : null);
-  }, []);
+  }, [setHoveredTech]);
 
 
   return (

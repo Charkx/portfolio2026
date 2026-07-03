@@ -74,7 +74,7 @@ export function useProjectManager(projects: Project[]) {
     }, project.extractionTime + 500);
 
     timersRef.current = [t1, t2];
-  }, [state.selectedProject, state.memoryFragments, projects, clearTimers]);
+  }, [state.selectedProject, projects, clearTimers]);
 
   const reset = useCallback(() => {
     clearTimers();

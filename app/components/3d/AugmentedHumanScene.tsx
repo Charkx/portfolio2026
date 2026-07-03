@@ -350,6 +350,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   // cfgKey en dépendance → toute modif de CFG reconstruit la scène (sinon useMemo reste figé
   // car les modèles chargés ne changent pas de référence au Fast Refresh).
   const cfgKey = JSON.stringify(CFG);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cfgKey est volontairement en trop (rebuild au Fast Refresh)
   const built = useMemo(() => buildScene(scene), [scene, cfgKey]);
   const camera = useThree((s) => s.camera);
   const reduced = useReducedMotion(); // mouvement réduit : pas d'idle, matérialisation instantanée
