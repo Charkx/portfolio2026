@@ -191,15 +191,20 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
           <Block label="Contexte">{project.probleme ?? project.description}</Block>
           <Block label="Ma contribution">{project.solution ?? project.contribution}</Block>
           <Block label="Résultat">
-            {project.resultat ?? (project.highlights?.length ? (
-              <ul className="flex flex-wrap gap-2">
-                {project.highlights.map((h) => (
-                  <li key={h} className="text-xs px-2.5 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200 font-mono">
-                    ✓ {h}
-                  </li>
-                ))}
-              </ul>
-            ) : null)}
+            {project.resultat || project.highlights?.length ? (
+              <>
+                {project.resultat && <p>{project.resultat}</p>}
+                {project.highlights?.length ? (
+                  <ul className={`flex flex-wrap gap-2 ${project.resultat ? 'mt-3' : ''}`}>
+                    {project.highlights.map((h) => (
+                      <li key={h} className="text-xs px-2.5 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200 font-mono">
+                        ✓ {h}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : null}
           </Block>
 
           {/* stack technique */}
