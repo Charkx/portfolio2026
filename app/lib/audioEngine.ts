@@ -17,8 +17,10 @@ export type Cue =
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let reverbIn: GainNode | null = null
+let out: GainNode | null = null // sortie finale : volume global (dry + réverbe, mix préservé)
 let noiseBuf: AudioBuffer | null = null
 let enabled = false
+let volume = 1 // 0..1 — piloté par les barres du HUD (persisté côté store)
 
 // impulse response synthétique (réverbe) : bruit à décroissance exponentielle, stéréo
 function makeIR(c: AudioContext, dur: number, decay: number): AudioBuffer {
@@ -37,15 +39,18 @@ function ensureCtx(): AudioContext | null {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     if (!AC) return null
     ctx = new AC()
+    out = ctx.createGain()
+    out.gain.value = volume
+    out.connect(ctx.destination)
     master = ctx.createGain()
     master.gain.value = 0.5
-    master.connect(ctx.destination)
+    master.connect(out)
     // bus de réverbe (espace sci-fi)
     const conv = ctx.createConvolver()
     conv.buffer = makeIR(ctx, 1.1, 2.6)
     reverbIn = ctx.createGain()
     const wet = ctx.createGain(); wet.gain.value = 0.85
-    reverbIn.connect(conv); conv.connect(wet); wet.connect(ctx.destination)
+    reverbIn.connect(conv); conv.connect(wet); wet.connect(out)
   }
   return ctx
 }
@@ -270,6 +275,17 @@ export const audioEngine = {
   },
   disable() { enabled = false; stopDrone() },
   isEnabled: () => enabled,
+  // volume global 0..1 (rampe courte pour éviter les clics) — mémorisé même avant la création du contexte
+  setVolume(v: number) {
+    volume = Math.min(Math.max(v, 0), 1)
+    if (ctx && out) {
+      const t = ctx.currentTime
+      out.gain.cancelScheduledValues(t)
+      out.gain.setValueAtTime(out.gain.value, t)
+      out.gain.linearRampToValueAtTime(volume, t + 0.08)
+    }
+  },
+  getVolume: () => volume,
   play(cue: Cue) {
     if (!enabled) return
     const c = ensureCtx(); if (!c || !master) return

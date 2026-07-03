@@ -41,6 +41,8 @@ export default function ARInterface() {
   const openModal = useModalStore((s) => s.open);
   const soundEnabled = useAudioStore((s) => s.enabled);
   const toggleSound = useAudioStore((s) => s.toggle);
+  const volume = useAudioStore((s) => s.volume);
+  const setVolume = useAudioStore((s) => s.setVolume);
 
   // Ouvre le CV dans la modale (sans quitter la page) — le href reste le repli sans JS.
   const openCv = (e: React.MouseEvent) => {
@@ -104,17 +106,38 @@ export default function ARInterface() {
             <span className="hidden sm:inline">MEMORY_DUMP</span>
           </a>
         </HudTooltip>
-        <HudTooltip label={soundEnabled ? "Couper le son" : "Activer le son (effets de section)"}>
-          <button
-            aria-label={soundEnabled ? "Couper le son" : "Activer le son"}
-            aria-pressed={soundEnabled}
-            className={`transition-colors cursor-pointer ${soundEnabled ? "text-cyan-300 hover:text-cyan-100" : "text-cyan-400/50 hover:text-cyan-200"}`}
-            onClick={toggleSound}
-            onMouseEnter={() => audioEngine.play('hover')}
-          >
-            {soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
-          </button>
-        </HudTooltip>
+        <div className="flex items-center gap-2">
+          <HudTooltip label={soundEnabled ? "Couper le son" : "Activer le son (effets de section)"}>
+            <button
+              aria-label={soundEnabled ? "Couper le son" : "Activer le son"}
+              aria-pressed={soundEnabled}
+              className={`transition-colors cursor-pointer ${soundEnabled ? "text-cyan-300 hover:text-cyan-100" : "text-cyan-400/50 hover:text-cyan-200"}`}
+              onClick={toggleSound}
+              onMouseEnter={() => audioEngine.play('hover')}
+            >
+              {soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
+            </button>
+          </HudTooltip>
+          {/* volume en barres de signal (langage HUD) : cliquer une barre = niveau n/5,
+              cliquer alors que le son est coupé = le réactiver à ce niveau */}
+          <div role="group" aria-label="Volume du son" className="flex items-end gap-[3px] h-4">
+            {[1, 2, 3, 4, 5].map((n) => {
+              const lit = soundEnabled && volume >= n / 5 - 0.001;
+              return (
+                <button
+                  key={n}
+                  aria-label={`Volume ${n} sur 5`}
+                  aria-pressed={lit}
+                  onClick={() => setVolume(n / 5)}
+                  onMouseEnter={() => audioEngine.play('hover')}
+                  className={`w-[4px] rounded-[1px] cursor-pointer transition-colors
+                              ${lit ? "bg-cyan-300 hover:bg-cyan-100" : "bg-cyan-400/25 hover:bg-cyan-400/60"}`}
+                  style={{ height: `${5 + n * 2.2}px` }}
+                />
+              );
+            })}
+          </div>
+        </div>
         <HudTooltip label={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}>
           <button
             aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}

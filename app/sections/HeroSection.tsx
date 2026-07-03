@@ -1,9 +1,11 @@
 "use client"
+import { useCallback, useState } from "react"
 import dynamic from "next/dynamic"
 import TerminalDisplay from "../components/ui/TerminalDisplay"
 import { ErrorBoundary } from "../hooks/ErrorBoundary"
 import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
+import { useAudioStore } from "../store/audioStore"
 import { useDragRotate } from "../hooks/useDragRotate"
 
 // Canvas 3D (Three.js) chargé côté client après le 1er paint : le shell du Hero
@@ -25,6 +27,15 @@ export default function HeroSection({
   const { introPhase, setIntroPhase } = usePortfolioStore()
   const unlocked = introPhase === "UNLOCKED"
   const dragHuman = useDragRotate("human")
+
+  // Opt-in audio : le choix est fait AVANT d'entrer, appliqué au clic (geste utilisateur
+  // → l'AudioContext a le droit de démarrer). Le HUD permet de changer d'avis ensuite.
+  const setSoundEnabled = useAudioStore((s) => s.setEnabled)
+  const [audioOptIn, setAudioOptIn] = useState(true)
+  const enterWith = useCallback((enter: () => void) => {
+    setSoundEnabled(audioOptIn)
+    enter()
+  }, [audioOptIn, setSoundEnabled])
 
   return (
     <section
@@ -55,7 +66,7 @@ export default function HeroSection({
                 </div>
               }
             >
-              <BiometricCard onScan={onScan} />
+              <BiometricCard onScan={() => enterWith(onScan)} />
             </ErrorBoundary>
           </LazyMount>
         </div>
@@ -67,20 +78,47 @@ export default function HeroSection({
         {!unlocked && (
           <div className="flex flex-col items-center gap-3">
             {introPhase === "LOCKED" && (
-              <button
-                type="button"
-                onClick={onScan}
-                className="px-6 py-2.5 rounded-lg border border-cyan-400/60 bg-cyan-400/5 text-cyan-300
-                           font-mono text-sm tracking-[0.2em] cursor-pointer transition-all
-                           hover:bg-cyan-400/15 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)]
-                           focus-visible:outline-2 focus-visible:outline-cyan-400"
-              >
-                INITIER LE SCAN
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => enterWith(onScan)}
+                  className="px-6 py-2.5 rounded-lg border border-cyan-400/60 bg-cyan-400/5 text-cyan-300
+                             font-mono text-sm tracking-[0.2em] cursor-pointer transition-all
+                             hover:bg-cyan-400/15 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)]
+                             focus-visible:outline-2 focus-visible:outline-cyan-400"
+                >
+                  INITIER LE SCAN
+                </button>
+                {/* choix du son avant d'entrer — l'expérience est pensée avec, mais jamais imposée */}
+                <div className="flex items-center gap-2 font-mono text-xs text-cyan-400/60">
+                  <span aria-hidden="true">&gt;</span>
+                  <span id="audio-optin-label">FLUX AUDIO :</span>
+                  <div role="group" aria-labelledby="audio-optin-label" className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      aria-pressed={audioOptIn}
+                      onClick={() => setAudioOptIn(true)}
+                      className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
+                                  ${audioOptIn ? "text-cyan-300" : "text-gray-600 hover:text-cyan-400/80"}`}
+                    >
+                      [ACTIVÉ]
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={!audioOptIn}
+                      onClick={() => setAudioOptIn(false)}
+                      className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
+                                  ${!audioOptIn ? "text-cyan-300" : "text-gray-600 hover:text-cyan-400/80"}`}
+                    >
+                      [COUPÉ]
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
             <button
               type="button"
-              onClick={() => setIntroPhase("UNLOCKED")}
+              onClick={() => enterWith(() => setIntroPhase("UNLOCKED"))}
               className="text-gray-500 hover:text-cyan-300 font-mono text-xs underline underline-offset-4
                          cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400"
             >
