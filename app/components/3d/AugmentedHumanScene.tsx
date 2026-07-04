@@ -107,10 +107,12 @@ export function linearStation(prog: number, count: number): { i: number; f: numb
 }
 
 // --- Matériau holographique (injecté → conserve le skinning) ---
-// pulse = onde glitch au clic : uniforms PARTAGÉS par tous les matériaux du corps
+// pulse  = onde glitch au clic (uniforms PARTAGÉS par tous les matériaux du corps)
+// cursor = "l'hologramme te sent" : halo qui suit le curseur sur la surface (station intro)
 type Pulse = { t: { value: number }; o: { value: THREE.Vector3 } };
+type Cursor = { p: { value: THREE.Vector3 }; amt: { value: number } };
 
-function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
+function makeHolo(timeUniform: { value: number }, pulse: Pulse, cursor: Cursor) {
   // émissif cyan = filet de sécurité : visible même si l'injection du shader échoue
   const m = new THREE.MeshStandardMaterial({
     color: 0x000000, emissive: CYAN, emissiveIntensity: 0.6,
@@ -123,6 +125,8 @@ function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
     sh.uniforms.uEdge = { value: 1 }; // multiplicateur de l'edge glow (boost à la désintégration)
     sh.uniforms.uPulseT = pulse.t;   // temps écoulé depuis le clic (99 = onde inactive)
     sh.uniforms.uPulseO = pulse.o;   // origine de l'onde (point cliqué, monde)
+    sh.uniforms.uCursor = cursor.p;    // position monde du curseur (projetée sur le plan du corps)
+    sh.uniforms.uCursorAmt = cursor.amt; // 0..1 : force du halo (nul hors station d'intro)
     m.userData.uOp = sh.uniforms.uOp;
     m.userData.uMz = sh.uniforms.uMz;
     m.userData.uEdge = sh.uniforms.uEdge;
@@ -130,7 +134,7 @@ function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
       .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
       .replace('#include <skinning_vertex>', '#include <skinning_vertex>\n vWPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;\nuniform float uPulseT;\nuniform vec3 uPulseO;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;\nuniform float uPulseT;\nuniform vec3 uPulseO;\nuniform vec3 uCursor;\nuniform float uCursorAmt;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         float fres=pow(1.0-abs(dot(normalize(vNormal),normalize(vViewPosition))),2.0);
         float band=smoothstep(0.45,1.0,0.5+0.5*sin(vWPos.y*140.0-uTime*2.5));
@@ -149,6 +153,11 @@ function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
         float ring=smoothstep(0.14,0.0,abs(pd-pr))*max(0.0,1.0-uPulseT*0.85)*reveal;
         col+=vec3(0.45,1.0,1.0)*ring*1.8;
         a+=ring*0.55;
+        // "l'hologramme te sent" : halo doux + bandes densifiées sous le curseur (suit la souris)
+        float cd=distance(vWPos,uCursor);
+        float glow=smoothstep(0.7,0.0,cd)*uCursorAmt*reveal;
+        col+=vec3(0.5,1.0,1.0)*glow*(0.9+band*0.6);
+        a+=glow*0.5;
         gl_FragColor=vec4(col,a);`);
   };
   return m;
@@ -170,6 +179,8 @@ function buildScene(srcScene: THREE.Object3D) {
   const timeUniform = { value: 0 };
   // onde glitch au clic : uniforms partagés (t=99 → inactive au départ)
   const pulse: Pulse = { t: { value: 99 }, o: { value: new THREE.Vector3() } };
+  // halo qui suit le curseur ("l'hologramme te sent") : uniforms partagés
+  const cursor: Cursor = { p: { value: new THREE.Vector3() }, amt: { value: 0 } };
   const bodyMats: THREE.Material[] = [];
 
   const human = skeletonClone(srcScene);
@@ -178,7 +189,7 @@ function buildScene(srcScene: THREE.Object3D) {
     if (!mesh.isMesh) return;
     // sphère tenue dans la main → masquée (visible=false n'altère PAS la bbox → corps inchangé)
     if (mesh.name.toLowerCase().includes('sphere')) { mesh.visible = false; return; }
-    const mat = makeHolo(timeUniform, pulse); mesh.material = mat; mesh.frustumCulled = false; bodyMats.push(mat);
+    const mat = makeHolo(timeUniform, pulse, cursor); mesh.material = mat; mesh.frustumCulled = false; bodyMats.push(mat);
   });
 
   // échelle → 1.8 de haut, pieds au sol, centré en x
@@ -262,7 +273,7 @@ function buildScene(srcScene: THREE.Object3D) {
     frame('contact', 0.55), // corps visible à l'arrivée (avant la désintégration scrubbée)
   ];
 
-  return { root, human, palmBone, headBone, headBaseQuat, pos, stations, bodyMats, timeUniform, pulse, backdrop, skyMat, dustMat };
+  return { root, human, palmBone, headBone, headBaseQuat, pos, stations, bodyMats, timeUniform, pulse, cursor, backdrop, skyMat, dustMat };
 }
 
 // --- Wrapper de fondu pour un module React embarqué (cerveau, ADN…) ---
@@ -396,6 +407,10 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const heroWRef = useRef(0);
   const _lookE = useRef(new THREE.Euler());
   const _lookQ = useRef(new THREE.Quaternion());
+  // halo du curseur : raycast du pointeur sur le plan du corps (z=0)
+  const _cursorRay = useRef(new THREE.Raycaster());
+  const _cursorNdc = useRef(new THREE.Vector2());
+  const _bodyPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
 
   // le canvas est pointer-events:none → on écoute la fenêtre
   useEffect(() => {
@@ -547,6 +562,16 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _lookE.current.set(lookRef.current.pitch, lookRef.current.yaw, 0);
       _lookQ.current.setFromEuler(_lookE.current);
       built.headBone.quaternion.copy(built.headBaseQuat).multiply(_lookQ.current);
+    }
+
+    // "L'HOLOGRAMME TE SENT" : halo qui suit le curseur sur la surface du corps.
+    // On projette le pointeur sur le plan du corps (z=0) → position monde pour le shader.
+    // amt = heroW → le halo n'existe qu'à la station d'intro, nul en reduced-motion.
+    built.cursor.amt.value = reduced ? 0 : heroW;
+    if (heroW > 0.01 && !reduced) {
+      _cursorNdc.current.set(pointerRef.current.x, pointerRef.current.y);
+      _cursorRay.current.setFromCamera(_cursorNdc.current, camera);
+      _cursorRay.current.ray.intersectPlane(_bodyPlane.current, built.cursor.p.value);
     }
   });
 
