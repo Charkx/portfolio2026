@@ -16,6 +16,7 @@ export type Cue =
   | 'modalOpen' | 'modalClose'           // ouverture/fermeture de modale
   | 'nav'                                // navigation HUD
   | 'grab' | 'release'                   // attraper/relâcher un module 3D (drag)
+  | 'collect'                            // hero — récolte d'une luciole de données
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
@@ -262,6 +263,12 @@ const CUES: Record<Cue, () => void> = {
   // --- Drag d'un module 3D : attraper (grave) / relâcher (léger) ---
   grab:    () => tone({ type: 'sine', f0: 190, f1: 120, dur: 0.08, peak: 0.05, send: 0.2 }),
   release: () => tone({ type: 'sine', f0: 120, f1: 210, dur: 0.07, peak: 0.035, send: 0.2 }),
+
+  // --- Hero : récolte d'une luciole (petit scintillement cristallin ascendant) ---
+  collect: () => {
+    tone({ type: 'triangle', f0: 880, f1: 1320, dur: 0.14, peak: 0.05, send: 0.4 })
+    tone({ type: 'sine', f0: 1760, dur: 0.12, peak: 0.03, t: 0.05, send: 0.55 })
+  },
 }
 
 // --- Musique générative : un seul motif Am↔F, deux relectures ---

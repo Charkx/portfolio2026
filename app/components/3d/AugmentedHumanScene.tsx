@@ -369,119 +369,124 @@ function relaxRot(focus: string, active: boolean, dt: number) {
   mr.y = THREE.MathUtils.lerp(mr.y, 0, k);
 }
 
-// --- Mini-jeu "defend" (station d'intro) : des cubes-menace dérivent vers l'hologramme.
-// Clic = on les fait exploser (pop + son) ; s'ils touchent le corps = onde de choc glitch
-// (pas de game-over, juste une conséquence visuelle). Réutilise le uniform `pulse` du corps.
-const DEF_COUNT = 6;               // menaces simultanées (pool réutilisé)
-const DEF_CUBE = 0.17;             // arête d'un cube
-const DEF_SPAWN_R = 2.3;           // rayon d'apparition autour de la cible
-const DEF_TARGET = new THREE.Vector3(0, 1.0, 0); // torse de l'hologramme
-const DEF_HIT_R = 0.5;             // collision avec le corps
-const DEF_POP_DUR = 0.32;          // durée de l'explosion (pop)
-const DEF_MENACE = '#ff3b6b';      // rose-rouge = menace
+// --- Lucioles de données (station d'intro) : de petites lueurs flottent autour de
+// l'hologramme. On les RÉCOLTE en balayant la souris dessus (proximité, pas de clic) :
+// la luciole file dans le corps, éclate en éclat lumineux + carillon. Positif, sans
+// répétition pénible, incite au mouvement de la souris. (Le mini-jeu "defend" vit
+// ailleurs — page easter-egg.) Le mini-jeu défensif est conservé dans l'historique git.
+const MOTE_COUNT = 10;             // lucioles simultanées
+const MOTE_TARGET = new THREE.Vector3(0, 1.0, 0); // cœur de l'hologramme (destination)
+const MOTE_COLLECT_R = 0.32;       // rayon de récolte autour du curseur (monde)
+const MOTE_SIZE = 0.035;           // taille d'une luciole
 
-type DefCube = {
-  pos: THREE.Vector3; dir: THREE.Vector3; spin: THREE.Vector3;
-  speed: number; alive: boolean; respawnAt: number; pop: number;
+type Mote = {
+  base: THREE.Vector3;  // centre de flottement
+  pos: THREE.Vector3;   // position courante
+  phase: number;        // phase du drift (déphasage par luciole)
+  collected: boolean;
+  ct: number;           // 0→1 : absorption dans le corps
+  respawnAt: number;
 };
 
-function HeroDefense({ heroWRef, pulse }: { heroWRef: RefObject<number>; pulse: Pulse }) {
+function randomMoteBase(m: Mote) {
+  // volume devant l'hologramme, dans le cadre caméra
+  m.base.set((Math.random() - 0.5) * 3.0, 0.3 + Math.random() * 1.7, -0.3 + Math.random() * 1.4);
+  m.phase = Math.random() * Math.PI * 2;
+}
+
+function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
   const reduced = useReducedMotion();
   const camera = useThree((s) => s.camera);
   const meshes = useRef<(THREE.Mesh | null)[]>([]);
-  const mats = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
+  const mats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
   const clock = useRef(0);
+  const pointer = useRef({ x: 0, y: 0 });
   const _ndc = useRef(new THREE.Vector2());
   const _ray = useRef(new THREE.Raycaster());
-  const cubes = useRef<DefCube[]>(
-    Array.from({ length: DEF_COUNT }, () => ({
-      pos: new THREE.Vector3(), dir: new THREE.Vector3(), spin: new THREE.Vector3(),
-      speed: 0.5, alive: false, respawnAt: 0.4 + Math.random() * 1.5, pop: 0,
-    }))
+  const _plane = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
+  const _cursor = useRef(new THREE.Vector3());
+  const motes = useRef<Mote[]>(
+    Array.from({ length: MOTE_COUNT }, () => {
+      const m: Mote = { base: new THREE.Vector3(), pos: new THREE.Vector3(), phase: 0, collected: false, ct: 0, respawnAt: 0 };
+      randomMoteBase(m);
+      return m;
+    })
   );
 
-  const spawn = (c: DefCube) => {
-    const ang = Math.random() * Math.PI * 2;
-    const r = DEF_SPAWN_R * (0.85 + Math.random() * 0.3);
-    c.pos.set(
-      DEF_TARGET.x + Math.cos(ang) * r,
-      DEF_TARGET.y + Math.sin(ang) * r * 0.7,
-      DEF_TARGET.z + (Math.random() - 0.5) * 1.0,
-    );
-    c.dir.copy(DEF_TARGET).sub(c.pos).normalize();
-    c.speed = 0.42 + Math.random() * 0.4;
-    c.spin.set(Math.random() * 2, Math.random() * 2, Math.random() * 2);
-    c.alive = true; c.pop = 0;
-  };
-
-  // clic → explose le cube visé (raycast manuel : le canvas est pointer-events:none)
+  // le canvas est pointer-events:none → on suit la souris sur la fenêtre
   useEffect(() => {
-    const onDown = (e: PointerEvent) => {
-      if ((heroWRef.current ?? 0) < 0.5 || reduced) return;
-      _ndc.current.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
-      _ray.current.setFromCamera(_ndc.current, camera);
-      const targets = meshes.current.filter((m, i) => m && cubes.current[i].alive && cubes.current[i].pop === 0) as THREE.Mesh[];
-      const hits = _ray.current.intersectObjects(targets, false);
-      if (!hits.length) return;
-      const idx = meshes.current.indexOf(hits[0].object as THREE.Mesh);
-      if (idx >= 0) { cubes.current[idx].pop = DEF_POP_DUR; audioEngine.play('derez'); }
+    const onMove = (e: PointerEvent) => {
+      pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
     };
-    window.addEventListener('pointerdown', onDown);
-    return () => window.removeEventListener('pointerdown', onDown);
-  }, [camera, reduced, heroWRef]);
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
 
   useFrame((_, dt) => {
     const active = (heroWRef.current ?? 0) > 0.5 && !reduced;
     clock.current += dt;
-    cubes.current.forEach((c, i) => {
+
+    // position monde du curseur : projeté sur le plan du corps (z=0)
+    if (active) {
+      _ndc.current.set(pointer.current.x, pointer.current.y);
+      _ray.current.setFromCamera(_ndc.current, camera);
+      _ray.current.ray.intersectPlane(_plane.current, _cursor.current);
+    }
+
+    motes.current.forEach((m, i) => {
       const mesh = meshes.current[i], mat = mats.current[i];
       if (!mesh || !mat) return;
-      if (!active) { mesh.visible = false; c.alive = false; c.respawnAt = clock.current + 0.3 + Math.random(); return; }
-
-      if (!c.alive) {
-        mesh.visible = false;
-        if (clock.current >= c.respawnAt) spawn(c);
-        return;
-      }
+      if (!active) { mesh.visible = false; return; }
       mesh.visible = true;
 
-      if (c.pop > 0) {
-        // explosion : le cube gonfle et s'efface
-        c.pop -= dt;
-        const p = 1 - Math.max(c.pop, 0) / DEF_POP_DUR; // 0 → 1
-        mesh.scale.setScalar(DEF_CUBE * (1 + p * 2.4));
-        mat.opacity = Math.max(0, 1 - p);
-        if (c.pop <= 0) { c.alive = false; c.respawnAt = clock.current + 0.5 + Math.random() * 1.4; }
+      if (m.collected) {
+        // absorption : file vers le cœur, brille puis disparaît
+        m.ct += dt / 0.45;
+        const e = Math.min(m.ct, 1);
+        m.pos.lerp(MOTE_TARGET, 0.12 + e * 0.15);
+        mesh.position.copy(m.pos);
+        mesh.scale.setScalar(MOTE_SIZE * (1.6 - e * 1.5));
+        mat.opacity = 1 - e;
+        if (m.ct >= 1) {
+          m.collected = false; m.ct = 0;
+          m.respawnAt = clock.current + 0.4 + Math.random() * 1.2;
+          randomMoteBase(m);
+        }
         return;
       }
 
-      // dérive vers l'hologramme + rotation
-      c.pos.addScaledVector(c.dir, c.speed * dt);
-      mesh.position.copy(c.pos);
-      mesh.rotation.x += c.spin.x * dt;
-      mesh.rotation.y += c.spin.y * dt;
-      mesh.scale.setScalar(DEF_CUBE);
-      mat.opacity = 0.92;
+      // en attente de réapparition (invisible un court instant)
+      if (clock.current < m.respawnAt) { mesh.visible = false; return; }
 
-      // collision avec le corps → onde de choc glitch (le corps encaisse, sans game-over)
-      if (c.pos.distanceTo(DEF_TARGET) < DEF_HIT_R) {
-        pulse.o.value.copy(c.pos);
-        pulse.t.value = 0;
-        audioEngine.play('activation');
-        c.alive = false; c.respawnAt = clock.current + 0.6 + Math.random();
+      // flottement lent autour du point de base (dérive + bob → attire l'œil)
+      const t = clock.current + m.phase;
+      m.pos.set(
+        m.base.x + Math.sin(t * 0.5) * 0.18,
+        m.base.y + Math.sin(t * 0.8 + 1.3) * 0.14,
+        m.base.z + Math.cos(t * 0.4) * 0.12,
+      );
+      mesh.position.copy(m.pos);
+      mesh.scale.setScalar(MOTE_SIZE * (0.85 + 0.15 * Math.sin(t * 3)));
+      mat.opacity = 0.9;
+
+      // récolte : la souris passe à proximité → absorption
+      if (m.pos.distanceTo(_cursor.current) < MOTE_COLLECT_R) {
+        m.collected = true; m.ct = 0;
+        audioEngine.play('collect');
       }
     });
   });
 
   return (
     <group>
-      {Array.from({ length: DEF_COUNT }).map((_, i) => (
+      {Array.from({ length: MOTE_COUNT }).map((_, i) => (
         <mesh key={i} ref={(m) => { meshes.current[i] = m; }} visible={false}>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
-            ref={(mm) => { mats.current[i] = mm as THREE.MeshStandardMaterial | null; }}
-            color="#1a0008" emissive={DEF_MENACE} emissiveIntensity={1.5}
-            transparent opacity={0.92} depthWrite={false}
+          <sphereGeometry args={[1, 12, 12]} />
+          <meshBasicMaterial
+            ref={(mm) => { mats.current[i] = mm as THREE.MeshBasicMaterial | null; }}
+            color="#aef6ff" transparent opacity={0.9} depthWrite={false}
+            blending={THREE.AdditiveBlending}
           />
         </mesh>
       ))}
@@ -677,7 +682,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       <HoloBrain position={built.pos.brain} baseScale={CFG.brain.scale} weightsRef={weightsRef} />
       <HoloDNA position={built.pos.adn} baseScale={CFG.adn.scale} weightsRef={weightsRef} />
       <DataCubes position={built.pos.heart} baseScale={CFG.heart.scale} weightsRef={weightsRef} palmBone={built.palmBone} />
-      <HeroDefense heroWRef={heroWRef} pulse={built.pulse} />
+      <HeroMotes heroWRef={heroWRef} />
       {debug && <OrbitControls target={[0, 0.9, 0]} />}
     </>
   );
