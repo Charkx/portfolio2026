@@ -12,7 +12,6 @@ import DataCubes from './DataCubes';
 import { useSceneStore } from '../../store/sceneStore';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { audioEngine } from '../../lib/audioEngine';
 import { TECH_STACK } from '../../utils/constants';
 
 // focuses des modules embarqués (= stations 1..3 ; la station contact n'a pas de module)
@@ -77,29 +76,6 @@ const BREATH = 0.012;
 const LOOK_YAW = 0.45;
 const LOOK_PITCH = 0.22;
 const PULSE_SPEED = 1.6;
-
-// 👉 SALUT — pose du bras droit à la station d'intro (rotations ADDITIVES sur la
-//   pose de repos du GLB, en RADIANS). Le rig a déjà le bras levé, paume vers le
-//   HAUT (pose des cubes) : on lève davantage et on tourne la paume vers le visiteur.
-//   AJUSTE ces 3 triplets [x, y, z] à l'œil jusqu'à obtenir une vraie main levée :
-//     GREET_SHOULDER : upper_arm.R — oriente/lève tout le bras
-//     GREET_ELBOW    : forearm.R   — dresse l'avant-bras (vertical)
-//     GREET_WRIST    : hand.R      — tourne la paume face au visiteur
-const GREET_SHOULDER: [number, number, number] = [0, 0, 0.5];
-const GREET_ELBOW: [number, number, number] = [0, 0, -0.4];
-const GREET_WRIST: [number, number, number] = [0, 1.2, 0];
-//   Balancement du salut : l'avant-bras + poignet oscillent GAUCHE↔DROITE.
-//   WAVE_AXIS : 0=X 1=Y 2=Z — axe d'oscillation (à ajuster selon le rig)
-const WAVE_AXIS = 2;
-const WAVE_AMP = 0.35;   // amplitude du balancement (rad)
-const WAVE_FREQ = 9;     // vitesse d'oscillation
-const WAVE_DUR = 1.8;    // durée d'un salut (s)
-const WAVE_EVERY = 8;    // re-salue toutes les X s tant qu'on reste sur l'intro
-// 👉 HIGH-FIVE au clic sur la paume : poussée franche de tout le bras vers l'avant
-const HI5_AXIS = 0;      // 0=X 1=Y 2=Z — axe de la poussée (épaule)
-const HI5_AMP = -0.55;   // amplitude de la poussée (rad ; signe = sens)
-const HI5_DUR = 0.5;     // durée du high-five (s)
-const HI5_RADIUS = 0.3;  // rayon de détection du clic autour de la paume (unités monde)
 
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
@@ -215,15 +191,10 @@ function buildScene(srcScene: THREE.Object3D) {
   human.position.x -= (b2.min.x + b2.max.x) / 2;
 
   // NB : GLTFLoader retire les points des noms ('hand.R_032' → 'handR_032') → regex sans point
-  const palmBone = findBone(human, /hand\.?r/i);        // main droite → ancrage Data Cubes + poignet salut
-  const headBone = findBone(human, /head(?!.*end)/i);   // tête (hors 'head_end') → yeux POV projets + regard
-  const upperArmBone = findBone(human, /upper_?arm\.?r/i); // épaule droite → lève le bras (salut)
-  const forearmBone = findBone(human, /forearm\.?r/i);  // avant-bras droit → dresse + balance (salut)
-  // poses de repos : bases sur lesquelles s'ajoutent le regard et le salut
+  const palmBone = findBone(human, /hand\.?r/i);      // main droite levée → ancrage Data Cubes
+  const headBone = findBone(human, /head(?!.*end)/i); // tête (hors 'head_end') → yeux POV projets + regard
+  // pose de repos de la tête : base sur laquelle s'ajoute le regard qui suit le curseur
   const headBaseQuat = headBone ? headBone.quaternion.clone() : null;
-  const upperArmBaseQuat = upperArmBone ? upperArmBone.quaternion.clone() : null;
-  const forearmBaseQuat = forearmBone ? forearmBone.quaternion.clone() : null;
-  const handBaseQuat = palmBone ? palmBone.quaternion.clone() : null;
 
   const pos = {
     brain:   new THREE.Vector3(CFG.brain.x,   H * CFG.brain.y,   CFG.brain.z),
@@ -291,7 +262,7 @@ function buildScene(srcScene: THREE.Object3D) {
     frame('contact', 0.55), // corps visible à l'arrivée (avant la désintégration scrubbée)
   ];
 
-  return { root, human, palmBone, headBone, headBaseQuat, upperArmBone, upperArmBaseQuat, forearmBone, forearmBaseQuat, handBaseQuat, pos, stations, bodyMats, timeUniform, pulse, backdrop, skyMat, dustMat };
+  return { root, human, palmBone, headBone, headBaseQuat, pos, stations, bodyMats, timeUniform, pulse, backdrop, skyMat, dustMat };
 }
 
 // --- Wrapper de fondu pour un module React embarqué (cerveau, ADN…) ---
@@ -425,14 +396,6 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const heroWRef = useRef(0);
   const _lookE = useRef(new THREE.Euler());
   const _lookQ = useRef(new THREE.Quaternion());
-  // salut / high-five : phases de l'avant-bras droit
-  const waveRef = useRef(0);   // temps écoulé dans le salut courant (≥ WAVE_DUR = fini)
-  const waveNextRef = useRef(1.2); // prochain salut spontané (s, horloge intro)
-  const hi5Ref = useRef(99);   // temps écoulé dans le high-five (≥ HI5_DUR = fini)
-  const heroClockRef = useRef(0); // horloge qui n'avance que sur la station d'intro
-  const _e = useRef(new THREE.Euler());
-  const _q = useRef(new THREE.Quaternion());
-  const _palm = useRef(new THREE.Vector3());
 
   // le canvas est pointer-events:none → on écoute la fenêtre
   useEffect(() => {
@@ -458,14 +421,6 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       // onde glitch depuis le point touché
       built.pulse.o.value.copy(hits[0].point);
       built.pulse.t.value = 0;
-      // clic près de la paume levée → HIGH-FIVE (sinon simple onde)
-      if (built.palmBone) {
-        built.palmBone.getWorldPosition(_palm.current);
-        if (hits[0].point.distanceTo(_palm.current) < HI5_RADIUS) {
-          hi5Ref.current = 0;
-          audioEngine.play('activation');
-        }
-      }
     };
     window.addEventListener('pointerdown', onDown);
     return () => window.removeEventListener('pointerdown', onDown);
@@ -592,47 +547,6 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _lookE.current.set(lookRef.current.pitch, lookRef.current.yaw, 0);
       _lookQ.current.setFromEuler(_lookE.current);
       built.headBone.quaternion.copy(built.headBaseQuat).multiply(_lookQ.current);
-    }
-
-    // SALUT / HIGH-FIVE : à la station d'intro on REPOSE tout le bras droit (épaule +
-    // avant-bras + poignet) en un vrai geste de salut, on le balance latéralement, et
-    // au clic sur la paume on fait un high-five. Hors intro / reduced-motion : repos.
-    if (built.upperArmBone && built.forearmBone && built.palmBone
-        && built.upperArmBaseQuat && built.forearmBaseQuat && built.handBaseQuat) {
-      // greetW : force du geste (0 = pose GLB de repos, 1 = salut complet). Nul en reduced-motion.
-      const greetW = reduced ? 0 : heroW;
-
-      if (greetW > 0.5) {
-        heroClockRef.current += dt;
-        // salut d'accueil à intervalle régulier tant qu'on reste sur l'intro
-        if (heroClockRef.current >= waveNextRef.current && waveRef.current >= WAVE_DUR) {
-          waveRef.current = 0;
-          waveNextRef.current = heroClockRef.current + WAVE_EVERY;
-        }
-      }
-      if (waveRef.current < WAVE_DUR) waveRef.current += dt;
-      if (hi5Ref.current < HI5_DUR) hi5Ref.current += dt;
-
-      // pose de salut, mélangée depuis le repos par greetW
-      const applyPose = (bone: THREE.Object3D, base: THREE.Quaternion, pose: [number, number, number], extra?: [number, number, number]) => {
-        _e.current.set(pose[0] * greetW + (extra?.[0] ?? 0), pose[1] * greetW + (extra?.[1] ?? 0), pose[2] * greetW + (extra?.[2] ?? 0));
-        _q.current.setFromEuler(_e.current);
-        bone.quaternion.copy(base).multiply(_q.current);
-      };
-
-      // balancement du salut (avant-bras + poignet, gauche↔droite) : oscillation amortie
-      const wave: [number, number, number] = [0, 0, 0];
-      if (waveRef.current < WAVE_DUR && greetW > 0.01) {
-        const p = waveRef.current / WAVE_DUR;
-        wave[WAVE_AXIS] = Math.sin(p * WAVE_FREQ) * WAVE_AMP * Math.sin(p * Math.PI) * greetW;
-      }
-      // high-five : poussée franche de l'épaule (indépendante du poids, prioritaire)
-      const push: [number, number, number] = [0, 0, 0];
-      if (hi5Ref.current < HI5_DUR) push[HI5_AXIS] = Math.sin((hi5Ref.current / HI5_DUR) * Math.PI) * HI5_AMP;
-
-      applyPose(built.upperArmBone, built.upperArmBaseQuat, GREET_SHOULDER, push);
-      applyPose(built.forearmBone, built.forearmBaseQuat, GREET_ELBOW, wave);
-      applyPose(built.palmBone, built.handBaseQuat, GREET_WRIST, wave);
     }
   });
 
