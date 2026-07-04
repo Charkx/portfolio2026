@@ -1,7 +1,8 @@
 "use client"
-import { useCallback, useState } from "react"
+import { useCallback } from "react"
 import dynamic from "next/dynamic"
 import TerminalDisplay from "../components/ui/TerminalDisplay"
+import CalibrationConsole from "../components/ui/CalibrationConsole"
 import { ErrorBoundary } from "../hooks/ErrorBoundary"
 import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
@@ -28,14 +29,13 @@ export default function HeroSection({
   const unlocked = introPhase === "UNLOCKED"
   const dragHuman = useDragRotate("human")
 
-  // Opt-in audio : le choix est fait AVANT d'entrer, appliqué au clic (geste utilisateur
-  // → l'AudioContext a le droit de démarrer). Le HUD permet de changer d'avis ensuite.
+  // Opt-in audio : le choix se fait dans la console de calibrage, appliqué au clic
+  // d'entrée (geste utilisateur → l'AudioContext a le droit de démarrer).
   const setSoundEnabled = useAudioStore((s) => s.setEnabled)
-  const [audioOptIn, setAudioOptIn] = useState(true)
   const enterWith = useCallback((enter: () => void) => {
-    setSoundEnabled(audioOptIn)
+    setSoundEnabled(useAudioStore.getState().optIn)
     enter()
-  }, [audioOptIn, setSoundEnabled])
+  }, [setSoundEnabled])
 
   return (
     <section
@@ -71,52 +71,25 @@ export default function HeroSection({
           </LazyMount>
         </div>
 
-        <TerminalDisplay/>
+        {/* Verrouillé : console de calibrage (l'utilisateur règle SON expérience) ·
+            ensuite : terminal (séquences de scan/boot) */}
+        {introPhase === "LOCKED" ? <CalibrationConsole /> : <TerminalDisplay />}
 
         {/* Chemin d'entrée accessible : vrais boutons DOM (clavier + sans WebGL).
             La carte 3D reste le geste "wow", ces boutons garantissent l'accès. */}
         {!unlocked && (
           <div className="flex flex-col items-center gap-3">
             {introPhase === "LOCKED" && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => enterWith(onScan)}
-                  className="px-6 py-2.5 rounded-lg border border-cyan-400/60 bg-cyan-400/5 text-cyan-300
-                             font-mono text-sm tracking-[0.2em] cursor-pointer transition-all
-                             hover:bg-cyan-400/15 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)]
-                             focus-visible:outline-2 focus-visible:outline-cyan-400"
-                >
-                  INITIER LE SCAN
-                </button>
-                {/* choix du son avant d'entrer — l'expérience est pensée avec, mais jamais imposée */}
-                <div className="flex items-center gap-2 font-mono text-xs text-cyan-400/60">
-                  <span aria-hidden="true">&gt;</span>
-                  <span id="audio-optin-label">FLUX AUDIO :</span>
-                  <div role="group" aria-labelledby="audio-optin-label" className="flex items-center gap-1.5">
-                    {/* effet immédiat : [ACTIVÉ] lance la musique d'entrée (geste utilisateur)
-                        → on règle les barres de volume du HUD AVANT d'entrer */}
-                    <button
-                      type="button"
-                      aria-pressed={audioOptIn}
-                      onClick={() => { setAudioOptIn(true); setSoundEnabled(true); }}
-                      className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
-                                  ${audioOptIn ? "text-cyan-300" : "text-gray-600 hover:text-cyan-400/80"}`}
-                    >
-                      [ACTIVÉ]
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={!audioOptIn}
-                      onClick={() => { setAudioOptIn(false); setSoundEnabled(false); }}
-                      className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
-                                  ${!audioOptIn ? "text-cyan-300" : "text-gray-600 hover:text-cyan-400/80"}`}
-                    >
-                      [COUPÉ]
-                    </button>
-                  </div>
-                </div>
-              </>
+              <button
+                type="button"
+                onClick={() => enterWith(onScan)}
+                className="px-6 py-2.5 rounded-lg border border-cyan-400/60 bg-cyan-400/5 text-cyan-300
+                           font-mono text-sm tracking-[0.2em] cursor-pointer transition-all
+                           hover:bg-cyan-400/15 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)]
+                           focus-visible:outline-2 focus-visible:outline-cyan-400"
+              >
+                INITIER LE SCAN
+              </button>
             )}
             <button
               type="button"

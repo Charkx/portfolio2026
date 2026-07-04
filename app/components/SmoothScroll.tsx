@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import Lenis from "lenis"
+import { useReducedMotion } from "../hooks/useReducedMotion"
 
 let lenis: Lenis | null = null
 
@@ -20,10 +21,12 @@ export const lenisStart = () => lenis?.start()
 // Accès à l'instance (SectionSnap) — null si reduced-motion (scroll natif, pas de snap)
 export const getLenis = () => lenis
 
-/** Monté une fois : active le smooth scroll Lenis (sauf prefers-reduced-motion). */
+/** Active le smooth scroll Lenis — suit le mouvement réduit EFFECTIF (console
+ *  de calibrage OU préférence système) : réduit → scroll natif, pas de snap. */
 export default function SmoothScroll() {
+  const reduced = useReducedMotion()
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (reduced) return
     lenis = new Lenis({ duration: 1.1, smoothWheel: true })
     let raf = 0
     const loop = (t: number) => { lenis?.raf(t); raf = requestAnimationFrame(loop) }
@@ -33,6 +36,6 @@ export default function SmoothScroll() {
       lenis?.destroy()
       lenis = null
     }
-  }, [])
+  }, [reduced])
   return null
 }

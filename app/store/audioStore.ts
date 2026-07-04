@@ -15,8 +15,10 @@ function initialVolume(): number {
 interface AudioState {
   enabled: boolean
   volume: number // 0..1
+  optIn: boolean // choix "FLUX AUDIO" de la console de calibrage — appliqué à l'entrée
   toggle: () => void
   setEnabled: (on: boolean) => void // sans bip — pour l'opt-in de l'écran d'entrée
+  setOptIn: (v: boolean) => void
   setVolume: (v: number) => void
 }
 
@@ -24,6 +26,7 @@ interface AudioState {
 export const useAudioStore = create<AudioState>((set, get) => ({
   enabled: false,
   volume: (() => { const v = initialVolume(); audioEngine.setVolume(v); return v })(),
+  optIn: true, // l'expérience est pensée avec le son — jamais imposée (la console permet de couper)
   toggle: () => {
     const next = !get().enabled
     if (next) {
@@ -32,8 +35,10 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     } else {
       audioEngine.disable()
     }
-    set({ enabled: next })
+    // un geste explicite sur le son vaut choix d'opt-in (cohérent si on re-verrouille)
+    set({ enabled: next, optIn: next })
   },
+  setOptIn: (v) => set({ optIn: v }),
   setEnabled: (on) => {
     if (on === get().enabled) return
     if (on) audioEngine.enable()
@@ -46,7 +51,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     if (typeof window !== "undefined") window.localStorage.setItem(VOLUME_KEY, String(vol))
     // cliquer une barre alors que le son est coupé = l'activer (on est dans un geste utilisateur)
     if (!get().enabled && vol > 0) audioEngine.enable()
-    set({ volume: vol, enabled: get().enabled || vol > 0 })
+    set({ volume: vol, enabled: get().enabled || vol > 0, optIn: get().optIn || vol > 0 })
     audioEngine.play("nav") // retour immédiat : on entend le nouveau niveau
   },
 }))

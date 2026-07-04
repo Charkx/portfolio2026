@@ -194,7 +194,8 @@ interface BiometricCardProps {
 export default function BiometricCard({ onScan }: BiometricCardProps) {
   return (
     <Canvas>
-      <PerspectiveCamera makeDefault position={[0, 0, 2]} />
+      {/* caméra rapprochée : la carte est LE composant principal de l'entrée */}
+      <PerspectiveCamera makeDefault position={[0, 0, 1.55]} />
       <OrbitControls enableZoom={false} enablePan={false} />
       <ambientLight intensity={0.9} />
       <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />

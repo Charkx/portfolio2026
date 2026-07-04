@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 // CANVAS PERMANENT : plein écran en continu, DERRIÈRE le contenu (zIndex 5 < main z-10).
 // Le monde 3D (voûte + poussière + humain) est le fond de page ; les sections HTML
@@ -34,6 +35,7 @@ const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
 
 export default function AugmentedHumanLayer() {
   const [desktop, setDesktop] = useState(false);
+  const quality = useSettingsStore((s) => s.quality); // éco : bloom coupé + DPR plafonné
   const wrapperRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0); // station hero au départ (écran verrouillé : environnement seul)
   const coverRef = useRef(1); // canvas permanent → l'environnement (voûte/poussière) est toujours visible
@@ -104,14 +106,16 @@ export default function AugmentedHumanLayer() {
       style={{ position: 'fixed', inset: 0, zIndex: 5, pointerEvents: 'none', opacity: 0, transition: 'opacity .6s' }}>
       {/* pointerEvents:none explicite → R3F met `auto` par défaut sur son conteneur et
           intercepterait le drag destiné aux slots HTML (rotation manuelle des modules). */}
-      <Canvas frameloop="always" style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas frameloop="always" dpr={quality === 'eco' ? 1 : [1, 2]} style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
         <ambientLight intensity={1} />
         <Suspense fallback={<Loader />}>
           <SceneContents progressRef={progressRef} coverRef={coverRef} linear />
         </Suspense>
-        <EffectComposer>
-          <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
-        </EffectComposer>
+        {quality !== 'eco' && (
+          <EffectComposer>
+            <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
+          </EffectComposer>
+        )}
       </Canvas>
     </div>
   );

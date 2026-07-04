@@ -19,6 +19,7 @@ import ModalRoot from "./components/ui/ModalRoot"
 import LegalContent from "./components/LegalContent"
 import { preloadAssets } from "./lib/preloadAssets"
 import { ErrorBoundary } from "./hooks/ErrorBoundary"
+import { useReducedMotion } from "./hooks/useReducedMotion"
 
 // Modèles 3D lourds préchargés pendant l'écran de chargement (progression réelle).
 const HEAVY_ASSETS = [
@@ -65,6 +66,13 @@ export default function ClientApp() {
 
   // Hook pour améliorer le scroll (expérience utilisateur)
   useOptimizedScroll()
+
+  // Reflète le mouvement réduit EFFECTIF (réglage console OU préférence système)
+  // sur <html> → les animations CSS suivent aussi (cf. globals.css [data-motion])
+  const reducedMotion = useReducedMotion()
+  useEffect(() => {
+    document.documentElement.dataset.motion = reducedMotion ? "reduced" : "full"
+  }, [reducedMotion])
 
   // Vrai chargement : précharge les modèles 3D (le loader reflète la progression réelle).
   useEffect(() => {
