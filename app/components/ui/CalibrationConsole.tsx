@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAudioStore } from '../../store/audioStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -33,22 +34,25 @@ function Opt({ active, disabled, title, onClick, children }: {
   );
 }
 
-// Ligne de terminal révélée à son tour (i = ordre d'apparition)
-function Line({ i, children }: { i: number; children: React.ReactNode }) {
+// Ligne de terminal (apparition douce au montage)
+function Line({ children }: { children: React.ReactNode }) {
   return (
-    <div className="hud-reveal flex flex-wrap items-center gap-x-2" style={{ animationDelay: `${0.2 + i * 0.35}s` }}>
+    <div className="hud-reveal flex flex-wrap items-center gap-x-2" style={{ animationDelay: '0.1s' }}>
       {children}
     </div>
   );
 }
 
+// Étapes du calibrage (une seule question à la fois)
+const STEP_AUDIO = 0, STEP_VOLUME = 1, STEP_MOTION = 2, STEP_QUALITY = 3, STEP_LANG = 4, DONE = 5;
+
 /**
- * Calibrage de session DANS le terminal : tant que le site est verrouillé, les
- * réglages (son, volume, animations, qualité, langue) s'affichent ligne à ligne
- * comme une séquence de boot — le terminal a une vraie utilité.
- * La musique d'entrée sert de mire pour le volume.
+ * Calibrage de session pas-à-pas, au cœur de la séquence de scan : une seule
+ * question s'affiche à la fois ; le choix de l'utilisateur imprime la suivante.
+ * Les lignes répondues restent visibles (et modifiables jusqu'au boot).
+ * Après la dernière réponse, le lien neural s'établit tout seul (onConfirm).
  */
-export default function CalibrationConsole() {
+export default function CalibrationConsole({ onConfirm }: { onConfirm: () => void }) {
   const enabled = useAudioStore((s) => s.enabled);
   const optIn = useAudioStore((s) => s.optIn);
   const setOptIn = useAudioStore((s) => s.setOptIn);
@@ -60,26 +64,41 @@ export default function CalibrationConsole() {
   const setMotion = useSettingsStore((s) => s.setMotion);
   const reduced = useReducedMotion(); // effectif (réglage manuel OU préférence système)
 
+  const [step, setStep] = useState(STEP_AUDIO);
+  const [volumeSkipped, setVolumeSkipped] = useState(false); // audio coupé → pas de question volume
+
+  // répondre à l'étape COURANTE fait apparaître la suivante (re-cliquer une
+  // ligne passée modifie le réglage sans faire avancer l'assistant)
+  const advance = (idx: number, skipVolume = false) => {
+    if (idx !== step) return;
+    setStep(idx + (skipVolume ? 2 : 1));
+  };
+
+  // dernière réponse donnée → petite pause, puis établissement du lien (boot)
+  useEffect(() => {
+    if (step < DONE) return;
+    audioEngine.play('activation');
+    const t = window.setTimeout(onConfirm, 1200);
+    return () => window.clearTimeout(t);
+  }, [step, onConfirm]);
+
   return (
-    <div className="text-center mt-4">
-      {/* même en-tête que le terminal : la console EST le terminal en phase verrouillée */}
-      <div className="text-red-500 text-xl font-mono neon-glow animate-pulse mb-2">
-        SCAN CARD CODE TO ACCESS DATA
-      </div>
+    <div className="space-y-1.5">
+      <Line>
+        <span className="text-cyan-400/70">&gt; Sujet reconnu — calibrage de session requis :</span>
+      </Line>
 
-      <div className="text-left text-cyan-300 text-sm font-mono max-w-md mx-auto px-4 space-y-1.5 min-h-[100px]">
-        <Line i={0}>
-          <span className="text-cyan-400/70">&gt; Lien neural en attente — calibrage de session :</span>
-        </Line>
-
-        <Line i={1}>
+      {step >= STEP_AUDIO && (
+        <Line>
           <span className="text-cyan-400/60">&gt; FLUX AUDIO :</span>
-          {/* effet immédiat : [ACTIVÉ] lance la musique d'entrée (geste utilisateur) */}
-          <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); }}>[ACTIVÉ]</Opt>
-          <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); }}>[COUPÉ]</Opt>
+          {/* effet immédiat : [ACTIVÉ] lance la musique (geste utilisateur) → mire du volume */}
+          <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); advance(STEP_AUDIO); }}>[ACTIVÉ]</Opt>
+          <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); setVolumeSkipped(true); advance(STEP_AUDIO, true); }}>[COUPÉ]</Opt>
         </Line>
+      )}
 
-        <Line i={2}>
+      {step >= STEP_VOLUME && !volumeSkipped && (
+        <Line>
           <span className="text-cyan-400/60">&gt; VOLUME :</span>
           <span role="group" aria-label="Volume du son" className="flex items-end gap-[3px] h-4">
             {[1, 2, 3, 4, 5].map((n) => {
@@ -90,7 +109,7 @@ export default function CalibrationConsole() {
                   type="button"
                   aria-label={`Volume ${n} sur 5`}
                   aria-pressed={lit}
-                  onClick={() => setVolume(n / 5)}
+                  onClick={() => { setVolume(n / 5); advance(STEP_VOLUME); }}
                   onMouseEnter={() => audioEngine.play('hover')}
                   className={`w-[5px] rounded-[1px] cursor-pointer transition-colors
                     ${lit ? 'bg-cyan-300 hover:bg-cyan-100' : 'bg-cyan-400/25 hover:bg-cyan-400/60'}`}
@@ -100,30 +119,40 @@ export default function CalibrationConsole() {
             })}
           </span>
         </Line>
+      )}
 
-        <Line i={3}>
+      {step >= STEP_MOTION && (
+        <Line>
           <span className="text-cyan-400/60">&gt; ANIMATIONS :</span>
-          <Opt active={!reduced} onClick={() => setMotion('full')}>[COMPLÈTES]</Opt>
-          <Opt active={reduced} onClick={() => setMotion('reduced')}>[RÉDUITES]</Opt>
+          <Opt active={!reduced} onClick={() => { setMotion('full'); advance(STEP_MOTION); }}>[COMPLÈTES]</Opt>
+          <Opt active={reduced} onClick={() => { setMotion('reduced'); advance(STEP_MOTION); }}>[RÉDUITES]</Opt>
         </Line>
+      )}
 
-        <Line i={4}>
+      {step >= STEP_QUALITY && (
+        <Line>
           <span className="text-cyan-400/60">&gt; QUALITÉ :</span>
-          <Opt active={quality === 'high'} onClick={() => setQuality('high')}>[HAUTE]</Opt>
-          <Opt active={quality === 'eco'} title="Bloom coupé, rendu allégé" onClick={() => setQuality('eco')}>[ÉCO]</Opt>
+          <Opt active={quality === 'high'} onClick={() => { setQuality('high'); advance(STEP_QUALITY); }}>[HAUTE]</Opt>
+          <Opt active={quality === 'eco'} title="Bloom coupé, rendu allégé" onClick={() => { setQuality('eco'); advance(STEP_QUALITY); }}>[ÉCO]</Opt>
         </Line>
+      )}
 
-        <Line i={5}>
+      {step >= STEP_LANG && (
+        <Line>
           <span className="text-cyan-400/60">&gt; LANGUE :</span>
-          <Opt active>[FR]</Opt>
+          <Opt active onClick={() => advance(STEP_LANG)}>[FR]</Opt>
           <Opt disabled title="English — bientôt disponible">[EN]</Opt>
         </Line>
+      )}
 
-        <Line i={6}>
-          <span className="text-gray-600 text-xs">&gt; Scanne la carte pour établir le lien neural…</span>
-          <span className="animate-pulse" aria-hidden="true">_</span>
+      {step >= DONE ? (
+        <Line>
+          <span className="text-green-400">&gt; Paramètres verrouillés — établissement du lien neural…</span>
+          <span className="animate-pulse text-cyan-300" aria-hidden="true">_</span>
         </Line>
-      </div>
+      ) : (
+        <div className="text-cyan-300 animate-pulse" aria-hidden="true">_</div>
+      )}
     </div>
   );
 }

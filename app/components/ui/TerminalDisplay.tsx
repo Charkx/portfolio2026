@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { usePortfolioStore } from '../../store/portfolioStore';
+import CalibrationConsole from './CalibrationConsole';
 import type { IntroPhase } from '../../utils/types';
 
 // --- Constantes : elles ne dépendent ni des props ni de l'état du composant.
@@ -22,11 +23,6 @@ const HEADER_COLOR: Record<IntroPhase, string> = {
   UNLOCKED: 'text-green-400',
 };
 
-const LOCKED_SEQUENCE = [
-  '> Awaiting card scan...',
-  '> Click on card to scan.',
-];
-
 const SCAN_SEQUENCE = [
   '> Card detected.',
   '> Subject: MENTHILLER.CHARLY_009',
@@ -43,13 +39,23 @@ export default function TerminalDisplay() {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<{ id: string; text: string }[]>([]);
   const { introPhase, setIntroPhase } = usePortfolioStore();
+  // étape calibrage : après l'identification du sujet, avant le boot
+  const [calibrating, setCalibrating] = useState(false);
 
-  // Message d'invite quand on est verrouillé.
+  // Verrouillé : terminal vide (l'en-tête + les boutons suffisent) ; on
+  // réinitialise aussi le calibrage (re-verrouillage → séquence complète rejouée)
   useEffect(() => {
-  if (introPhase === 'LOCKED') {
-    setLines(LOCKED_SEQUENCE.map((text, i) => ({ id: `locked-${i}`, text })));
-  }
-}, [introPhase]);
+    if (introPhase === 'LOCKED') {
+      setLines([]);
+      setCalibrating(false);
+    }
+  }, [introPhase]);
+
+  // calibrage terminé → le boot s'établit
+  const onCalibrated = useCallback(() => {
+    setCalibrating(false);
+    setIntroPhase('BOOTING');
+  }, [setIntroPhase]);
 
   // Séquences animées + enchaînement des phases.
   useEffect(() => {
@@ -95,8 +101,10 @@ export default function TerminalDisplay() {
     };
 
     // Selon la phase, on joue la bonne séquence, PUIS on avance.
+    // Après le scan : étape CALIBRAGE (les réglages s'impriment un à un,
+    // l'utilisateur répond, puis le boot s'enchaîne — cf. CalibrationConsole).
     if (introPhase === 'SCANNING') {
-      playSequence(SCAN_SEQUENCE).then(() => setIntroPhase('BOOTING'));
+      playSequence(SCAN_SEQUENCE).then(() => setCalibrating(true));
     } else if (introPhase === 'BOOTING') {
       playSequence(BOOT_SEQUENCE).then(() => setIntroPhase('UNLOCKED'));
     }
@@ -104,8 +112,8 @@ export default function TerminalDisplay() {
 
   return (
     <div className="text-center mt-4">
-      <div className={`${HEADER_COLOR[introPhase]} text-xl font-mono neon-glow animate-pulse mb-2`}>
-        {HEADER[introPhase]}
+      <div className={`${calibrating ? 'text-cyan-400' : HEADER_COLOR[introPhase]} text-xl font-mono neon-glow animate-pulse mb-2`}>
+        {calibrating ? 'SESSION CALIBRATION' : HEADER[introPhase]}
       </div>
 
       <div
@@ -118,7 +126,9 @@ export default function TerminalDisplay() {
           </div>
         ))}
 
-        {introPhase === 'SCANNING' && <div className="terminal-cursor">_</div>}
+        {calibrating && <CalibrationConsole onConfirm={onCalibrated} />}
+
+        {introPhase === 'SCANNING' && !calibrating && <div className="terminal-cursor">_</div>}
 
         {introPhase === 'UNLOCKED' && (
           <div className="mt-2">Scroll to continue neural interface initialization...</div>

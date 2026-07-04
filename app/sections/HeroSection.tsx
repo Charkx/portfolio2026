@@ -2,7 +2,6 @@
 import { useCallback } from "react"
 import dynamic from "next/dynamic"
 import TerminalDisplay from "../components/ui/TerminalDisplay"
-import CalibrationConsole from "../components/ui/CalibrationConsole"
 import { ErrorBoundary } from "../hooks/ErrorBoundary"
 import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
@@ -71,9 +70,8 @@ export default function HeroSection({
           </LazyMount>
         </div>
 
-        {/* Verrouillé : console de calibrage (l'utilisateur règle SON expérience) ·
-            ensuite : terminal (séquences de scan/boot) */}
-        {introPhase === "LOCKED" ? <CalibrationConsole /> : <TerminalDisplay />}
+        {/* Terminal : invite au repos, puis scan → CALIBRAGE pas-à-pas → boot */}
+        <TerminalDisplay />
 
         {/* Chemin d'entrée accessible : vrais boutons DOM (clavier + sans WebGL).
             La carte 3D reste le geste "wow", ces boutons garantissent l'accès. */}
