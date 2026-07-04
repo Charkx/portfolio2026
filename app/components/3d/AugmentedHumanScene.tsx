@@ -41,8 +41,9 @@ const CFG = {
   adn:   { scale: 0.01, x: 0.325, y: 0.75, z: 0.00, zoom: 0.21, ox: 0.05, oy: 0 },
   // station projets : dézoom CORPS ENTIER (les Data Cubes s'ancrent sur la paume droite levée)
   heart: { scale: 0.20, x: -0.30, y: 1.00, z: 0.70, zoom: 0.1, ox: 0.0, oy: 0.0 },
-  // station contact : cadrage caméra seul (aucun module — la fin de session prend le relais)
-  contact: { scale: 0.20, x: -0.30, y: 0.5, z: 0.70, zoom: 1.2, ox: 0, oy: 0 },
+  // station contact : plan CORPS ENTIER (≈ cadrage finale) — on arrive face à
+  // l'hologramme, la fin de session (désintégration) enchaîne sans coupure
+  contact: { scale: 0.20, x: 0, y: 0.55, z: 0, zoom: 4.4, ox: 0, oy: 0 },
 } as const;
 
 // Station projets : caméra à la place des yeux de l'hologramme, regardant sa main levée.
@@ -235,8 +236,8 @@ function buildScene(srcScene: THREE.Object3D) {
     { camPos: new THREE.Vector3(0, H * 0.55, 4.4), target: new THREE.Vector3(0, H * 0.55, 0), body: 0.5, focus: '' },
     frame('brain'),
     frame('adn'),
-    frame('heart', 0.55), // corps entier visible pour la manipulation de réalité
-    frame('contact'),
+    frame('heart', 0.55),   // corps entier visible pour la manipulation de réalité
+    frame('contact', 0.55), // corps visible à l'arrivée (avant la désintégration scrubbée)
   ];
 
   return { root, human, palmBone, headBone, pos, stations, bodyMats, timeUniform, backdrop, skyMat, dustMat };

@@ -11,7 +11,7 @@ const SECTION_IDS = ['hero', 'about', 'skills', 'projects', 'contact'];
 // le site l'emmène à la suivante — le voyage caméra devient une transition
 // maîtrisée et l'utilisateur atterrit toujours posé sur la section.
 const TRIGGER = 90;
-const SNAP_DURATION = 1.5; // s — laisse le plan large + le voile se lire
+const SNAP_DURATION = 5; // s — laisse le plan large + le voile se lire
 
 /**
  * Snap de section : amorcer le scroll suffit, le site place l'utilisateur

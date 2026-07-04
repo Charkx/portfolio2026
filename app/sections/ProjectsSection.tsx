@@ -266,11 +266,13 @@ export function ProjectsSection() {
     if (i !== null) selectProject(i, () => {});
   }, [setProjectHovered, selectProject]);
 
-  // Expose la sélection au réacteur 3D (clic sur une carte flottante → sélectionne ici)
+  // Pont canvas → React (survol/clic d'un cube) : sélection SILENCIEUSE — la fiche
+  // express suit le survol ; le son du clic est porté par le derez du déploiement
   useEffect(() => {
-    setRequestSelectProject(handleProjectSelect);
+    const silentSelect = (i: number) => selectProject(i, () => {});
+    setRequestSelectProject(silentSelect);
     return () => setRequestSelectProject(null);
-  }, [handleProjectSelect, setRequestSelectProject]);
+  }, [selectProject, setRequestSelectProject]);
 
   // Survol d'un module (liste HTML) → met en valeur la puce 3D correspondante
   const handleHover = useCallback((i: number | null) => {

@@ -207,7 +207,13 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
   });
 
   // interactions souris via boutons DOM (le canvas partagé est en pointer-events:none)
-  const onOver = (i: number) => () => { useSceneStore.getState().setProjectHovered(i); audioEngine.play('hover'); };
+  // survol = arc d'énergie + sélection silencieuse → la fiche express suit (comme les chips)
+  const onOver = (i: number) => () => {
+    const st = useSceneStore.getState();
+    st.setProjectHovered(i);
+    st.requestSelectProject?.(i);
+    audioEngine.play('hover');
+  };
   const onOut = () => useSceneStore.getState().setProjectHovered(null);
   const onClick = (i: number) => () => { const st = useSceneStore.getState(); st.requestSelectProject?.(i); st.setProjectDeployed(i); };
 
