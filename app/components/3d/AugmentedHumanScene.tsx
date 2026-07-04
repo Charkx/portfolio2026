@@ -76,6 +76,12 @@ const BREATH = 0.012;
 const LOOK_YAW = 0.45;
 const LOOK_PITCH = 0.22;
 const PULSE_SPEED = 1.6;
+// 👉 Perturbation "corps qui traverse l'hologramme" : la surface se renfle/ondule
+//    sous le curseur (déplacement de sommets, en unités monde). AJUSTE à l'œil :
+const CURSOR_DISP = 0.1;   // amplitude du renflement (0 = désactivé)
+const CURSOR_RADIUS = 0.6; // rayon de la zone perturbée
+const CURSOR_FREQ = 22;    // finesse de l'onde
+const CURSOR_SPEED = 7;    // vitesse de l'ondulation
 
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
@@ -131,8 +137,19 @@ function makeHolo(timeUniform: { value: number }, pulse: Pulse, cursor: Cursor) 
     m.userData.uMz = sh.uniforms.uMz;
     m.userData.uEdge = sh.uniforms.uEdge;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
-      .replace('#include <skinning_vertex>', '#include <skinning_vertex>\n vWPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform vec3 uCursor;\nuniform float uCursorAmt;')
+      .replace('#include <skinning_vertex>', `#include <skinning_vertex>
+        // PERTURBATION GÉOMÉTRIQUE : sous le curseur, la surface se renfle et ondule
+        // (comme un objet qui traverse l'hologramme). Calcul en MONDE (amplitude prévisible).
+        vec3 _w=(modelMatrix*vec4(transformed,1.0)).xyz;
+        float _cd=distance(_w,uCursor);
+        float _infl=smoothstep(${CURSOR_RADIUS.toFixed(2)},0.0,_cd)*uCursorAmt;
+        if(_infl>0.001){
+          vec3 _nW=normalize(mat3(modelMatrix)*objectNormal);
+          _w+=_nW*_infl*${CURSOR_DISP.toFixed(3)}*sin(_cd*${CURSOR_FREQ.toFixed(1)}-uTime*${CURSOR_SPEED.toFixed(1)});
+          transformed=(inverse(modelMatrix)*vec4(_w,1.0)).xyz;
+        }
+        vWPos=_w;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;\nuniform float uPulseT;\nuniform vec3 uPulseO;\nuniform vec3 uCursor;\nuniform float uCursorAmt;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
@@ -153,16 +170,14 @@ function makeHolo(timeUniform: { value: number }, pulse: Pulse, cursor: Cursor) 
         float ring=smoothstep(0.14,0.0,abs(pd-pr))*max(0.0,1.0-uPulseT*0.85)*reveal;
         col+=vec3(0.45,1.0,1.0)*ring*1.8;
         a+=ring*0.55;
-        // "UN CORPS TRAVERSE L'HOLOGRAMME" : sous le curseur la projection se brouille
-        // — scintillement haute fréquence (flou d'interférence) + délavage + palpitation.
+        // "UN CORPS TRAVERSE L'HOLOGRAMME" : sous le curseur la projection perd ses
+        // rayures nettes (délavage = flou), s'illumine et palpite — image déstabilisée.
         float cd=distance(vWPos,uCursor);
-        float infl=smoothstep(0.6,0.0,cd)*uCursorAmt*reveal;
-        float scat=0.5+0.5*sin(vWPos.y*420.0+uTime*22.0);   // rayures brouillées (vertical)
-        float jit=0.5+0.5*sin(vWPos.x*260.0-uTime*17.0);     // scintillement (horizontal)
-        float blur=infl*(0.45+0.55*scat*jit);
-        col=mix(col,vec3(0.75,0.95,1.0),infl*0.5);           // délavage → image floue
-        col+=vec3(0.4,0.9,1.0)*blur*0.7;                     // grésillement lumineux
-        a+=blur*0.4;                                          // densité qui palpite
+        float infl=smoothstep(0.65,0.0,cd)*uCursorAmt*reveal;
+        float flick=0.7+0.3*sin(uTime*30.0+vWPos.y*40.0)*sin(uTime*21.0-vWPos.x*33.0);
+        vec3 smear=vec3(0.6,0.95,1.0)*flick;                 // cible : blanc-cyan diffus
+        col=mix(col,smear,infl*0.85);                        // efface les bandes → flou
+        a=mix(a,0.45+0.35*flick,infl*0.7);                   // densité smeary qui palpite
         gl_FragColor=vec4(col,a);`);
   };
   return m;
