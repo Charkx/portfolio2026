@@ -33,19 +33,20 @@ function Opt({ active, disabled, title, onClick, children }: {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+// Ligne de terminal révélée à son tour (i = ordre d'apparition)
+function Line({ i, children }: { i: number; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-6">
-      <span className="text-cyan-400/60">&gt; {label}</span>
-      <div className="flex items-center gap-2">{children}</div>
+    <div className="hud-reveal flex flex-wrap items-center gap-x-2" style={{ animationDelay: `${0.2 + i * 0.35}s` }}>
+      {children}
     </div>
   );
 }
 
 /**
- * Console de calibrage — affichée à la place du terminal tant que le site est
- * verrouillé : l'utilisateur règle SON expérience (son, volume, animations,
- * qualité) avant d'entrer. La musique d'entrée sert de mire pour le volume.
+ * Calibrage de session DANS le terminal : tant que le site est verrouillé, les
+ * réglages (son, volume, animations, qualité, langue) s'affichent ligne à ligne
+ * comme une séquence de boot — le terminal a une vraie utilité.
+ * La musique d'entrée sert de mire pour le volume.
  */
 export default function CalibrationConsole() {
   const enabled = useAudioStore((s) => s.enabled);
@@ -54,61 +55,74 @@ export default function CalibrationConsole() {
   const setEnabled = useAudioStore((s) => s.setEnabled);
   const volume = useAudioStore((s) => s.volume);
   const setVolume = useAudioStore((s) => s.setVolume);
-  const motion = useSettingsStore((s) => s.motion);
-  const setMotion = useSettingsStore((s) => s.setMotion);
   const quality = useSettingsStore((s) => s.quality);
   const setQuality = useSettingsStore((s) => s.setQuality);
+  const setMotion = useSettingsStore((s) => s.setMotion);
   const reduced = useReducedMotion(); // effectif (réglage manuel OU préférence système)
 
   return (
-    <div className="w-full max-w-md mx-auto mt-4 font-mono text-xs border border-cyan-400/25 bg-black/50 rounded-lg px-5 py-4 space-y-2.5 text-left">
-      <div className="text-cyan-300 tracking-[0.25em] text-[11px]">CALIBRAGE DE SESSION</div>
+    <div className="text-center mt-4">
+      {/* même en-tête que le terminal : la console EST le terminal en phase verrouillée */}
+      <div className="text-red-500 text-xl font-mono neon-glow animate-pulse mb-2">
+        SCAN CARD CODE TO ACCESS DATA
+      </div>
 
-      {/* effet immédiat : [ACTIVÉ] lance la musique d'entrée (geste utilisateur)
-          → on règle le volume dessus AVANT d'entrer */}
-      <Row label="FLUX AUDIO">
-        <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); }}>[ACTIVÉ]</Opt>
-        <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); }}>[COUPÉ]</Opt>
-      </Row>
+      <div className="text-left text-cyan-300 text-sm font-mono max-w-md mx-auto px-4 space-y-1.5 min-h-[100px]">
+        <Line i={0}>
+          <span className="text-cyan-400/70">&gt; Lien neural en attente — calibrage de session :</span>
+        </Line>
 
-      <Row label="VOLUME">
-        <div role="group" aria-label="Volume du son" className="flex items-end gap-[3px] h-4">
-          {[1, 2, 3, 4, 5].map((n) => {
-            const lit = enabled && volume >= n / 5 - 0.001;
-            return (
-              <button
-                key={n}
-                type="button"
-                aria-label={`Volume ${n} sur 5`}
-                aria-pressed={lit}
-                onClick={() => setVolume(n / 5)}
-                onMouseEnter={() => audioEngine.play('hover')}
-                className={`w-[5px] rounded-[1px] cursor-pointer transition-colors
-                  ${lit ? 'bg-cyan-300 hover:bg-cyan-100' : 'bg-cyan-400/25 hover:bg-cyan-400/60'}`}
-                style={{ height: `${5 + n * 2.4}px` }}
-              />
-            );
-          })}
-        </div>
-      </Row>
+        <Line i={1}>
+          <span className="text-cyan-400/60">&gt; FLUX AUDIO :</span>
+          {/* effet immédiat : [ACTIVÉ] lance la musique d'entrée (geste utilisateur) */}
+          <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); }}>[ACTIVÉ]</Opt>
+          <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); }}>[COUPÉ]</Opt>
+        </Line>
 
-      <Row label="ANIMATIONS">
-        <Opt active={!reduced} onClick={() => setMotion('full')}>[COMPLÈTES]</Opt>
-        <Opt active={reduced} onClick={() => setMotion('reduced')}>[RÉDUITES]</Opt>
-      </Row>
+        <Line i={2}>
+          <span className="text-cyan-400/60">&gt; VOLUME :</span>
+          <span role="group" aria-label="Volume du son" className="flex items-end gap-[3px] h-4">
+            {[1, 2, 3, 4, 5].map((n) => {
+              const lit = enabled && volume >= n / 5 - 0.001;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  aria-label={`Volume ${n} sur 5`}
+                  aria-pressed={lit}
+                  onClick={() => setVolume(n / 5)}
+                  onMouseEnter={() => audioEngine.play('hover')}
+                  className={`w-[5px] rounded-[1px] cursor-pointer transition-colors
+                    ${lit ? 'bg-cyan-300 hover:bg-cyan-100' : 'bg-cyan-400/25 hover:bg-cyan-400/60'}`}
+                  style={{ height: `${5 + n * 2.4}px` }}
+                />
+              );
+            })}
+          </span>
+        </Line>
 
-      <Row label="QUALITÉ">
-        <Opt active={quality === 'high'} onClick={() => setQuality('high')}>[HAUTE]</Opt>
-        <Opt active={quality === 'eco'} title="Bloom coupé, rendu allégé" onClick={() => setQuality('eco')}>[ÉCO]</Opt>
-      </Row>
+        <Line i={3}>
+          <span className="text-cyan-400/60">&gt; ANIMATIONS :</span>
+          <Opt active={!reduced} onClick={() => setMotion('full')}>[COMPLÈTES]</Opt>
+          <Opt active={reduced} onClick={() => setMotion('reduced')}>[RÉDUITES]</Opt>
+        </Line>
 
-      <Row label="LANGUE">
-        <Opt active>[FR]</Opt>
-        <Opt disabled title="English — bientôt disponible">[EN]</Opt>
-      </Row>
+        <Line i={4}>
+          <span className="text-cyan-400/60">&gt; QUALITÉ :</span>
+          <Opt active={quality === 'high'} onClick={() => setQuality('high')}>[HAUTE]</Opt>
+          <Opt active={quality === 'eco'} title="Bloom coupé, rendu allégé" onClick={() => setQuality('eco')}>[ÉCO]</Opt>
+        </Line>
 
-      <div className="text-gray-600 text-[10px] pt-1" aria-hidden="true">
-        {motion === 'auto' ? '// animations : suivent la préférence système' : '// réglages mémorisés pour tes prochaines visites'}
+        <Line i={5}>
+          <span className="text-cyan-400/60">&gt; LANGUE :</span>
+          <Opt active>[FR]</Opt>
+          <Opt disabled title="English — bientôt disponible">[EN]</Opt>
+        </Line>
+
+        <Line i={6}>
+          <span className="text-gray-600 text-xs">&gt; Scanne la carte pour établir le lien neural…</span>
+          <span className="animate-pulse" aria-hidden="true">_</span>
+        </Line>
       </div>
     </div>
   );
