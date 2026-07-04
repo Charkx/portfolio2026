@@ -70,6 +70,13 @@ const WIDE_RETARGET = 0.85;
 const WIDE_BODY_Y = 1.0;
 const BREATH = 0.012;
 
+// 👉 INTERACTIONS HERO — AJUSTE ICI :
+//   LOOK_YAW/PITCH : amplitude du regard qui suit le curseur (rad ; signe = sens)
+//   PULSE_SPEED    : vitesse de l'onde glitch au clic (unités monde/s)
+const LOOK_YAW = 0.45;
+const LOOK_PITCH = 0.22;
+const PULSE_SPEED = 1.6;
+
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
 
@@ -100,7 +107,10 @@ export function linearStation(prog: number, count: number): { i: number; f: numb
 }
 
 // --- Matériau holographique (injecté → conserve le skinning) ---
-function makeHolo(timeUniform: { value: number }) {
+// pulse = onde glitch au clic : uniforms PARTAGÉS par tous les matériaux du corps
+type Pulse = { t: { value: number }; o: { value: THREE.Vector3 } };
+
+function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
   // émissif cyan = filet de sécurité : visible même si l'injection du shader échoue
   const m = new THREE.MeshStandardMaterial({
     color: 0x000000, emissive: CYAN, emissiveIntensity: 0.6,
@@ -111,6 +121,8 @@ function makeHolo(timeUniform: { value: number }) {
     sh.uniforms.uOp = { value: 0.5 };
     sh.uniforms.uMz = { value: 1 }; // matérialisation : 0 = invisible, 1 = corps complet
     sh.uniforms.uEdge = { value: 1 }; // multiplicateur de l'edge glow (boost à la désintégration)
+    sh.uniforms.uPulseT = pulse.t;   // temps écoulé depuis le clic (99 = onde inactive)
+    sh.uniforms.uPulseO = pulse.o;   // origine de l'onde (point cliqué, monde)
     m.userData.uOp = sh.uniforms.uOp;
     m.userData.uMz = sh.uniforms.uMz;
     m.userData.uEdge = sh.uniforms.uEdge;
@@ -118,7 +130,7 @@ function makeHolo(timeUniform: { value: number }) {
       .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
       .replace('#include <skinning_vertex>', '#include <skinning_vertex>\n vWPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;\nuniform float uPulseT;\nuniform vec3 uPulseO;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         float fres=pow(1.0-abs(dot(normalize(vNormal),normalize(vViewPosition))),2.0);
         float band=smoothstep(0.45,1.0,0.5+0.5*sin(vWPos.y*140.0-uTime*2.5));
@@ -131,6 +143,12 @@ function makeHolo(timeUniform: { value: number }) {
         float edge=smoothstep(0.07,0.0,abs(hN-front))*(1.0-uMz);
         a*=reveal;
         vec3 col=holo*(0.5+fres*1.6+band*0.7)+vec3(0.5,0.95,1.0)*edge*1.5*uEdge;
+        // onde glitch : anneau lumineux qui se propage depuis le point cliqué puis s'éteint
+        float pd=distance(vWPos,uPulseO);
+        float pr=uPulseT*${PULSE_SPEED.toFixed(2)};
+        float ring=smoothstep(0.14,0.0,abs(pd-pr))*max(0.0,1.0-uPulseT*0.85)*reveal;
+        col+=vec3(0.45,1.0,1.0)*ring*1.8;
+        a+=ring*0.55;
         gl_FragColor=vec4(col,a);`);
   };
   return m;
@@ -150,6 +168,8 @@ type Station = { camPos: THREE.Vector3; target: THREE.Vector3; body: number; foc
 // --- Construction de la scène (humain + stations) ---
 function buildScene(srcScene: THREE.Object3D) {
   const timeUniform = { value: 0 };
+  // onde glitch au clic : uniforms partagés (t=99 → inactive au départ)
+  const pulse: Pulse = { t: { value: 99 }, o: { value: new THREE.Vector3() } };
   const bodyMats: THREE.Material[] = [];
 
   const human = skeletonClone(srcScene);
@@ -158,7 +178,7 @@ function buildScene(srcScene: THREE.Object3D) {
     if (!mesh.isMesh) return;
     // sphère tenue dans la main → masquée (visible=false n'altère PAS la bbox → corps inchangé)
     if (mesh.name.toLowerCase().includes('sphere')) { mesh.visible = false; return; }
-    const mat = makeHolo(timeUniform); mesh.material = mat; mesh.frustumCulled = false; bodyMats.push(mat);
+    const mat = makeHolo(timeUniform, pulse); mesh.material = mat; mesh.frustumCulled = false; bodyMats.push(mat);
   });
 
   // échelle → 1.8 de haut, pieds au sol, centré en x
@@ -172,7 +192,9 @@ function buildScene(srcScene: THREE.Object3D) {
 
   // NB : GLTFLoader retire les points des noms ('hand.R_032' → 'handR_032') → regex sans point
   const palmBone = findBone(human, /hand\.?r/i);      // main droite levée → ancrage Data Cubes
-  const headBone = findBone(human, /head(?!.*end)/i); // tête (hors 'head_end') → yeux POV projets
+  const headBone = findBone(human, /head(?!.*end)/i); // tête (hors 'head_end') → yeux POV projets + regard
+  // pose de repos de la tête : base sur laquelle s'ajoute le regard qui suit le curseur
+  const headBaseQuat = headBone ? headBone.quaternion.clone() : null;
 
   const pos = {
     brain:   new THREE.Vector3(CFG.brain.x,   H * CFG.brain.y,   CFG.brain.z),
@@ -240,7 +262,7 @@ function buildScene(srcScene: THREE.Object3D) {
     frame('contact', 0.55), // corps visible à l'arrivée (avant la désintégration scrubbée)
   ];
 
-  return { root, human, palmBone, headBone, pos, stations, bodyMats, timeUniform, backdrop, skyMat, dustMat };
+  return { root, human, palmBone, headBone, headBaseQuat, pos, stations, bodyMats, timeUniform, pulse, backdrop, skyMat, dustMat };
 }
 
 // --- Wrapper de fondu pour un module React embarqué (cerveau, ADN…) ---
@@ -368,9 +390,45 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const mzRef = useRef(0); // 0 → 1 : matérialisation du corps au montage (boot)
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
+  // interactions hero : curseur (regard) + poids de la station d'intro (gate du clic)
+  const pointerRef = useRef({ x: 0, y: 0 }); // NDC -1..1
+  const lookRef = useRef({ yaw: 0, pitch: 0 }); // regard lissé
+  const heroWRef = useRef(0);
+  const _lookE = useRef(new THREE.Euler());
+  const _lookQ = useRef(new THREE.Quaternion());
+
+  // le canvas est pointer-events:none → on écoute la fenêtre
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      pointerRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointerRef.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+
+  // ONDE GLITCH : clic sur le corps (station d'intro) → raycast manuel → l'onde
+  // part du point touché (uniforms du shader holo)
+  useEffect(() => {
+    const ray = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const onDown = (e: PointerEvent) => {
+      if (reduced || heroWRef.current < 0.5) return;
+      ndc.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
+      ray.setFromCamera(ndc, camera);
+      const hits = ray.intersectObject(built.human, true);
+      if (!hits.length) return;
+      built.pulse.o.value.copy(hits[0].point);
+      built.pulse.t.value = 0;
+    };
+    window.addEventListener('pointerdown', onDown);
+    return () => window.removeEventListener('pointerdown', onDown);
+  }, [built, camera, reduced]);
+
   useFrame((_, dt) => {
     // reduced-motion : bandes du shader figées
     if (!reduced) built.timeUniform.value += dt;
+    built.pulse.t.value += dt; // l'onde glitch se propage puis s'éteint (inactive à t≥~1.2)
 
     // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage/reduced-motion).
     // Tant que l'accès est verrouillé, le corps reste invisible : le canvas permanent
@@ -474,6 +532,21 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const mrH = stH.manualRot.human;
     built.human.rotation.y = mrH?.y ?? 0;
     built.human.rotation.x = mrH?.x ?? 0;
+
+    // L'HOLOGRAMME TE REGARDE : à la station d'intro, la tête suit le curseur
+    // (lissé, revient à la pose de repos dès qu'on quitte la station)
+    const heroW = (i === 0 ? 1 - f : 0) * mz;
+    heroWRef.current = heroW;
+    if (built.headBone && built.headBaseQuat) {
+      const k = 1 - Math.pow(0.001, dt);
+      const tgtYaw = reduced ? 0 : pointerRef.current.x * LOOK_YAW * heroW;
+      const tgtPitch = reduced ? 0 : -pointerRef.current.y * LOOK_PITCH * heroW;
+      lookRef.current.yaw += (tgtYaw - lookRef.current.yaw) * k;
+      lookRef.current.pitch += (tgtPitch - lookRef.current.pitch) * k;
+      _lookE.current.set(lookRef.current.pitch, lookRef.current.yaw, 0);
+      _lookQ.current.setFromEuler(_lookE.current);
+      built.headBone.quaternion.copy(built.headBaseQuat).multiply(_lookQ.current);
+    }
   });
 
   return (
