@@ -12,6 +12,7 @@ import DataCubes from './DataCubes';
 import { useSceneStore } from '../../store/sceneStore';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { audioEngine } from '../../lib/audioEngine';
 import { TECH_STACK } from '../../utils/constants';
 
 // focuses des modules embarqués (= stations 1..3 ; la station contact n'a pas de module)
@@ -73,9 +74,18 @@ const BREATH = 0.012;
 // 👉 INTERACTIONS HERO — AJUSTE ICI :
 //   LOOK_YAW/PITCH : amplitude du regard qui suit le curseur (rad ; signe = sens)
 //   PULSE_SPEED    : vitesse de l'onde glitch au clic (unités monde/s)
+//   WAVE_*         : salut de la main levée (avant-bras qui oscille)
+//   HI5_*          : high-five au clic sur la paume (poussée unique)
 const LOOK_YAW = 0.45;
 const LOOK_PITCH = 0.22;
 const PULSE_SPEED = 1.6;
+const WAVE_AMP = 0.35;   // amplitude du salut (rad ; signe = sens)
+const WAVE_FREQ = 9;     // vitesse d'oscillation du salut
+const WAVE_DUR = 1.6;    // durée d'un salut (s)
+const WAVE_EVERY = 9;    // re-salue toutes les X s tant qu'on reste sur l'intro
+const HI5_AMP = -0.5;    // poussée du high-five (rad ; signe = sens)
+const HI5_DUR = 0.5;     // durée du high-five (s)
+const HI5_RADIUS = 0.28; // rayon de détection du clic autour de la paume (unités monde)
 
 const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
@@ -193,8 +203,10 @@ function buildScene(srcScene: THREE.Object3D) {
   // NB : GLTFLoader retire les points des noms ('hand.R_032' → 'handR_032') → regex sans point
   const palmBone = findBone(human, /hand\.?r/i);      // main droite levée → ancrage Data Cubes
   const headBone = findBone(human, /head(?!.*end)/i); // tête (hors 'head_end') → yeux POV projets + regard
-  // pose de repos de la tête : base sur laquelle s'ajoute le regard qui suit le curseur
+  const forearmBone = findBone(human, /forearm\.?r/i); // avant-bras droit → salut / high-five
+  // poses de repos : bases sur lesquelles s'ajoutent le regard et le salut
   const headBaseQuat = headBone ? headBone.quaternion.clone() : null;
+  const forearmBaseQuat = forearmBone ? forearmBone.quaternion.clone() : null;
 
   const pos = {
     brain:   new THREE.Vector3(CFG.brain.x,   H * CFG.brain.y,   CFG.brain.z),
@@ -262,7 +274,7 @@ function buildScene(srcScene: THREE.Object3D) {
     frame('contact', 0.55), // corps visible à l'arrivée (avant la désintégration scrubbée)
   ];
 
-  return { root, human, palmBone, headBone, headBaseQuat, pos, stations, bodyMats, timeUniform, pulse, backdrop, skyMat, dustMat };
+  return { root, human, palmBone, headBone, headBaseQuat, forearmBone, forearmBaseQuat, pos, stations, bodyMats, timeUniform, pulse, backdrop, skyMat, dustMat };
 }
 
 // --- Wrapper de fondu pour un module React embarqué (cerveau, ADN…) ---
@@ -396,6 +408,14 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const heroWRef = useRef(0);
   const _lookE = useRef(new THREE.Euler());
   const _lookQ = useRef(new THREE.Quaternion());
+  // salut / high-five : phases de l'avant-bras droit
+  const waveRef = useRef(0);   // temps écoulé dans le salut courant (≥ WAVE_DUR = fini)
+  const waveNextRef = useRef(1.2); // prochain salut spontané (s, horloge intro)
+  const hi5Ref = useRef(99);   // temps écoulé dans le high-five (≥ HI5_DUR = fini)
+  const heroClockRef = useRef(0); // horloge qui n'avance que sur la station d'intro
+  const _armE = useRef(new THREE.Euler());
+  const _armQ = useRef(new THREE.Quaternion());
+  const _palm = useRef(new THREE.Vector3());
 
   // le canvas est pointer-events:none → on écoute la fenêtre
   useEffect(() => {
@@ -418,8 +438,17 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       ray.setFromCamera(ndc, camera);
       const hits = ray.intersectObject(built.human, true);
       if (!hits.length) return;
+      // onde glitch depuis le point touché
       built.pulse.o.value.copy(hits[0].point);
       built.pulse.t.value = 0;
+      // clic près de la paume levée → HIGH-FIVE (sinon simple onde)
+      if (built.palmBone) {
+        built.palmBone.getWorldPosition(_palm.current);
+        if (hits[0].point.distanceTo(_palm.current) < HI5_RADIUS) {
+          hi5Ref.current = 0;
+          audioEngine.play('activation');
+        }
+      }
     };
     window.addEventListener('pointerdown', onDown);
     return () => window.removeEventListener('pointerdown', onDown);
@@ -546,6 +575,40 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _lookE.current.set(lookRef.current.pitch, lookRef.current.yaw, 0);
       _lookQ.current.setFromEuler(_lookE.current);
       built.headBone.quaternion.copy(built.headBaseQuat).multiply(_lookQ.current);
+    }
+
+    // SALUT / HIGH-FIVE : l'avant-bras droit s'anime à la station d'intro.
+    // Salut spontané périodique (accueil) ; high-five au clic sur la paume.
+    if (built.forearmBone && built.forearmBaseQuat && !reduced) {
+      if (heroW > 0.5) {
+        heroClockRef.current += dt;
+        // déclenche un salut d'accueil à intervalle régulier (et un premier vite après l'arrivée)
+        if (heroClockRef.current >= waveNextRef.current && waveRef.current >= WAVE_DUR) {
+          waveRef.current = 0;
+          waveNextRef.current = heroClockRef.current + WAVE_EVERY;
+        }
+      }
+      // avance les timers d'animation
+      if (waveRef.current < WAVE_DUR) waveRef.current += dt;
+      if (hi5Ref.current < HI5_DUR) hi5Ref.current += dt;
+
+      let roll = 0; // rotation ajoutée à l'avant-bras (axe Z = balancement du salut)
+      // salut : oscillation amortie sur WAVE_DUR
+      if (waveRef.current < WAVE_DUR) {
+        const p = waveRef.current / WAVE_DUR;
+        const envelope = Math.sin(p * Math.PI); // monte puis redescend
+        roll += Math.sin(p * WAVE_FREQ) * WAVE_AMP * envelope * heroW;
+      }
+      // high-five : poussée unique (aller-retour rapide), prioritaire, indépendante du poids
+      if (hi5Ref.current < HI5_DUR) {
+        const p = hi5Ref.current / HI5_DUR;
+        roll += Math.sin(p * Math.PI) * HI5_AMP;
+      }
+      _armE.current.set(0, 0, roll);
+      _armQ.current.setFromEuler(_armE.current);
+      built.forearmBone.quaternion.copy(built.forearmBaseQuat).multiply(_armQ.current);
+    } else if (built.forearmBone && built.forearmBaseQuat) {
+      built.forearmBone.quaternion.copy(built.forearmBaseQuat); // reduced-motion : bras au repos
     }
   });
 
