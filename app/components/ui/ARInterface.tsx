@@ -143,6 +143,14 @@ export default function ARInterface() {
             })}
           </div>
         </div>
+        {/* langue : FR actif, EN à venir (même promesse que la console de calibrage) */}
+        <div className="flex items-center gap-1 font-mono text-xs" role="group" aria-label="Langue">
+          <button aria-pressed="true" className="text-cyan-300 cursor-pointer">FR</button>
+          <span className="text-cyan-400/30" aria-hidden="true">·</span>
+          <HudTooltip label="English — bientôt disponible">
+            <button disabled className="text-gray-700 cursor-not-allowed">EN</button>
+          </HudTooltip>
+        </div>
         <HudTooltip label={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}>
           <button
             aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
@@ -160,7 +168,8 @@ export default function ARInterface() {
    {introPhase !== "LOCKED" && (
       <div className="hud-boot relative w-full h-full">
       <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex justify-between items-center h-full pl-6 pr-44 text-cyan-400 font-mono text-sm">
+        {/* pr large : réserve la place du cluster droit (CV + volume + langue + power) */}
+        <div className="flex justify-between items-center h-full pl-6 pr-[22rem] text-cyan-400 font-mono text-sm">
 
             <div className="flex items-center space-x-6">
                 ID:

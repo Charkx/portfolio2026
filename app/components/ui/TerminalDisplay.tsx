@@ -35,6 +35,24 @@ const BOOT_SEQUENCE = [
   '> Welcome, Charly Menthiller.',
 ];
 
+// Après le boot : le message quitte le flux (il recouvrait l'hologramme) →
+// bandeau fixe au bas de l'écran, effacé dès que l'utilisateur scrolle.
+function AccessGrantedHint() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const onScroll = () => { if (window.scrollY > 80) setVisible(false); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  if (!visible) return null;
+  return (
+    <div className="pointer-events-none fixed bottom-20 inset-x-0 z-40 text-center font-mono hud-reveal">
+      <div className="text-green-400 text-lg neon-glow animate-pulse tracking-[0.3em]">ACCESS GRANTED</div>
+      <div className="text-cyan-300/80 text-xs mt-1">Scroll pour initialiser l&apos;interface neurale…</div>
+    </div>
+  );
+}
+
 export default function TerminalDisplay() {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<{ id: string; text: string }[]>([]);
@@ -110,6 +128,9 @@ export default function TerminalDisplay() {
     }
   }, [introPhase, setIntroPhase]);
 
+  // déverrouillé : plus de terminal dans le flux — juste l'invite en bas d'écran
+  if (introPhase === 'UNLOCKED') return <AccessGrantedHint />;
+
   return (
     <div className="text-center mt-4">
       <div className={`${calibrating ? 'text-cyan-400' : HEADER_COLOR[introPhase]} text-xl font-mono neon-glow animate-pulse mb-2`}>
@@ -129,10 +150,6 @@ export default function TerminalDisplay() {
         {calibrating && <CalibrationConsole onConfirm={onCalibrated} />}
 
         {introPhase === 'SCANNING' && !calibrating && <div className="terminal-cursor">_</div>}
-
-        {introPhase === 'UNLOCKED' && (
-          <div className="mt-2">Scroll to continue neural interface initialization...</div>
-        )}
       </div>
     </div>
   );
