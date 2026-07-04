@@ -108,7 +108,7 @@ export function linearStation(prog: number, count: number): { i: number; f: numb
 
 // --- Matériau holographique (injecté → conserve le skinning) ---
 // pulse  = onde glitch au clic (uniforms PARTAGÉS par tous les matériaux du corps)
-// cursor = "l'hologramme te sent" : halo qui suit le curseur sur la surface (station intro)
+// cursor = "un corps traverse l'hologramme" : la projection se brouille sous le curseur
 type Pulse = { t: { value: number }; o: { value: THREE.Vector3 } };
 type Cursor = { p: { value: THREE.Vector3 }; amt: { value: number } };
 
@@ -153,11 +153,16 @@ function makeHolo(timeUniform: { value: number }, pulse: Pulse, cursor: Cursor) 
         float ring=smoothstep(0.14,0.0,abs(pd-pr))*max(0.0,1.0-uPulseT*0.85)*reveal;
         col+=vec3(0.45,1.0,1.0)*ring*1.8;
         a+=ring*0.55;
-        // "l'hologramme te sent" : halo doux + bandes densifiées sous le curseur (suit la souris)
+        // "UN CORPS TRAVERSE L'HOLOGRAMME" : sous le curseur la projection se brouille
+        // — scintillement haute fréquence (flou d'interférence) + délavage + palpitation.
         float cd=distance(vWPos,uCursor);
-        float glow=smoothstep(0.7,0.0,cd)*uCursorAmt*reveal;
-        col+=vec3(0.5,1.0,1.0)*glow*(0.9+band*0.6);
-        a+=glow*0.5;
+        float infl=smoothstep(0.6,0.0,cd)*uCursorAmt*reveal;
+        float scat=0.5+0.5*sin(vWPos.y*420.0+uTime*22.0);   // rayures brouillées (vertical)
+        float jit=0.5+0.5*sin(vWPos.x*260.0-uTime*17.0);     // scintillement (horizontal)
+        float blur=infl*(0.45+0.55*scat*jit);
+        col=mix(col,vec3(0.75,0.95,1.0),infl*0.5);           // délavage → image floue
+        col+=vec3(0.4,0.9,1.0)*blur*0.7;                     // grésillement lumineux
+        a+=blur*0.4;                                          // densité qui palpite
         gl_FragColor=vec4(col,a);`);
   };
   return m;
