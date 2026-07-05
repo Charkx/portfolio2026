@@ -181,10 +181,14 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
   return (
     <group ref={cardRef}>
       <IDCardVisual
+        hideBarcode
         onClick={handleClick}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
-      />
+      >
+        {/* la carte "parle" toute seule avant le scan */}
+        <AnimatedBarcode autoMessages={['HELLO !', 'SCAN ME']} />
+      </IDCardVisual>
     </group>
   );
 };
@@ -221,8 +225,8 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
 const clampF = THREE.MathUtils.clamp;
 
 // messages décodés + couleur selon le canal survolé (mêmes teintes que les coordonnées)
-const CH_MSG: Record<string, string> = { email: 'WRITE ME', github: 'SEE MY CODE', linkedin: "LET'S CONNECT", cv: 'CHECK MY CV' };
-const CH_COL: Record<string, string> = { email: '#22d3ee', github: '#c084fc', linkedin: '#38bdf8', cv: '#f472b6' };
+const CH_MSG: Record<string, string> = { email: 'WRITE ME', github: 'SEE MY CODE', linkedin: "LET'S CONNECT", cv: 'CHECK MY CV', dispo: 'AVAILABLE 09/2026' };
+const CH_COL: Record<string, string> = { email: '#22d3ee', github: '#c084fc', linkedin: '#38bdf8', cv: '#f472b6', dispo: '#4ade80' };
 const IDLE_SPEAK = true; // la carte "parle" au repos de temps en temps (mettre false pour couper)
 const IDLE_MSGS = ['OPEN TO WORK', 'AVAILABLE 09/2026']; // messages au repos (alternent)
 const NBARS = 30;
@@ -230,7 +234,7 @@ const NBARS = 30;
 // Code-barres VIVANT : ses barres se couchent de gauche à droite pour laisser
 // apparaître le texte (elles se "réagencent" en lettres), puis se redressent.
 // Lit le store : survol coordonnée > formulaire envoyé > progression > repos.
-function AnimatedBarcode() {
+function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
   const bars = useRef<(THREE.Mesh | null)[]>([]);
   const baseH = useMemo(() => Array.from({ length: NBARS }, () => 0.06 + Math.random() * 0.1), []);
   const [txt, setTxt] = useState('');
@@ -249,9 +253,11 @@ function AnimatedBarcode() {
     const fill = store.contactFill ?? 0;
     const sent = store.endSessionSent;
 
-    // message cible + couleur (priorité : envoyé > survol > formulaire > repos)
+    // message cible + couleur. Mode AUTO (hero avant scan) : cycle imposé.
     let msg = '', c = '#7dffff';
-    if (sent) { msg = (Math.floor(st.clock / 2.8) % 2 === 0) ? "LET'S WORK TOGETHER" : 'AVAILABLE 09/2026'; c = '#4ade80'; }
+    if (autoMessages) { msg = autoMessages[Math.floor(st.clock / 2.6) % autoMessages.length]; }
+    // sinon (carte de contact) : envoyé > survol > formulaire > repos
+    else if (sent) { msg = (Math.floor(st.clock / 2.8) % 2 === 0) ? "LET'S WORK TOGETHER" : 'AVAILABLE 09/2026'; c = '#4ade80'; }
     else if (hovered && CH_MSG[hovered]) { msg = CH_MSG[hovered]; c = CH_COL[hovered]; }
     else if (fill > 0) { msg = `LINK ${Math.round(fill * 100)}%`; c = '#7dffff'; }
     else if (IDLE_SPEAK) {

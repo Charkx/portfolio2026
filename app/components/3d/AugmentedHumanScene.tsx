@@ -597,6 +597,9 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const unlocked = usePortfolioStore.getState().introPhase === 'UNLOCKED';
     if (reduced) mzRef.current = unlocked ? 1 : 0;
     if (!debug && unlocked && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
+    // re-verrouillage (power-down) : le corps se dé-matérialise → il ne reste plus
+    // derrière la carte biométrique (bug : l'avatar restait visible après lock)
+    if (!debug && !unlocked && mzRef.current > 0) mzRef.current = Math.max(mzRef.current - dt / 1.0, 0);
     const mz = debug ? 1 : mzRef.current;
     // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection
     const es = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);
