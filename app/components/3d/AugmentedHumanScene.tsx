@@ -34,6 +34,9 @@ const FINALE_TGT = new THREE.Vector3(0, 0.95, 0);
 // (= FINALE, le plan large) est la vision de BASE : source → base → cible, en 2 temps,
 // sans rejouer les stations intermédiaires. section → index de station :
 const SEC_IDX: Record<string, number> = { hero: 0, about: 1, skills: 2, projects: 3, contact: 4 };
+// module embarqué (organe) affiché à chaque section — pour n'afficher que celui de la
+// source puis de la cible pendant un saut (pas les intermédiaires)
+const SEC_FOCUS: Record<string, string> = { about: 'brain', skills: 'adn', projects: 'heart' };
 const NAV_CAM_DUR = 2.6; // durée du parcours caméra (≈ durée du scroll de nav)
 
 // Réglages calibrés du placement des modules sur le corps
@@ -698,11 +701,24 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const bodyOp = Math.max(THREE.MathUtils.lerp(A.body, B.body, f), TRAVEL * Math.sin(Math.PI * f), 0.6 * esAppear);
     bodyMats.forEach((m) => { if (m.userData.uOp) m.userData.uOp.value = bodyOp; });
 
-    // poids de chaque module = 1 sur SA station, 0 ailleurs (pilote fondu + échelle)
-    FOCI.forEach((key) => {
-      let w = 0; if (A.focus === key) w += 1 - f; if (B.focus === key) w += f;
-      weightsRef.current[key] = THREE.MathUtils.clamp(w, 0, 1);
-    });
+    // poids de chaque module = 1 sur SA station, 0 ailleurs (pilote fondu + échelle).
+    // SAUT DE NAV : on n'affiche QUE le module source (1er temps) puis cible (2e temps)
+    // — les modules des stations traversées ne flashent plus (fini "l'ancienne anim").
+    if (navSt.navJumping && navSt.navSource && navSt.navTarget) {
+      const srcF = SEC_FOCUS[navSt.navSource], dstF = SEC_FOCUS[navSt.navTarget];
+      const np = navClockRef.current;
+      FOCI.forEach((key) => {
+        let w = 0;
+        if (key === srcF && np < 0.5) w = 1 - np / 0.5;        // module source : fond au 1er temps
+        else if (key === dstF && np >= 0.5) w = (np - 0.5) / 0.5; // module cible : apparaît au 2e temps
+        weightsRef.current[key] = THREE.MathUtils.clamp(w, 0, 1);
+      });
+    } else {
+      FOCI.forEach((key) => {
+        let w = 0; if (A.focus === key) w += 1 - f; if (B.focus === key) w += f;
+        weightsRef.current[key] = THREE.MathUtils.clamp(w, 0, 1);
+      });
+    }
 
     // dès qu'un module n'est plus actif (on quitte sa section), sa rotation manuelle
     // revient à sa position initiale (l'humain n'est actif que sur la station d'intro)
