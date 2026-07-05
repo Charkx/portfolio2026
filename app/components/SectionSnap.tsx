@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getLenis } from './SmoothScroll';
+import { getLenis, isProgrammaticScroll, sectionTargetY } from './SmoothScroll';
 
 // Sections alignées un-écran (l'intérieur de l'étage contact — 260vh — reste
 // scrubbable librement : contact est la dernière ancre, aucun snap vers le bas)
@@ -23,11 +23,10 @@ export default function SectionSnap() {
     let settled = 0;      // section sur laquelle on est posé
     let snapping = false; // animation en cours → on n'écoute plus
 
+    // cible de chaque section (contact = fin de l'étage, là où la carte + le
+    // formulaire s'affichent) — même calcul que la nav HUD
     const tops = () =>
-      SECTION_IDS.map((id) => {
-        const el = document.getElementById(id);
-        return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
-      });
+      SECTION_IDS.map((id) => (document.getElementById(id) ? sectionTargetY(id) : Infinity));
 
     // ancre initiale = section la plus proche (le navigateur peut restaurer le scroll)
     const nearest = (y: number, T: number[]) => {
@@ -39,7 +38,8 @@ export default function SectionSnap() {
 
     const onScroll = () => {
       const lenis = getLenis();
-      if (snapping || !lenis || window.innerWidth < 768) return;
+      // saut de nav en cours → on laisse la nav faire, sans re-snapper par-dessus
+      if (snapping || isProgrammaticScroll() || !lenis || window.innerWidth < 768) return;
       const y = window.scrollY;
       const T = tops();
 
