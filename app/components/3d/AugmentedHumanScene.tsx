@@ -633,11 +633,13 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _base.current.y += Math.sin(tb * 0.27 + 1.7) * BREATH * 0.6 * idle;
     }
 
-    // SAUT DE NAV : la caméra recule au plan large "corps entier" au lieu de rejouer
-    // le cadrage de chaque station intermédiaire (dézoom → voyage → cadrage cible).
-    // Le scroll molette normal n'est PAS un saut de nav → chorégraphie inchangée.
+    // SAUT DE NAV : état initial = hologramme DÉZOOMÉ (plan large "corps entier"),
+    // puis zoom vers la section cible — au lieu de rejouer le cadrage de chaque
+    // station intermédiaire. Dézoom QUASI IMMÉDIAT (on ne voit pas le voyage rapide
+    // cerveau/ADN/main), zoom retour DOUX vers la cible. Scroll molette : inchangé.
     const navTarget = useSceneStore.getState().navJumping ? 1 : 0;
-    navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(0.0009, dt));
+    const navUp = navTarget > navBlendRef.current;
+    navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(navUp ? 1e-7 : 0.005, dt));
 
     // recul vers le plan "corps entier" : fin de session (esAppear) OU saut de nav
     const toWide = Math.max(esAppear, navBlendRef.current);
