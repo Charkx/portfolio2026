@@ -6,8 +6,6 @@ import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment } from '
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { useSceneStore } from '../../store/sceneStore';
-import { audioEngine } from '../../lib/audioEngine';
-import { downloadVCard } from '../../lib/vcard';
 
 const glitchChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 const BASE_TEXT = "ID: CHARLY MENTHILLER";
@@ -217,34 +215,84 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
 
 // --- Carte de FIN DE SESSION : LE MÊME visuel (IDCardVisual), retrouvé puis révélé
 // par une scanline. Un seul composant carte dans tout le site (pas de doublon).
-// Interaction : on l'attrape à la souris pour la retourner ; le dos propose de
-// l'ajouter à ses contacts (vCard) au clic. ---
+// Elle COMMUNIQUE : son code-barres central se décode en messages au survol des
+// coordonnées et selon le formulaire ; on peut aussi l'attraper pour l'inspecter. ---
 const clampF = THREE.MathUtils.clamp;
 
-// QR décoratif (non scannable — juste l'esthétique data-matrix du dos)
-const QR = ['1111011', '1001001', '1011101', '1000101', '1011001', '1001011', '1111110'];
-function QrChip() {
-  const N = 7, cell = 0.05;
-  const out: React.ReactElement[] = [];
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
-    if (QR[r][c] !== '1') continue;
-    out.push(
-      <mesh key={`${r}-${c}`} position={[(c - (N - 1) / 2) * cell, ((N - 1) / 2 - r) * cell + 0.12, 0]}>
-        <planeGeometry args={[cell * 0.85, cell * 0.85]} />
-        <meshBasicMaterial color="#aef6ff" />
-      </mesh>,
-    );
-  }
-  return <group>{out}</group>;
+// messages décodés + couleur selon le canal survolé (mêmes teintes que les coordonnées)
+const CH_MSG: Record<string, string> = { email: 'WRITE ME', github: 'SEE MY CODE', linkedin: "LET'S CONNECT", cv: 'CHECK MY CV' };
+const CH_COL: Record<string, string> = { email: '#22d3ee', github: '#c084fc', linkedin: '#38bdf8', cv: '#f472b6' };
+const GLITCH_CH = '!<>-_\\/[]{}=+*^?#01ABCXYZ';
+const IDLE_SPEAK = true; // la carte "parle" au repos de temps en temps (mettre false pour couper)
+
+// Message décodé sur le code-barres (au centre de la carte). Lit le store chaque frame :
+// survol coordonnée > formulaire envoyé > progression formulaire > mot au repos.
+function CardMessage() {
+  const [txt, setTxt] = useState('');
+  const [op, setOp] = useState(0);
+  const [col, setCol] = useState('#7dffff');
+  const s = useRef({ target: '', glitch: 0, amt: 0, colTarget: '#7dffff', clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0 });
+  const last = useRef({ txt: '', op: -1, col: '' });
+
+  useFrame((_, dt) => {
+    const store = useSceneStore.getState();
+    const st = s.current;
+    st.clock += dt;
+    const hovered = store.contactIdHovered;
+    const fill = store.contactFill ?? 0;
+    const sent = store.endSessionSent;
+
+    // message cible + couleur (priorité : envoyé > survol > formulaire > repos)
+    let msg = '', c = '#7dffff';
+    if (sent) { msg = "LET'S WORK TOGETHER"; c = '#4ade80'; }
+    else if (hovered && CH_MSG[hovered]) { msg = CH_MSG[hovered]; c = CH_COL[hovered]; }
+    else if (fill > 0) { msg = `LINK ${Math.round(fill * 100)}%`; c = '#7dffff'; }
+    else if (IDLE_SPEAK) {
+      if (st.clock >= st.idleNext && st.clock >= st.idleUntil) { st.idleUntil = st.clock + 1.8; st.idleNext = st.clock + 9 + Math.random() * 9; }
+      if (st.clock < st.idleUntil) { msg = 'OPEN TO WORK'; c = '#7dffff'; }
+    }
+
+    // nouveau message → relance le décodage (glitch qui se résout)
+    if (msg !== st.target) { st.target = msg; st.glitch = msg ? 0.5 : 0; st.colTarget = c; }
+    st.amt += ((msg ? 1 : 0) - st.amt) * (1 - Math.pow(0.004, dt));
+
+    // texte affiché : caractères qui se résolvent de gauche à droite
+    let shown = st.target;
+    if (st.glitch > 0) {
+      st.glitch -= dt;
+      const p = 1 - Math.max(st.glitch, 0) / 0.5;
+      const rev = Math.floor(st.target.length * p);
+      let out = '';
+      for (let i = 0; i < st.target.length; i++) out += (i < rev || st.target[i] === ' ') ? st.target[i] : GLITCH_CH[(Math.random() * GLITCH_CH.length) | 0];
+      shown = out;
+    }
+
+    // setState guardés → pas de re-render hors transition
+    if (shown !== last.current.txt) { last.current.txt = shown; setTxt(shown); }
+    const opR = Math.round(st.amt * 100) / 100;
+    if (opR !== last.current.op) { last.current.op = opR; setOp(opR); }
+    if (st.colTarget !== last.current.col) { last.current.col = st.colTarget; setCol(st.colTarget); }
+  });
+
+  return (
+    <group position={[0, -0.05, 0.023]}>
+      {/* écran qui masque le code-barres quand un message s'affiche */}
+      <mesh>
+        <planeGeometry args={[1.5, 0.28]} />
+        <meshBasicMaterial color="#04070c" transparent opacity={op * 0.92} depthWrite={false} />
+      </mesh>
+      <Text position={[0, 0, 0.004]} fontSize={0.085} maxWidth={1.4} lineHeight={1.05} textAlign="center" anchorX="center" anchorY="middle" color={col} fillOpacity={op} outlineWidth={0.002} outlineColor={col}>
+        {txt}
+      </Text>
+    </group>
+  );
 }
 
 function FinaleCardModel() {
   const group = useRef<THREE.Group>(null);
   const scan = useRef<THREE.Mesh>(null);
-  const backRef = useRef<THREE.Group>(null); // dos "prends ma carte"
   const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
-  const takenAt = useRef<number | null>(null); // instant du "carte prise" (pulse)
-  const drag = useRef({ active: false, lastX: 0, rotY: 0, vel: 0, moved: 0 });
+  const drag = useRef({ active: false, lastX: 0, rotY: 0, vel: 0 });
   const [hover, setHover] = useState(false);
   useCursor(hover, 'grab');
 
@@ -256,19 +304,11 @@ function FinaleCardModel() {
       drag.current.lastX = e.clientX;
       drag.current.rotY += dx * 0.012;
       drag.current.vel = dx * 0.012;
-      drag.current.moved += Math.abs(dx);
     };
     const onUp = () => {
       if (!drag.current.active) return;
       drag.current.active = false;
       document.body.style.cursor = '';
-      // clic (peu de déplacement) alors que le DOS fait face → prendre la carte (vCard)
-      const showingBack = Math.cos(-0.32 + drag.current.rotY) < -0.3;
-      if (drag.current.moved < 6 && showingBack) {
-        downloadVCard();
-        audioEngine.play('success');
-        takenAt.current = performance.now() / 1000;
-      }
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -294,26 +334,18 @@ function FinaleCardModel() {
       pulse = Math.sin(e * Math.PI) * 0.12;
     }
 
-    // inertie du drag (friction quand on ne tient plus la carte)
-    if (!drag.current.active) { drag.current.rotY += drag.current.vel; drag.current.vel *= 0.9; }
+    // drag : rotation manuelle avec inertie + retour vers la face avant au relâché
+    if (!drag.current.active) {
+      drag.current.rotY += drag.current.vel;
+      drag.current.vel *= 0.88;
+      drag.current.rotY *= 0.90; // revient doucement face à l'utilisateur (barcode lisible)
+    }
     const idle = drag.current.active ? 0 : 1; // pas de flottement pendant qu'on tient la carte
 
-    // flottement + inclinaison (+ flip envoi + rotation manuelle du drag)
     g.rotation.y = -0.32 + Math.sin(t * 0.5) * 0.06 * idle + flip + drag.current.rotY;
     g.rotation.x = -0.12 + Math.cos(t * 0.4) * 0.04 * idle;
     g.position.y = Math.sin(t * 0.8) * 0.03 * idle;
-
-    // pulse "carte prise" (confirmation vCard)
-    let takePulse = 0;
-    if (takenAt.current !== null) {
-      const e = clampF(performance.now() / 1000 - takenAt.current, 0, 1) / 0.6;
-      takePulse = Math.sin(clampF(e, 0, 1) * Math.PI) * 0.1;
-      if (e >= 1) takenAt.current = null;
-    }
-    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse + takePulse));
-
-    // dos "prends ma carte" : visible seulement quand le dos fait face à la caméra
-    if (backRef.current) backRef.current.visible = Math.cos(g.rotation.y) < -0.15;
+    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse));
 
     // scanline qui traverse la carte une fois
     if (scan.current) {
@@ -334,7 +366,6 @@ function FinaleCardModel() {
           drag.current.active = true;
           drag.current.lastX = e.clientX;
           drag.current.vel = 0;
-          drag.current.moved = 0;
           document.body.style.cursor = 'grabbing';
         }}
         onPointerOver={() => setHover(true)}
@@ -351,16 +382,8 @@ function FinaleCardModel() {
             <planeGeometry args={[1.6, 0.03]} />
             <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
-          {/* DOS : "prends ma carte" (QR décoratif + libellé), face arrière */}
-          <group ref={backRef} rotation={[0, Math.PI, 0]} position={[0, 0, -0.03]} visible={false}>
-            <QrChip />
-            <Text position={[0, -0.2, 0]} fontSize={0.07} color="#7dffff" anchorX="center" anchorY="middle">
-              AJOUTER A MES CONTACTS
-            </Text>
-            <Text position={[0, -0.3, 0]} fontSize={0.035} color="#88aacc" anchorX="center" anchorY="middle">
-              cliquer la carte
-            </Text>
-          </group>
+          {/* code-barres qui se décode en messages */}
+          <CardMessage />
         </IDCardVisual>
       </group>
     </group>

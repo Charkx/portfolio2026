@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { audioEngine } from '../../lib/audioEngine';
 import { sendMessage } from '../../lib/sendMessage';
-import { downloadVCard } from '../../lib/vcard';
 import { useSceneStore } from '../../store/sceneStore';
 import { useModalStore } from '../../store/modalStore';
 import { PdfViewer } from './ModalViewers';
@@ -47,6 +46,14 @@ export default function ContactForm({ showNetwork = true }: { showNetwork?: bool
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const setSent = useSceneStore((s) => s.setEndSessionSent);
+  const setContactFill = useSceneStore((s) => s.setContactFill);
+
+  // alimente la carte 3D : progression du formulaire (nom + email + message)
+  // → message "LINK: XX%" décodé sur le code-barres de la carte
+  useEffect(() => {
+    const filled = (name.trim() ? 1 : 0) + (email.trim() ? 1 : 0) + (message.trim() ? 1 : 0);
+    setContactFill(filled / 3);
+  }, [name, email, message, setContactFill]);
 
   const mailto = `mailto:${PROFILE.email}?subject=${encodeURIComponent(`Contact portfolio — ${name || 'message'}`)}&body=${encodeURIComponent(`${message}\n\n— ${name}${email ? ` (${email})` : ''}`)}`;
 
@@ -99,12 +106,6 @@ export default function ContactForm({ showNetwork = true }: { showNetwork?: bool
       ) : (
         <div aria-live="polite" className="space-y-4">
           <p className="text-green-400 font-mono text-sm">&gt; MESSAGE TRANSMIS. À BIENTÔT DANS LE MONDE RÉEL.</p>
-          <button
-            onClick={downloadVCard}
-            className="w-full rounded px-4 py-2.5 font-mono text-sm font-semibold border border-cyan-400/50 text-cyan-200 hover:bg-cyan-400/10 transition-colors cursor-pointer"
-          >
-            EMPORTER LA CARTE [.VCF]
-          </button>
         </div>
       )}
 
