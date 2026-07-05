@@ -33,6 +33,9 @@ function plateau(f: number): number {
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
 
+// sections dont le texte est masquable (celles à voile) — contact affiche son contenu autrement
+const GATED_SECTIONS = ['hero', 'about', 'skills', 'projects'];
+
 export default function AugmentedHumanLayer() {
   const [desktop, setDesktop] = useState(false);
   const quality = useSettingsStore((s) => s.quality); // éco : bloom coupé + DPR plafonné
@@ -51,7 +54,6 @@ export default function AugmentedHumanLayer() {
     if (!desktop) return;
     const els: (HTMLElement | null)[] = ANCHORS.map(() => null);
     let raf = 0;
-    let navVeil = 0; // pendant un saut de nav : voile plein (cache le texte des sections traversées)
 
     const loop = () => {
       const w = wrapperRef.current;
@@ -88,12 +90,18 @@ export default function AugmentedHumanLayer() {
           const travel = Math.sin(Math.PI * fe);
           const vT = clamp01((travel - 0.12) / 0.28);
           const veil = vT * vT * (3 - 2 * vT); // smoothstep
-          // saut de nav : on cache TOUT le contenu HTML (seule l'animation 3D reste
-          // visible pendant le dézoom), puis on révèle la section cible à l'arrivée.
-          // Drapeau lu via le store (fiable entre chunks, contrairement au module).
-          navVeil += ((useSceneStore.getState().navJumping ? 1 : 0) - navVeil) * 0.14;
-          document.documentElement.style.setProperty('--holo-veil', Math.max(veil, navVeil).toFixed(3));
+          document.documentElement.style.setProperty('--holo-veil', veil.toFixed(3));
         }
+
+        // GATE nav : pendant un saut, on n'affiche QUE la section source et la
+        // destination ; les sections traversées restent masquées (leur texte ne
+        // recouvre plus l'animation). Hors saut : chaque section suit le voile normal.
+        const st = useSceneStore.getState();
+        GATED_SECTIONS.forEach((id) => {
+          const sec = document.getElementById(id);
+          if (!sec) return;
+          sec.style.opacity = st.navJumping && id !== st.navSource && id !== st.navTarget ? '0' : '';
+        });
       }
       raf = requestAnimationFrame(loop);
     };
@@ -101,6 +109,7 @@ export default function AugmentedHumanLayer() {
     return () => {
       cancelAnimationFrame(raf);
       document.documentElement.style.setProperty('--holo-veil', '0'); // contenu rendu visible
+      GATED_SECTIONS.forEach((id) => { const s = document.getElementById(id); if (s) s.style.opacity = ''; });
     };
   }, [desktop]);
 

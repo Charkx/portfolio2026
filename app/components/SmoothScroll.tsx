@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import Lenis from "lenis"
 import { useReducedMotion } from "../hooks/useReducedMotion"
 import { useSceneStore } from "../store/sceneStore"
+import { usePortfolioStore } from "../store/portfolioStore"
 
 let lenis: Lenis | null = null
 let programmatic = false // scroll déclenché par la nav → SectionSnap ne doit PAS s'en mêler
@@ -35,13 +36,15 @@ export function scrollToId(id: string) {
   const y = sectionTargetY(id)
   if (lenis) {
     programmatic = true
-    // drapeau store (synchronisé avec le canvas dynamique : caméra plan large + voile plein)
-    useSceneStore.getState().setNavJumping(true)
+    // saut de nav : on ne montre que la section actuelle (source) et la cible → les
+    // sections traversées restent masquées (synchronisé au canvas via le store)
+    const source = usePortfolioStore.getState().currentSection
+    useSceneStore.getState().startNavJump(source, id)
     lenis.scrollTo(y, {
       duration: 1.4, // saut direct et vif (pas le voyage lent section par section)
       lock: true,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
-      onComplete: () => { programmatic = false; useSceneStore.getState().setNavJumping(false) },
+      onComplete: () => { programmatic = false; useSceneStore.getState().endNavJump() },
     })
   } else {
     window.scrollTo({ top: y, behavior: "smooth" })
