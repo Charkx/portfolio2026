@@ -698,7 +698,19 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     // corps : visible pendant le voyage (bulge au milieu), ~0 une fois arrivé sur un module,
     // ré-affiché pour la fin de session (avant de se désintégrer)
     const TRAVEL = 0.45;
-    const bodyOp = Math.max(THREE.MathUtils.lerp(A.body, B.body, f), TRAVEL * Math.sin(Math.PI * f), 0.6 * esAppear);
+    let bodyOp = Math.max(THREE.MathUtils.lerp(A.body, B.body, f), TRAVEL * Math.sin(Math.PI * f), 0.6 * esAppear);
+    // SAUT DE NAV : l'hologramme reste VISIBLE (on dézoome dessus, on zoome sur un membre)
+    // et se re-matérialise si on vient de Contact (corps désintégré). Il ne se dissout au
+    // 2e temps QUE si la cible est Contact (→ carte).
+    if (navSt.navJumping && navSt.navSource && navSt.navTarget) {
+      const np = navClockRef.current;
+      const dissolve = navSt.navTarget === 'contact' ? THREE.MathUtils.clamp((np - 0.5) / 0.5, 0, 1) : 0;
+      bodyOp = (1 - dissolve) * 0.7;
+      bodyMats.forEach((m) => {
+        if (m.userData.uMz) m.userData.uMz.value = mz * (1 - dissolve);   // re-matérialise (override désintégration)
+        if (m.userData.uEdge) m.userData.uEdge.value = 1 + dissolve * 2.8;
+      });
+    }
     bodyMats.forEach((m) => { if (m.userData.uOp) m.userData.uOp.value = bodyOp; });
 
     // poids de chaque module = 1 sur SA station, 0 ailleurs (pilote fondu + échelle).
