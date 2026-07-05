@@ -6,6 +6,7 @@ import { PdfViewer } from './ModalViewers';
 import { useAudioStore } from '../../store/audioStore';
 import { audioEngine } from '../../lib/audioEngine';
 import { scrollToId } from '../SmoothScroll';
+import { SignalMeter, SignalToast } from './SignalMeter';
 import { Power, PowerOff, FileDown, Volume2, VolumeX } from 'lucide-react';
 
 // Infobulle custom : instantanée et stylée (contrairement au `title` natif).
@@ -36,7 +37,6 @@ function HudTooltip({
 
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
-  const [signalStrength, setSignalStrength] = useState(95);
   const { introPhase, currentSection, scrollProgress, setIntroPhase } = usePortfolioStore();
   const openModal = useModalStore((s) => s.open);
   const soundEnabled = useAudioStore((s) => s.enabled);
@@ -89,7 +89,6 @@ export default function ARInterface() {
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(new Date());
-      setSignalStrength(90 + Math.random() * 10);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -195,9 +194,7 @@ export default function ARInterface() {
             <div>
               BAT: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 3 } as React.CSSProperties}>{batteryLevel}%</span>
             </div>
-            <div>
-              SIG: <span className={booted ? "hud-reveal text-cyan-400" : "opacity-0"} style={{ '--i': 4 } as React.CSSProperties}>{signalStrength.toFixed(0)}%</span>
-            </div>
+            <SignalMeter booted={booted} />
             <div>
               {time.toLocaleTimeString()}
             </div>
@@ -251,8 +248,9 @@ export default function ARInterface() {
         <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-cyan-400" />
         <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-cyan-400" />
       </div>
-      </div>   
-    )} 
+      </div>
+    )}
+    <SignalToast />
     </div>
   );
 };

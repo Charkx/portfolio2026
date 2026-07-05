@@ -8,6 +8,7 @@ import { ABOUT_TEXT } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
+import { useDiscoveryStore } from '../store/discoveryStore';
 
 // Aligné sur les couleurs des catégories (PROFIL rose · EXPÉRIENCE vert vif · FORMATION ambre).
 const scanColors = ['#ff00ff', '#2bff66', '#ffc400', '#00ffff', '#9b5de5'];
@@ -55,7 +56,7 @@ export default function AboutSection() {
                   key={block.title}
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => { setSelected(i); audioEngine.play('scan'); }}
+                  onClick={() => { setSelected(i); audioEngine.play('scan'); useDiscoveryStore.getState().discover('brain'); }}
                   style={isActive ? { textShadow: `0 0 10px ${scanColors[i]}` } : undefined}
                   className={`-mb-px px-3 py-1.5 font-mono text-sm tracking-wide border-b-2 transition-all cursor-pointer ${
                     isActive

@@ -240,7 +240,7 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
   const [txt, setTxt] = useState('');
   const [txtCol, setTxtCol] = useState('#7dffff');
   const [txtOp, setTxtOp] = useState(0);
-  const s = useRef({ target: '', col: '#7dffff', p: 0, clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0] });
+  const s = useRef({ target: '', col: '#7dffff', p: 0, clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0], autoIdx: 0 });
   const last = useRef({ txt: '', op: -1, col: '' });
   const baseCol = useMemo(() => new THREE.Color('#aef6ff'), []);
   const msgCol = useRef(new THREE.Color('#7dffff'));
@@ -255,7 +255,15 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
 
     // message cible + couleur. Mode AUTO (hero avant scan) : cycle imposé.
     let msg = '', c = '#7dffff';
-    if (autoMessages) { msg = autoMessages[Math.floor(st.clock / 2.6) % autoMessages.length]; }
+    if (autoMessages) {
+      // hero avant le scan : la carte "parle" ponctuellement (10-18 s), pas en boucle
+      if (st.clock >= st.idleNext && st.clock >= st.idleUntil) {
+        st.idleUntil = st.clock + 1.8;
+        st.idleNext = st.clock + 10 + Math.random() * 8;
+        st.autoIdx = (st.autoIdx + 1) % autoMessages.length;
+      }
+      if (st.clock < st.idleUntil) msg = autoMessages[st.autoIdx];
+    }
     // sinon (carte de contact) : envoyé > survol > formulaire > repos
     else if (sent) { msg = (Math.floor(st.clock / 2.8) % 2 === 0) ? "LET'S WORK TOGETHER" : 'AVAILABLE 09/2026'; c = '#4ade80'; }
     else if (hovered && CH_MSG[hovered]) { msg = CH_MSG[hovered]; c = CH_COL[hovered]; }

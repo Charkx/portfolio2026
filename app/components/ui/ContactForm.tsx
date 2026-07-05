@@ -5,6 +5,7 @@ import { PROFILE } from '../../utils/constants';
 import { audioEngine } from '../../lib/audioEngine';
 import { sendMessage } from '../../lib/sendMessage';
 import { useSceneStore } from '../../store/sceneStore';
+import { useDiscoveryStore } from '../../store/discoveryStore';
 import { useModalStore } from '../../store/modalStore';
 import { PdfViewer } from './ModalViewers';
 
@@ -19,10 +20,15 @@ export function NetworkIdentifiers() {
     openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
   };
   // survol/focus d'un canal → la CARTE répond (code-barres décodé à la teinte du canal)
+  // + capte le signal "canal ouvert" (5e interaction cachée)
+  const openChannel = (id: string) => {
+    useSceneStore.getState().setContactIdHovered(id);
+    useDiscoveryStore.getState().discover('card');
+  };
   const hoverProps = (id: string) => ({
-    onMouseEnter: () => useSceneStore.getState().setContactIdHovered(id),
+    onMouseEnter: () => openChannel(id),
     onMouseLeave: () => useSceneStore.getState().setContactIdHovered(null),
-    onFocus:      () => useSceneStore.getState().setContactIdHovered(id),
+    onFocus:      () => openChannel(id),
     onBlur:       () => useSceneStore.getState().setContactIdHovered(null),
   });
   // teintes = celles auxquelles la carte répond (le lien et la carte partagent la couleur)
@@ -39,19 +45,19 @@ export function NetworkIdentifiers() {
       <div className="text-[10px] text-cyan-300/60 text-center tracking-wider mb-1.5">
         &gt; SURVOLE UN CANAL — LA CARTE RÉPOND
       </div>
-      {/* coordonnées sur UNE seule ligne (défile si trop étroit) */}
-      <div className="flex flex-nowrap justify-center items-center gap-x-3 text-[11px] overflow-x-auto scrollbar-hide">
-        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} style={{ color: CH.email }} className={linkCls}>◆ {PROFILE.email}</a>
-        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} style={{ color: CH.github }} className={linkCls}>◆ {PROFILE.githubLabel}</a>
-        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} style={{ color: CH.linkedin }} className={linkCls}>◆ {PROFILE.linkedinLabel}</a>
+      {/* coordonnées sur UNE seule ligne — labels courts pour rester lisibles */}
+      <div className="flex flex-nowrap justify-center items-center gap-x-4 text-sm">
+        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} style={{ color: CH.email }} className={linkCls}>◆ Email</a>
+        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} style={{ color: CH.github }} className={linkCls}>◆ GitHub</a>
+        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} style={{ color: CH.linkedin }} className={linkCls}>◆ LinkedIn</a>
         <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} style={{ color: CH.cv }} className={`${linkCls} cursor-pointer`}>◆ CV</a>
       </div>
       {/* dispo survolable → la carte affiche AVAILABLE 09/2026 */}
-      <div className="mt-2 text-center">
+      <div className="mt-2.5 text-center">
         <span
           {...hoverProps('dispo')}
           tabIndex={0}
-          className="text-[10px] text-green-400/90 cursor-default hover:text-green-300 transition tracking-wider"
+          className="text-xs text-green-400/90 cursor-default hover:text-green-300 transition tracking-wider"
         >
           ⏳ {PROFILE.availability}
         </span>

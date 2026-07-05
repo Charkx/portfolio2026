@@ -8,6 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { audioEngine } from '../lib/audioEngine';
 import { useProjectManager } from '../hooks/useProjectManager';
 import { useSceneStore } from '../store/sceneStore';
+import { useDiscoveryStore } from '../store/discoveryStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import ProjectCaseStudy from '../components/ui/ProjectCaseStudy';
@@ -257,6 +258,7 @@ export function ProjectsSection() {
   const handleOpen = useCallback((index: number) => {
     selectProject(index, () => {});
     setProjectDeployed(index);
+    useDiscoveryStore.getState().discover('cube');
   }, [selectProject, setProjectDeployed]);
 
   // survol d'un chip → prévisualise : arc d'énergie (projectHovered) + sélection SILENCIEUSE

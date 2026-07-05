@@ -243,6 +243,14 @@ html[data-motion="reduced"] .holo-veil-fade {
   10%, 90% { opacity: 0.8; transform: translateY(0); }
 }
 
+/* Point flottant du mini-jeu /transmission (score qui monte depuis un cube détruit) */
+@keyframes float-rise {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  15%  { opacity: 1; transform: translate(-50%, -70%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+}
+.float-rise { animation: float-rise 0.85s ease-out forwards; }
+
 /* Indicateur de statut actif */
 .status-indicator {
   background: rgba(0, 0, 0, 0.9);
