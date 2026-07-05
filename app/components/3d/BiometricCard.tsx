@@ -6,6 +6,8 @@ import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment } from '
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { useSceneStore } from '../../store/sceneStore';
+import { audioEngine } from '../../lib/audioEngine';
+import { downloadVCard } from '../../lib/vcard';
 
 const glitchChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 const BASE_TEXT = "ID: CHARLY MENTHILLER";
@@ -214,13 +216,64 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
 }
 
 // --- Carte de FIN DE SESSION : LE MÊME visuel (IDCardVisual), retrouvé puis révélé
-// par une scanline. Un seul composant carte dans tout le site (pas de doublon). ---
+// par une scanline. Un seul composant carte dans tout le site (pas de doublon).
+// Interaction : on l'attrape à la souris pour la retourner ; le dos propose de
+// l'ajouter à ses contacts (vCard) au clic. ---
 const clampF = THREE.MathUtils.clamp;
+
+// QR décoratif (non scannable — juste l'esthétique data-matrix du dos)
+const QR = ['1111011', '1001001', '1011101', '1000101', '1011001', '1001011', '1111110'];
+function QrChip() {
+  const N = 7, cell = 0.05;
+  const out: React.ReactElement[] = [];
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    if (QR[r][c] !== '1') continue;
+    out.push(
+      <mesh key={`${r}-${c}`} position={[(c - (N - 1) / 2) * cell, ((N - 1) / 2 - r) * cell + 0.12, 0]}>
+        <planeGeometry args={[cell * 0.85, cell * 0.85]} />
+        <meshBasicMaterial color="#aef6ff" />
+      </mesh>,
+    );
+  }
+  return <group>{out}</group>;
+}
 
 function FinaleCardModel() {
   const group = useRef<THREE.Group>(null);
   const scan = useRef<THREE.Mesh>(null);
+  const backRef = useRef<THREE.Group>(null); // dos "prends ma carte"
   const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
+  const takenAt = useRef<number | null>(null); // instant du "carte prise" (pulse)
+  const drag = useRef({ active: false, lastX: 0, rotY: 0, vel: 0, moved: 0 });
+  const [hover, setHover] = useState(false);
+  useCursor(hover, 'grab');
+
+  // le pointeur peut sortir de la carte pendant le drag → on écoute la fenêtre
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!drag.current.active) return;
+      const dx = e.clientX - drag.current.lastX;
+      drag.current.lastX = e.clientX;
+      drag.current.rotY += dx * 0.012;
+      drag.current.vel = dx * 0.012;
+      drag.current.moved += Math.abs(dx);
+    };
+    const onUp = () => {
+      if (!drag.current.active) return;
+      drag.current.active = false;
+      document.body.style.cursor = '';
+      // clic (peu de déplacement) alors que le DOS fait face → prendre la carte (vCard)
+      const showingBack = Math.cos(-0.32 + drag.current.rotY) < -0.3;
+      if (drag.current.moved < 6 && showingBack) {
+        downloadVCard();
+        audioEngine.play('success');
+        takenAt.current = performance.now() / 1000;
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+  }, []);
 
   useFrame((state) => {
     const g = group.current; if (!g) return;
@@ -241,11 +294,26 @@ function FinaleCardModel() {
       pulse = Math.sin(e * Math.PI) * 0.12;
     }
 
-    // flottement + légère inclinaison (+ flip final) ; échelle qui accompagne le reveal
-    g.rotation.y = -0.32 + Math.sin(t * 0.5) * 0.06 + flip;
-    g.rotation.x = -0.12 + Math.cos(t * 0.4) * 0.04;
-    g.position.y = Math.sin(t * 0.8) * 0.03;
-    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse));
+    // inertie du drag (friction quand on ne tient plus la carte)
+    if (!drag.current.active) { drag.current.rotY += drag.current.vel; drag.current.vel *= 0.9; }
+    const idle = drag.current.active ? 0 : 1; // pas de flottement pendant qu'on tient la carte
+
+    // flottement + inclinaison (+ flip envoi + rotation manuelle du drag)
+    g.rotation.y = -0.32 + Math.sin(t * 0.5) * 0.06 * idle + flip + drag.current.rotY;
+    g.rotation.x = -0.12 + Math.cos(t * 0.4) * 0.04 * idle;
+    g.position.y = Math.sin(t * 0.8) * 0.03 * idle;
+
+    // pulse "carte prise" (confirmation vCard)
+    let takePulse = 0;
+    if (takenAt.current !== null) {
+      const e = clampF(performance.now() / 1000 - takenAt.current, 0, 1) / 0.6;
+      takePulse = Math.sin(clampF(e, 0, 1) * Math.PI) * 0.1;
+      if (e >= 1) takenAt.current = null;
+    }
+    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse + takePulse));
+
+    // dos "prends ma carte" : visible seulement quand le dos fait face à la caméra
+    if (backRef.current) backRef.current.visible = Math.cos(g.rotation.y) < -0.15;
 
     // scanline qui traverse la carte une fois
     if (scan.current) {
@@ -257,13 +325,44 @@ function FinaleCardModel() {
   });
 
   return (
-    <group ref={group} scale={1.35}>
-      <IDCardVisual>
-        <mesh ref={scan} position={[0, 0.52, 0.024]}>
-          <planeGeometry args={[1.6, 0.03]} />
-          <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
-        </mesh>
-      </IDCardVisual>
+    <group>
+      {/* zone d'interaction FIXE (ne tourne pas) : capte le drag partout devant la carte */}
+      <mesh
+        position={[0, 0, 2]}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          drag.current.active = true;
+          drag.current.lastX = e.clientX;
+          drag.current.vel = 0;
+          drag.current.moved = 0;
+          document.body.style.cursor = 'grabbing';
+        }}
+        onPointerOver={() => setHover(true)}
+        onPointerOut={() => setHover(false)}
+      >
+        <planeGeometry args={[6, 6]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
+      <group ref={group} scale={1.35}>
+        <IDCardVisual>
+          {/* scanline d'activation */}
+          <mesh ref={scan} position={[0, 0.52, 0.024]}>
+            <planeGeometry args={[1.6, 0.03]} />
+            <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          {/* DOS : "prends ma carte" (QR décoratif + libellé), face arrière */}
+          <group ref={backRef} rotation={[0, Math.PI, 0]} position={[0, 0, -0.03]} visible={false}>
+            <QrChip />
+            <Text position={[0, -0.2, 0]} fontSize={0.07} color="#7dffff" anchorX="center" anchorY="middle">
+              AJOUTER A MES CONTACTS
+            </Text>
+            <Text position={[0, -0.3, 0]} fontSize={0.035} color="#88aacc" anchorX="center" anchorY="middle">
+              cliquer la carte
+            </Text>
+          </group>
+        </IDCardVisual>
+      </group>
     </group>
   );
 }
