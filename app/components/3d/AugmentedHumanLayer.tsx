@@ -6,6 +6,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { isProgrammaticScroll } from '../SmoothScroll';
 
 // CANVAS PERMANENT : plein écran en continu, DERRIÈRE le contenu (zIndex 5 < main z-10).
 // Le monde 3D (voûte + poussière + humain) est le fond de page ; les sections HTML
@@ -51,6 +52,7 @@ export default function AugmentedHumanLayer() {
     if (!desktop) return;
     const els: (HTMLElement | null)[] = ANCHORS.map(() => null);
     let raf = 0;
+    let navVeil = 0; // pendant un saut de nav : voile plein (cache le texte des sections traversées)
 
     const loop = () => {
       const w = wrapperRef.current;
@@ -87,7 +89,10 @@ export default function AugmentedHumanLayer() {
           const travel = Math.sin(Math.PI * fe);
           const vT = clamp01((travel - 0.12) / 0.28);
           const veil = vT * vT * (3 - 2 * vT); // smoothstep
-          document.documentElement.style.setProperty('--holo-veil', veil.toFixed(3));
+          // saut de nav : on cache TOUT le contenu HTML (seule l'animation 3D reste
+          // visible pendant le dézoom), puis on révèle la section cible à l'arrivée
+          navVeil += ((isProgrammaticScroll() ? 1 : 0) - navVeil) * 0.14;
+          document.documentElement.style.setProperty('--holo-veil', Math.max(veil, navVeil).toFixed(3));
         }
       }
       raf = requestAnimationFrame(loop);
