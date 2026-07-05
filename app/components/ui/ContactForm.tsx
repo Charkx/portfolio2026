@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { audioEngine } from '../../lib/audioEngine';
 import { sendMessage } from '../../lib/sendMessage';
-import { downloadVCard } from '../../lib/vcard';
 import { useSceneStore } from '../../store/sceneStore';
+import { useDiscoveryStore } from '../../store/discoveryStore';
 import { useModalStore } from '../../store/modalStore';
 import { PdfViewer } from './ModalViewers';
 
@@ -19,22 +19,49 @@ export function NetworkIdentifiers() {
     e.preventDefault();
     openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
   };
-  // survol/focus d'un identifiant → la pluie stellaire autour de la carte réagit (teinte + rush)
+  // survol/focus d'un canal → la CARTE répond (code-barres décodé à la teinte du canal)
+  // + capte le signal "canal ouvert" (5e interaction cachée)
+  const openChannel = (id: string) => {
+    useSceneStore.getState().setContactIdHovered(id);
+    useDiscoveryStore.getState().discover('card');
+  };
   const hoverProps = (id: string) => ({
-    onMouseEnter: () => useSceneStore.getState().setContactIdHovered(id),
+    onMouseEnter: () => openChannel(id),
     onMouseLeave: () => useSceneStore.getState().setContactIdHovered(null),
-    onFocus:      () => useSceneStore.getState().setContactIdHovered(id),
+    onFocus:      () => openChannel(id),
     onBlur:       () => useSceneStore.getState().setContactIdHovered(null),
   });
+  // teintes = celles auxquelles la carte répond (le lien et la carte partagent la couleur)
+  const CH = {
+    email:    '#22d3ee',
+    github:   '#c084fc',
+    linkedin: '#38bdf8',
+    cv:       '#f472b6',
+  };
+  const linkCls = 'underline decoration-dotted underline-offset-4 hover:brightness-125 transition whitespace-nowrap';
   return (
     <div className="font-mono">
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
-        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.email}</a>
-        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.githubLabel}</a>
-        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.linkedinLabel}</a>
-        <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} className="text-pink-300 underline hover:text-pink-200 cursor-pointer">CV</a>
+      {/* indice : le survol d'un canal fait "parler" la carte */}
+      <div className="text-[10px] text-cyan-300/60 text-center tracking-wider mb-1.5">
+        &gt; SURVOLE UN CANAL — LA CARTE RÉPOND
       </div>
-      <div className="mt-2 text-[10px] text-gray-500 text-center">⏳ {PROFILE.availability}</div>
+      {/* coordonnées sur UNE seule ligne — labels courts pour rester lisibles */}
+      <div className="flex flex-nowrap justify-center items-center gap-x-4 text-sm">
+        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} style={{ color: CH.email }} className={linkCls}>◆ Email</a>
+        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} style={{ color: CH.github }} className={linkCls}>◆ GitHub</a>
+        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} style={{ color: CH.linkedin }} className={linkCls}>◆ LinkedIn</a>
+        <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} style={{ color: CH.cv }} className={`${linkCls} cursor-pointer`}>◆ CV</a>
+      </div>
+      {/* dispo survolable → la carte affiche AVAILABLE 09/2026 */}
+      <div className="mt-2.5 text-center">
+        <span
+          {...hoverProps('dispo')}
+          tabIndex={0}
+          className="text-xs text-green-400/90 cursor-default hover:text-green-300 transition tracking-wider"
+        >
+          ⏳ {PROFILE.availability}
+        </span>
+      </div>
     </div>
   );
 }
@@ -47,6 +74,14 @@ export default function ContactForm({ showNetwork = true }: { showNetwork?: bool
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const setSent = useSceneStore((s) => s.setEndSessionSent);
+  const setContactFill = useSceneStore((s) => s.setContactFill);
+
+  // alimente la carte 3D : progression du formulaire (nom + email + message)
+  // → message "LINK: XX%" décodé sur le code-barres de la carte
+  useEffect(() => {
+    const filled = (name.trim() ? 1 : 0) + (email.trim() ? 1 : 0) + (message.trim() ? 1 : 0);
+    setContactFill(filled / 3);
+  }, [name, email, message, setContactFill]);
 
   const mailto = `mailto:${PROFILE.email}?subject=${encodeURIComponent(`Contact portfolio — ${name || 'message'}`)}&body=${encodeURIComponent(`${message}\n\n— ${name}${email ? ` (${email})` : ''}`)}`;
 
@@ -99,12 +134,6 @@ export default function ContactForm({ showNetwork = true }: { showNetwork?: bool
       ) : (
         <div aria-live="polite" className="space-y-4">
           <p className="text-green-400 font-mono text-sm">&gt; MESSAGE TRANSMIS. À BIENTÔT DANS LE MONDE RÉEL.</p>
-          <button
-            onClick={downloadVCard}
-            className="w-full rounded px-4 py-2.5 font-mono text-sm font-semibold border border-cyan-400/50 text-cyan-200 hover:bg-cyan-400/10 transition-colors cursor-pointer"
-          >
-            EMPORTER LA CARTE [.VCF]
-          </button>
         </div>
       )}
 

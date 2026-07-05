@@ -13,6 +13,8 @@ import { useSceneStore } from '../../store/sceneStore';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { audioEngine } from '../../lib/audioEngine';
+import { useDiscoveryStore } from '../../store/discoveryStore';
+import { makeHolo, type Pulse, CYAN, HUMAN_URL } from './holoMaterial';
 import { TECH_STACK } from '../../utils/constants';
 
 // focuses des modules embarqués (= stations 1..3 ; la station contact n'a pas de module)
@@ -23,8 +25,6 @@ const ALL_TECHS = Object.values(TECH_STACK).flat();
 const LEVEL_BY_ID: Record<string, number> = Object.fromEntries(
   ALL_TECHS.map((t) => [t.name.toLowerCase(), t.level])
 );
-
-const CYAN = 0x22d3ee;
 
 // Cadrage "corps entier" pour la fin de session (miroir de la station d'intro : on finit où on a commencé)
 const FINALE_POS = new THREE.Vector3(0, 0.95, 4.4);
@@ -85,9 +85,7 @@ const BREATH = 0.012;
 //   PULSE_SPEED    : vitesse de l'onde glitch au clic (unités monde/s)
 const LOOK_YAW = 0.45;
 const LOOK_PITCH = 0.22;
-const PULSE_SPEED = 1.6;
 
-const HUMAN_URL = '/3d/holograming_man.glb';
 const BRAIN_URL = '/3d/brain_hologram.glb';
 
 // Largeur du PALIER : portion de chaque segment où l'on reste posé sur la station.
@@ -116,53 +114,7 @@ export function linearStation(prog: number, count: number): { i: number; f: numb
   return { i, f: p - i };
 }
 
-// --- Matériau holographique (injecté → conserve le skinning) ---
-// pulse = onde glitch au clic : uniforms PARTAGÉS par tous les matériaux du corps
-type Pulse = { t: { value: number }; o: { value: THREE.Vector3 } };
-
-function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
-  // émissif cyan = filet de sécurité : visible même si l'injection du shader échoue
-  const m = new THREE.MeshStandardMaterial({
-    color: 0x000000, emissive: CYAN, emissiveIntensity: 0.6,
-    transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide,
-  });
-  m.onBeforeCompile = (sh) => {
-    sh.uniforms.uTime = timeUniform;
-    sh.uniforms.uOp = { value: 0.5 };
-    sh.uniforms.uMz = { value: 1 }; // matérialisation : 0 = invisible, 1 = corps complet
-    sh.uniforms.uEdge = { value: 1 }; // multiplicateur de l'edge glow (boost à la désintégration)
-    sh.uniforms.uPulseT = pulse.t;   // temps écoulé depuis le clic (99 = onde inactive)
-    sh.uniforms.uPulseO = pulse.o;   // origine de l'onde (point cliqué, monde)
-    m.userData.uOp = sh.uniforms.uOp;
-    m.userData.uMz = sh.uniforms.uMz;
-    m.userData.uEdge = sh.uniforms.uEdge;
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
-      .replace('#include <skinning_vertex>', '#include <skinning_vertex>\n vWPos=(modelMatrix*vec4(transformed,1.0)).xyz;');
-    sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uTime;\nuniform float uOp;\nuniform float uMz;\nuniform float uEdge;\nuniform float uPulseT;\nuniform vec3 uPulseO;')
-      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-        float fres=pow(1.0-abs(dot(normalize(vNormal),normalize(vViewPosition))),2.0);
-        float band=smoothstep(0.45,1.0,0.5+0.5*sin(vWPos.y*140.0-uTime*2.5));
-        vec3 holo=vec3(0.12,0.85,0.95);
-        float a=(0.10+fres*0.8+band*0.25)*uOp;
-        // matérialisation bas → haut : front lumineux qui remonte le corps (hauteur ~1.8)
-        float hN=clamp(vWPos.y/1.8,0.0,1.0);
-        float front=uMz*1.15;
-        float reveal=1.0-smoothstep(front-0.04,front+0.04,hN);
-        float edge=smoothstep(0.07,0.0,abs(hN-front))*(1.0-uMz);
-        a*=reveal;
-        vec3 col=holo*(0.5+fres*1.6+band*0.7)+vec3(0.5,0.95,1.0)*edge*1.5*uEdge;
-        // onde glitch : anneau lumineux qui se propage depuis le point cliqué puis s'éteint
-        float pd=distance(vWPos,uPulseO);
-        float pr=uPulseT*${PULSE_SPEED.toFixed(2)};
-        float ring=smoothstep(0.14,0.0,abs(pd-pr))*max(0.0,1.0-uPulseT*0.85)*reveal;
-        col+=vec3(0.45,1.0,1.0)*ring*1.8;
-        a+=ring*0.55;
-        gl_FragColor=vec4(col,a);`);
-  };
-  return m;
-}
+// Matériau holographique + type Pulse : partagés via ./holoMaterial (réutilisés par /transmission)
 
 // (réacteur retiré : la station projets utilise désormais DataCubes ancrés sur la paume)
 
@@ -483,6 +435,7 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
       if (m.pos.distanceTo(_cursor.current) < MOTE_COLLECT_R) {
         m.collected = true; m.ct = 0;
         audioEngine.play('collect');
+        useDiscoveryStore.getState().discover('firefly');
       }
     });
   });
@@ -597,6 +550,9 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const unlocked = usePortfolioStore.getState().introPhase === 'UNLOCKED';
     if (reduced) mzRef.current = unlocked ? 1 : 0;
     if (!debug && unlocked && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
+    // re-verrouillage (power-down) : le corps se dé-matérialise → il ne reste plus
+    // derrière la carte biométrique (bug : l'avatar restait visible après lock)
+    if (!debug && !unlocked && mzRef.current > 0) mzRef.current = Math.max(mzRef.current - dt / 1.0, 0);
     const mz = debug ? 1 : mzRef.current;
     // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection
     const es = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);

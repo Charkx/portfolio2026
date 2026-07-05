@@ -39,9 +39,12 @@ interface SceneState {
   projectDeployed: number | null
   setProjectDeployed: (i: number | null) => void
 
-  // Contact → pluie stellaire : identifiant réseau survolé (email / github / linkedin / cv)
+  // Contact → carte qui communique : identifiant réseau survolé (email/github/linkedin/cv)
+  // + progression du formulaire (0..1) pour le message "LINK: XX%"
   contactIdHovered: string | null
   setContactIdHovered: (id: string | null) => void
+  contactFill: number
+  setContactFill: (n: number) => void
 
   // Saut de nav HUD en cours (partagé main ↔ canvas dynamique). On n'affiche que
   // le texte de la section SOURCE et de la DESTINATION → les sections traversées
@@ -97,6 +100,8 @@ export const useSceneStore = create<SceneState>((set) => ({
 
   contactIdHovered: null,
   setContactIdHovered: (id) => set({ contactIdHovered: id }),
+  contactFill: 0,
+  setContactFill: (n) => set({ contactFill: n }),
 
   navJumping: false,
   navSource: null,

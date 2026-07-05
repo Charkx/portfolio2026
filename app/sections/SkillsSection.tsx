@@ -10,6 +10,7 @@ import { TECH_STACK, HELIX_STRANDS } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
+import { useDiscoveryStore } from '../store/discoveryStore';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -72,6 +73,7 @@ export default function SkillsSection() {
     const cur = useSceneStore.getState().skillsSelected;
     useSceneStore.getState().setSkillsSelected(cur === id ? null : id);
     audioEngine.play('molecular');
+    useDiscoveryStore.getState().discover('adn');
   }, []);
 
   // Donnée de la techno sélectionnée (pour le panneau de décodage) — calcul trivial,
