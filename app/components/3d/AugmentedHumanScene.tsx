@@ -639,7 +639,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     // cerveau/ADN/main), zoom retour DOUX vers la cible. Scroll molette : inchangé.
     const navTarget = useSceneStore.getState().navJumping ? 1 : 0;
     const navUp = navTarget > navBlendRef.current;
-    navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(navUp ? 1e-7 : 0.005, dt));
+    navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(navUp ? 1e-7 : 0.05, dt));
 
     // recul vers le plan "corps entier" : fin de session (esAppear) OU saut de nav
     const toWide = Math.max(esAppear, navBlendRef.current);

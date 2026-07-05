@@ -41,7 +41,7 @@ export function scrollToId(id: string) {
     const source = usePortfolioStore.getState().currentSection
     useSceneStore.getState().startNavJump(source, id)
     lenis.scrollTo(y, {
-      duration: 1.4, // saut direct et vif (pas le voyage lent section par section)
+      duration: 2.8, // durée du saut (dézoom → voyage → zoom sur la cible)
       lock: true,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
       onComplete: () => { programmatic = false; useSceneStore.getState().endNavJump() },
