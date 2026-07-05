@@ -224,6 +224,7 @@ const CH_MSG: Record<string, string> = { email: 'WRITE ME', github: 'SEE MY CODE
 const CH_COL: Record<string, string> = { email: '#22d3ee', github: '#c084fc', linkedin: '#38bdf8', cv: '#f472b6' };
 const GLITCH_CH = '!<>-_\\/[]{}=+*^?#01ABCXYZ';
 const IDLE_SPEAK = true; // la carte "parle" au repos de temps en temps (mettre false pour couper)
+const IDLE_MSGS = ['OPEN TO WORK', 'AVAILABLE 09/2026']; // messages au repos (alternent)
 
 // Message décodé sur le code-barres (au centre de la carte). Lit le store chaque frame :
 // survol coordonnée > formulaire envoyé > progression formulaire > mot au repos.
@@ -231,7 +232,7 @@ function CardMessage() {
   const [txt, setTxt] = useState('');
   const [op, setOp] = useState(0);
   const [col, setCol] = useState('#7dffff');
-  const s = useRef({ target: '', glitch: 0, amt: 0, colTarget: '#7dffff', clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0 });
+  const s = useRef({ target: '', glitch: 0, amt: 0, colTarget: '#7dffff', clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0] });
   const last = useRef({ txt: '', op: -1, col: '' });
 
   useFrame((_, dt) => {
@@ -244,12 +245,17 @@ function CardMessage() {
 
     // message cible + couleur (priorité : envoyé > survol > formulaire > repos)
     let msg = '', c = '#7dffff';
-    if (sent) { msg = "LET'S WORK TOGETHER"; c = '#4ade80'; }
+    // envoyé → alterne le "merci" et le rappel de dispo (argument alternance)
+    if (sent) { msg = (Math.floor(st.clock / 2.8) % 2 === 0) ? "LET'S WORK TOGETHER" : 'AVAILABLE 09/2026'; c = '#4ade80'; }
     else if (hovered && CH_MSG[hovered]) { msg = CH_MSG[hovered]; c = CH_COL[hovered]; }
     else if (fill > 0) { msg = `LINK ${Math.round(fill * 100)}%`; c = '#7dffff'; }
     else if (IDLE_SPEAK) {
-      if (st.clock >= st.idleNext && st.clock >= st.idleUntil) { st.idleUntil = st.clock + 1.8; st.idleNext = st.clock + 9 + Math.random() * 9; }
-      if (st.clock < st.idleUntil) { msg = 'OPEN TO WORK'; c = '#7dffff'; }
+      if (st.clock >= st.idleNext && st.clock >= st.idleUntil) {
+        st.idleUntil = st.clock + 1.8;
+        st.idleNext = st.clock + 9 + Math.random() * 9;
+        st.idleMsg = IDLE_MSGS[(Math.random() * IDLE_MSGS.length) | 0]; // choisit un message au repos
+      }
+      if (st.clock < st.idleUntil) { msg = st.idleMsg; c = '#7dffff'; }
     }
 
     // nouveau message → relance le décodage (glitch qui se résout)
