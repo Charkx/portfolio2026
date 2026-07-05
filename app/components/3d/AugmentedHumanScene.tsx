@@ -30,6 +30,12 @@ const CYAN = 0x22d3ee;
 const FINALE_POS = new THREE.Vector3(0, 0.95, 4.4);
 const FINALE_TGT = new THREE.Vector3(0, 0.95, 0);
 
+// Saut de nav : parcours caméra entre VISIONS nommées. La vision "hologramme entier"
+// (= FINALE, le plan large) est la vision de BASE : source → base → cible, en 2 temps,
+// sans rejouer les stations intermédiaires. section → index de station :
+const SEC_IDX: Record<string, number> = { hero: 0, about: 1, skills: 2, projects: 3, contact: 4 };
+const NAV_CAM_DUR = 2.6; // durée du parcours caméra (≈ durée du scroll de nav)
+
 // Réglages calibrés du placement des modules sur le corps
 // 👉 PILOTE de tous les modules (à ajuster librement) :
 //   scale = taille · x,z = position (unités monde) · y = hauteur sur le corps (fraction 0..1)
@@ -514,8 +520,15 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const _pull = useRef(new THREE.Vector3());     // plan large : axe de recul caméra
   const _wideTgt = useRef(new THREE.Vector3());  // plan large : point visé (corps entier)
   const mzRef = useRef(0); // 0 → 1 : matérialisation du corps au montage (boot)
-  const navBlendRef = useRef(0); // 0→1 : pendant un saut de nav, la caméra recule au plan large
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
+  // saut de nav : horloge 0→1 + vecteurs des visions source/cible/interpolée
+  const navClockRef = useRef(0);
+  const _navPos = useRef(new THREE.Vector3());
+  const _navTgt = useRef(new THREE.Vector3());
+  const _navSrcPos = useRef(new THREE.Vector3());
+  const _navSrcTgt = useRef(new THREE.Vector3());
+  const _navDstPos = useRef(new THREE.Vector3());
+  const _navDstTgt = useRef(new THREE.Vector3());
 
   // interactions hero : curseur (regard) + poids de la station d'intro (gate du clic)
   const pointerRef = useRef({ x: 0, y: 0 }); // NDC -1..1
@@ -552,6 +565,23 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     window.addEventListener('pointerdown', onDown);
     return () => window.removeEventListener('pointerdown', onDown);
   }, [built, camera, reduced]);
+
+  // VISION d'une section (cadrage caméra nommé), écrite dans outPos/outTgt.
+  // Projets = vue subjective (POV main) ; les autres = cadrage de station.
+  const visionFor = useCallback((section: string, outPos: THREE.Vector3, outTgt: THREE.Vector3) => {
+    const stn = built.stations[SEC_IDX[section] ?? 0];
+    if (section === 'projects' && PROJECTS_POV && built.headBone && built.palmBone) {
+      built.headBone.getWorldPosition(outPos);
+      built.palmBone.getWorldPosition(outTgt);
+      outTgt.add(POV_LOOK);
+      _dir.current.subVectors(outTgt, outPos).normalize();
+      outPos.addScaledVector(_dir.current, POV_ZOOM);
+      outPos.add(POV_EYE);
+    } else {
+      outPos.copy(stn.camPos);
+      outTgt.copy(stn.target);
+    }
+  }, [built]);
 
   useFrame((_, dt) => {
     // reduced-motion : bandes du shader figées
@@ -633,19 +663,34 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _base.current.y += Math.sin(tb * 0.27 + 1.7) * BREATH * 0.6 * idle;
     }
 
-    // SAUT DE NAV : état initial = hologramme DÉZOOMÉ (plan large "corps entier"),
-    // puis zoom vers la section cible — au lieu de rejouer le cadrage de chaque
-    // station intermédiaire. Dézoom QUASI IMMÉDIAT (on ne voit pas le voyage rapide
-    // cerveau/ADN/main), zoom retour DOUX vers la cible. Scroll molette : inchangé.
-    const navTarget = useSceneStore.getState().navJumping ? 1 : 0;
-    const navUp = navTarget > navBlendRef.current;
-    navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(navUp ? 1e-7 : 0.05, dt));
-
-    // recul vers le plan "corps entier" : fin de session (esAppear) OU saut de nav
-    const toWide = Math.max(esAppear, navBlendRef.current);
-    camera.position.lerpVectors(_base.current, FINALE_POS, toWide);
-    _t.current.lerpVectors(_baseTgt.current, FINALE_TGT, toWide);
-    camera.lookAt(_t.current);
+    // SAUT DE NAV : parcours caméra en 2 temps entre VISIONS nommées, SANS rejouer
+    // les stations intermédiaires. La vision "hologramme entier" (FINALE) est la base :
+    //   vision(source) → hologramme (base) → vision(cible).
+    //   ex. About(cerveau) → Contact : cerveau → hologramme → carte (2 mouvements).
+    const navSt = useSceneStore.getState();
+    if (navSt.navJumping && navSt.navSource && navSt.navTarget) {
+      navClockRef.current = Math.min(navClockRef.current + dt / NAV_CAM_DUR, 1);
+      visionFor(navSt.navSource, _navSrcPos.current, _navSrcTgt.current);
+      visionFor(navSt.navTarget, _navDstPos.current, _navDstTgt.current);
+      const np = navClockRef.current;
+      if (np < 0.5) {
+        const s = np / 0.5, e = s * s * (3 - 2 * s);          // 1er temps : source → base
+        _navPos.current.lerpVectors(_navSrcPos.current, FINALE_POS, e);
+        _navTgt.current.lerpVectors(_navSrcTgt.current, FINALE_TGT, e);
+      } else {
+        const s = (np - 0.5) / 0.5, e = s * s * (3 - 2 * s);  // 2e temps : base → cible
+        _navPos.current.lerpVectors(FINALE_POS, _navDstPos.current, e);
+        _navTgt.current.lerpVectors(FINALE_TGT, _navDstTgt.current, e);
+      }
+      camera.position.copy(_navPos.current);
+      camera.lookAt(_navTgt.current);
+    } else {
+      navClockRef.current = 0;
+      // scroll normal / fin de session : recul vers le plan "corps entier" (esAppear)
+      camera.position.lerpVectors(_base.current, FINALE_POS, esAppear);
+      _t.current.lerpVectors(_baseTgt.current, FINALE_TGT, esAppear);
+      camera.lookAt(_t.current);
+    }
 
     // corps : visible pendant le voyage (bulge au milieu), ~0 une fois arrivé sur un module,
     // ré-affiché pour la fin de session (avant de se désintégrer)
