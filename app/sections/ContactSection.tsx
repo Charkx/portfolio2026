@@ -6,7 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { ErrorBoundary } from '../hooks/ErrorBoundary';
 import { useSceneStore } from '../store/sceneStore';
-import ContactCard from '../components/3d/ContactCard';
+import { ContactCard } from '../components/3d/BiometricCard';
 import ContactForm, { NetworkIdentifiers } from '../components/ui/ContactForm';
 import ContactMobileCard from '../components/ContactMobileCard';
 
@@ -139,7 +139,8 @@ export default function ContactSection() {
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
           {/* moitié gauche : carte 3D + identifiants réseau en dessous */}
           <div className="absolute inset-y-0 left-0 w-1/2 flex flex-col items-center justify-center gap-2 p-8">
-            <div className="relative w-full h-[60vh]">
+            {/* pointer-events-auto : la carte est manipulable (drag pour la retourner) */}
+            <div className="relative w-full h-[60vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
                 <ContactCard />
               </ErrorBoundary>

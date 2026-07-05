@@ -5,6 +5,7 @@ import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
+import { useSceneStore } from '../../store/sceneStore';
 
 const glitchChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 const BASE_TEXT = "ID: CHARLY MENTHILLER";
@@ -207,6 +208,78 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
       <Suspense fallback={null}>
         <Environment preset="night" />
         <CyberpunkIDCard onScanTrigger={onScan} />
+      </Suspense>
+    </Canvas>
+  );
+}
+
+// --- Carte de FIN DE SESSION : LE MÊME visuel (IDCardVisual), retrouvé puis révélé
+// par une scanline. Un seul composant carte dans tout le site (pas de doublon). ---
+const clampF = THREE.MathUtils.clamp;
+
+function FinaleCardModel() {
+  const group = useRef<THREE.Group>(null);
+  const scan = useRef<THREE.Mesh>(null);
+  const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
+
+  useFrame((state) => {
+    const g = group.current; if (!g) return;
+    const store = useSceneStore.getState();
+    const es = store.endSessionProgress ?? 0;
+    const reveal = clampF((es - 0.85) / 0.15, 0, 1); // 0→1 : la carte se matérialise
+    const t = state.clock.elapsedTime;
+
+    g.visible = reveal > 0.02; // la carte n'apparaît qu'avec la scanline
+
+    // animation finale (message envoyé) : un tour + pulse
+    if (store.endSessionSent && sentAt.current === null) sentAt.current = t;
+    let flip = 0, pulse = 0;
+    if (sentAt.current !== null) {
+      const e = clampF((t - sentAt.current) / 1.2, 0, 1);
+      const ease = e * e * (3 - 2 * e);
+      flip = ease * Math.PI * 2;
+      pulse = Math.sin(e * Math.PI) * 0.12;
+    }
+
+    // flottement + légère inclinaison (+ flip final) ; échelle qui accompagne le reveal
+    g.rotation.y = -0.32 + Math.sin(t * 0.5) * 0.06 + flip;
+    g.rotation.x = -0.12 + Math.cos(t * 0.4) * 0.04;
+    g.position.y = Math.sin(t * 0.8) * 0.03;
+    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse));
+
+    // scanline qui traverse la carte une fois
+    if (scan.current) {
+      const on = reveal > 0.02 && reveal < 0.98;
+      scan.current.visible = on;
+      scan.current.position.y = THREE.MathUtils.lerp(0.52, -0.52, reveal);
+      (scan.current.material as THREE.MeshBasicMaterial).opacity = on ? 0.8 : 0;
+    }
+  });
+
+  return (
+    <group ref={group} scale={1.35}>
+      <IDCardVisual>
+        <mesh ref={scan} position={[0, 0.52, 0.024]}>
+          <planeGeometry args={[1.6, 0.03]} />
+          <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+      </IDCardVisual>
+    </group>
+  );
+}
+
+// Canvas de la carte de fin de session (utilisé par ContactSection).
+export function ContactCard() {
+  return (
+    <Canvas gl={{ antialias: true, alpha: true }}>
+      <PerspectiveCamera makeDefault position={[0, 0, 3]} fov={40} />
+      <ambientLight intensity={0.9} />
+      <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
+      <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
+      <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
+      <Suspense fallback={null}>
+        <Environment preset="night" />
+        <FinaleCardModel />
       </Suspense>
     </Canvas>
   );
