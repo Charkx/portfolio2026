@@ -13,6 +13,7 @@ import { useSceneStore } from '../../store/sceneStore';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { audioEngine } from '../../lib/audioEngine';
+import { isProgrammaticScroll } from '../SmoothScroll';
 import { TECH_STACK } from '../../utils/constants';
 
 // focuses des modules embarqués (= stations 1..3 ; la station contact n'a pas de module)
@@ -514,6 +515,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   const _pull = useRef(new THREE.Vector3());     // plan large : axe de recul caméra
   const _wideTgt = useRef(new THREE.Vector3());  // plan large : point visé (corps entier)
   const mzRef = useRef(0); // 0 → 1 : matérialisation du corps au montage (boot)
+  const navBlendRef = useRef(0); // 0→1 : pendant un saut de nav, la caméra recule au plan large
   const weightsRef = useRef<Record<string, number>>({}); // poids par module (pour HoloBrain etc.)
 
   // interactions hero : curseur (regard) + poids de la station d'intro (gate du clic)
@@ -632,9 +634,16 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       _base.current.y += Math.sin(tb * 0.27 + 1.7) * BREATH * 0.6 * idle;
     }
 
-    // fin de session : la caméra recule vers le plan "corps entier"
-    camera.position.lerpVectors(_base.current, FINALE_POS, esAppear);
-    _t.current.lerpVectors(_baseTgt.current, FINALE_TGT, esAppear);
+    // SAUT DE NAV : la caméra recule au plan large "corps entier" au lieu de rejouer
+    // le cadrage de chaque station intermédiaire (dézoom → voyage → cadrage cible).
+    // Le scroll molette normal n'est PAS programmatique → chorégraphie inchangée.
+    const navTarget = isProgrammaticScroll() ? 1 : 0;
+    navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(0.0009, dt));
+
+    // recul vers le plan "corps entier" : fin de session (esAppear) OU saut de nav
+    const toWide = Math.max(esAppear, navBlendRef.current);
+    camera.position.lerpVectors(_base.current, FINALE_POS, toWide);
+    _t.current.lerpVectors(_baseTgt.current, FINALE_TGT, toWide);
     camera.lookAt(_t.current);
 
     // corps : visible pendant le voyage (bulge au milieu), ~0 une fois arrivé sur un module,
