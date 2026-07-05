@@ -133,10 +133,10 @@ export default function ContactSection() {
         </div>
       )}
 
-      {/* carte "artefact" à GAUCHE + formulaire à DROITE (zones disjointes : le texte
-          ne recouvre jamais le composant 3D — canvas dédié, canvas partagé gelé) */}
+      {/* carte "artefact" à GAUCHE + formulaire à DROITE (zones disjointes). Fond semi-
+          transparent : l'environnement (voûte + poussière cyan) reste visible derrière la carte */}
       {isMobile === false && cardPhase && (
-        <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black" style={{ opacity: 0 }}>
+        <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
           {/* moitié gauche : carte 3D + identifiants réseau en dessous */}
           <div className="absolute inset-y-0 left-0 w-1/2 flex flex-col items-center justify-center gap-2 p-8">
             <div className="relative w-full h-[60vh]">

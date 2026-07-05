@@ -14,10 +14,12 @@ import { useModalStore } from "./store/modalStore"
 import ARInterface from "./components/ui/ARInterface"
 import CustomCursor from "./components/ui/CustomCursor"
 import SmoothScroll from "./components/SmoothScroll"
+import SectionSnap from "./components/SectionSnap"
 import ModalRoot from "./components/ui/ModalRoot"
 import LegalContent from "./components/LegalContent"
 import { preloadAssets } from "./lib/preloadAssets"
 import { ErrorBoundary } from "./hooks/ErrorBoundary"
+import { useReducedMotion } from "./hooks/useReducedMotion"
 
 // Modèles 3D lourds préchargés pendant l'écran de chargement (progression réelle).
 const HEAVY_ASSETS = [
@@ -65,6 +67,13 @@ export default function ClientApp() {
   // Hook pour améliorer le scroll (expérience utilisateur)
   useOptimizedScroll()
 
+  // Reflète le mouvement réduit EFFECTIF (réglage console OU préférence système)
+  // sur <html> → les animations CSS suivent aussi (cf. globals.css [data-motion])
+  const reducedMotion = useReducedMotion()
+  useEffect(() => {
+    document.documentElement.dataset.motion = reducedMotion ? "reduced" : "full"
+  }, [reducedMotion])
+
   // Vrai chargement : précharge les modèles 3D (le loader reflète la progression réelle).
   useEffect(() => {
     let done = false
@@ -97,13 +106,18 @@ export default function ClientApp() {
       <CustomCursor />
       <ARInterface />
       <main className="relative z-10">
+        {/* environnement permanent (voûte + poussière cyan) : présent du verrouillage
+            à la carte finale — le corps holographique ne se matérialise qu'au déverrouillage */}
+        <AugmentedHumanLayer />
+
         <HeroSection
           onScan={() => { if (introPhase === "LOCKED") setIntroPhase("SCANNING") }}
         />
 
         {introPhase === "UNLOCKED" && (
           <>
-              <AugmentedHumanLayer />
+              {/* amorcer le scroll suffit : le site pose l'utilisateur sur la section suivante */}
+              <SectionSnap />
               <ErrorBoundary fallback={null}>
                 <AboutSection />
               </ErrorBoundary>

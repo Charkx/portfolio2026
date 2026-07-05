@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 // CANVAS PERMANENT : plein écran en continu, DERRIÈRE le contenu (zIndex 5 < main z-10).
 // Le monde 3D (voûte + poussière + humain) est le fond de page ; les sections HTML
@@ -32,11 +33,14 @@ function plateau(f: number): number {
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
 
+// sections dont le texte est masquable (celles à voile) — contact affiche son contenu autrement
+const GATED_SECTIONS = ['hero', 'about', 'skills', 'projects'];
+
 export default function AugmentedHumanLayer() {
   const [desktop, setDesktop] = useState(false);
-  const cardActive = useSceneStore((s) => s.endSessionCardActive); // carte révélée → on gèle ce canvas
+  const quality = useSettingsStore((s) => s.quality); // éco : bloom coupé + DPR plafonné
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef(0.5);
+  const progressRef = useRef(0); // station hero au départ (écran verrouillé : environnement seul)
   const coverRef = useRef(1); // canvas permanent → l'environnement (voûte/poussière) est toujours visible
 
   useEffect(() => {
@@ -54,12 +58,7 @@ export default function AugmentedHumanLayer() {
     const loop = () => {
       const w = wrapperRef.current;
       if (w) {
-        // carte révélée (fin de session) → canvas masqué + gelé (frameloop:never)
-        if (useSceneStore.getState().endSessionCardActive) {
-          w.style.opacity = '0';
-          raf = requestAnimationFrame(loop);
-          return;
-        }
+        // l'environnement reste visible même pendant la carte finale (fin de session)
         w.style.opacity = '1';
         const mid = window.innerHeight / 2;
         // (re)résout les slots tant qu'ils ne sont pas trouvés
@@ -85,13 +84,24 @@ export default function AugmentedHumanLayer() {
           // caméra (SceneContents en mode linear → suit exactement progressRef)
           progressRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, fe);
 
-          // voile : le contenu HTML s'efface au cœur du voyage (plan large sans obstacle)
-          // et revient à la station. sin(πfe) = 0 aux paliers.
+          // voile : le contenu HTML s'efface pendant TOUT le voyage (fenêtre large :
+          // le texte de la section suivante n'apparaît qu'à l'arrivée de la caméra,
+          // jamais en cours de route). sin(πfe) = 0 aux paliers.
           const travel = Math.sin(Math.PI * fe);
-          const vT = clamp01((travel - 0.45) / 0.4);
+          const vT = clamp01((travel - 0.12) / 0.28);
           const veil = vT * vT * (3 - 2 * vT); // smoothstep
           document.documentElement.style.setProperty('--holo-veil', veil.toFixed(3));
         }
+
+        // GATE nav : pendant un saut, on n'affiche QUE la section source et la
+        // destination ; les sections traversées restent masquées (leur texte ne
+        // recouvre plus l'animation). Hors saut : chaque section suit le voile normal.
+        const st = useSceneStore.getState();
+        GATED_SECTIONS.forEach((id) => {
+          const sec = document.getElementById(id);
+          if (!sec) return;
+          sec.style.opacity = st.navJumping && id !== st.navSource && id !== st.navTarget ? '0' : '';
+        });
       }
       raf = requestAnimationFrame(loop);
     };
@@ -99,6 +109,7 @@ export default function AugmentedHumanLayer() {
     return () => {
       cancelAnimationFrame(raf);
       document.documentElement.style.setProperty('--holo-veil', '0'); // contenu rendu visible
+      GATED_SECTIONS.forEach((id) => { const s = document.getElementById(id); if (s) s.style.opacity = ''; });
     };
   }, [desktop]);
 
@@ -109,14 +120,16 @@ export default function AugmentedHumanLayer() {
       style={{ position: 'fixed', inset: 0, zIndex: 5, pointerEvents: 'none', opacity: 0, transition: 'opacity .6s' }}>
       {/* pointerEvents:none explicite → R3F met `auto` par défaut sur son conteneur et
           intercepterait le drag destiné aux slots HTML (rotation manuelle des modules). */}
-      <Canvas frameloop={cardActive ? 'never' : 'always'} style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas frameloop="always" dpr={quality === 'eco' ? 1 : [1, 2]} style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
         <ambientLight intensity={1} />
         <Suspense fallback={<Loader />}>
           <SceneContents progressRef={progressRef} coverRef={coverRef} linear />
         </Suspense>
-        <EffectComposer>
-          <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
-        </EffectComposer>
+        {quality !== 'eco' && (
+          <EffectComposer>
+            <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
+          </EffectComposer>
+        )}
       </Canvas>
     </div>
   );

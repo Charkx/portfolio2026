@@ -78,7 +78,7 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
       d.index = deployed;
       const g = cubeRefs.current[deployed];
       if (g) deployOrigin.current.copy(g.position); // fige le point d'émission
-      audioEngine.play('ignition');
+      audioEngine.play('derez'); // dématérialisation : impact + éclats + convergence (calé sur le tween)
       if (reducedMotion) d.t = 0;                    // reduced-motion : pas d'explosion
       // t linéaire (easing par phase dans useFrame). S'arrête à 0.65 = l'instant où le
       // panneau apparaît (650 ms, sync ProjectsSection) → l'explosion SE FIGE dans cet
@@ -207,7 +207,13 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
   });
 
   // interactions souris via boutons DOM (le canvas partagé est en pointer-events:none)
-  const onOver = (i: number) => () => { useSceneStore.getState().setProjectHovered(i); audioEngine.play('hover'); };
+  // survol = arc d'énergie + sélection silencieuse → la fiche express suit (comme les chips)
+  const onOver = (i: number) => () => {
+    const st = useSceneStore.getState();
+    st.setProjectHovered(i);
+    st.requestSelectProject?.(i);
+    audioEngine.play('hover');
+  };
   const onOut = () => useSceneStore.getState().setProjectHovered(null);
   const onClick = (i: number) => () => { const st = useSceneStore.getState(); st.requestSelectProject?.(i); st.setProjectDeployed(i); };
 

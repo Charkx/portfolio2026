@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { gsap } from 'gsap';
 import type { Project } from '@/app/utils/types';
 import { useModalStore } from '../../store/modalStore';
+import { audioEngine } from '../../lib/audioEngine';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { SiteViewer } from './ModalViewers';
 import { lenisStart, lenisStop } from '../SmoothScroll';
@@ -71,6 +72,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
   const requestClose = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
+    audioEngine.play('reflow'); // tuiles qui se libèrent → reflux des éclats → cube reformé
     const panel = panelRef.current, back = backdropRef.current, tiles = tilesRef.current;
     if (reducedMotion || !panel || !back || !tiles) { onClose(); return; }
     tiles.style.display = 'grid';
@@ -83,6 +85,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
   }, [onClose, reducedMotion]);
 
   useEffect(() => {
+    audioEngine.play('materialize'); // les tuiles se verrouillent (le derez a joué au clic)
     prevFocus.current = document.activeElement as HTMLElement;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';

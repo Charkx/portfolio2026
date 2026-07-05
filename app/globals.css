@@ -168,6 +168,20 @@ body {
   }
 }
 
+/* Miroir du bloc media : override manuel "ANIMATIONS : RÉDUITES" (console de
+   calibrage) — l'attribut est posé sur <html> par ClientApp selon useReducedMotion */
+html[data-motion="reduced"] .hud-boot,
+html[data-motion="reduced"] .scanlines,
+html[data-motion="reduced"] .holographic,
+html[data-motion="reduced"] .glitch::before,
+html[data-motion="reduced"] .glitch::after,
+html[data-motion="reduced"] .card-glitch-in {
+  animation: none;
+}
+html[data-motion="reduced"] .holo-veil-fade {
+  opacity: 1;
+}
+
 /* Panneau de verre : rend le contenu lisible par-dessus le monde 3D permanent.
    Sur fond sombre, le verre se lit par ses BORDS (liseré haut lumineux, bordure
    cyan) et son reflet en dégradé — pas par sa teinte. Mobile : fond simple. */
