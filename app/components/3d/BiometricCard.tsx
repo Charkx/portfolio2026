@@ -15,10 +15,11 @@ const BASE_TEXT = "ID: CHARLY MENTHILLER";
  * et la fin de session (artefact retrouvé) : un seul composant 3D, pas de doublon.
  * Les interactions (scan au clic, révélation scanline) restent chez les parents.
  */
-export function IDCardVisual({ onClick, onPointerOver, onPointerOut, children }: {
+export function IDCardVisual({ onClick, onPointerOver, onPointerOut, hideBarcode, children }: {
   onClick?: () => void;
   onPointerOver?: () => void;
   onPointerOut?: () => void;
+  hideBarcode?: boolean; // la carte de contact fournit son propre code-barres animé
   children?: React.ReactNode;
 }) {
   const [glitchText, setGlitchText] = useState(BASE_TEXT);
@@ -85,8 +86,8 @@ export function IDCardVisual({ onClick, onPointerOver, onPointerOut, children }:
         </mesh>
       )}
 
-      {/* Code-barres */}
-      {Array.from({ length: 20 }).map((_, i) => (
+      {/* Code-barres (masquable : la carte de contact anime le sien) */}
+      {!hideBarcode && Array.from({ length: 20 }).map((_, i) => (
         <mesh
           key={i}
           position={[-0.6 + i * 0.06, -0.05, 0.0215]}
@@ -222,18 +223,23 @@ const clampF = THREE.MathUtils.clamp;
 // messages décodés + couleur selon le canal survolé (mêmes teintes que les coordonnées)
 const CH_MSG: Record<string, string> = { email: 'WRITE ME', github: 'SEE MY CODE', linkedin: "LET'S CONNECT", cv: 'CHECK MY CV' };
 const CH_COL: Record<string, string> = { email: '#22d3ee', github: '#c084fc', linkedin: '#38bdf8', cv: '#f472b6' };
-const GLITCH_CH = '!<>-_\\/[]{}=+*^?#01ABCXYZ';
 const IDLE_SPEAK = true; // la carte "parle" au repos de temps en temps (mettre false pour couper)
 const IDLE_MSGS = ['OPEN TO WORK', 'AVAILABLE 09/2026']; // messages au repos (alternent)
+const NBARS = 30;
 
-// Message décodé sur le code-barres (au centre de la carte). Lit le store chaque frame :
-// survol coordonnée > formulaire envoyé > progression formulaire > mot au repos.
-function CardMessage() {
+// Code-barres VIVANT : ses barres se couchent de gauche à droite pour laisser
+// apparaître le texte (elles se "réagencent" en lettres), puis se redressent.
+// Lit le store : survol coordonnée > formulaire envoyé > progression > repos.
+function AnimatedBarcode() {
+  const bars = useRef<(THREE.Mesh | null)[]>([]);
+  const baseH = useMemo(() => Array.from({ length: NBARS }, () => 0.06 + Math.random() * 0.1), []);
   const [txt, setTxt] = useState('');
-  const [op, setOp] = useState(0);
-  const [col, setCol] = useState('#7dffff');
-  const s = useRef({ target: '', glitch: 0, amt: 0, colTarget: '#7dffff', clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0] });
+  const [txtCol, setTxtCol] = useState('#7dffff');
+  const [txtOp, setTxtOp] = useState(0);
+  const s = useRef({ target: '', col: '#7dffff', p: 0, clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0] });
   const last = useRef({ txt: '', op: -1, col: '' });
+  const baseCol = useMemo(() => new THREE.Color('#aef6ff'), []);
+  const msgCol = useRef(new THREE.Color('#7dffff'));
 
   useFrame((_, dt) => {
     const store = useSceneStore.getState();
@@ -245,7 +251,6 @@ function CardMessage() {
 
     // message cible + couleur (priorité : envoyé > survol > formulaire > repos)
     let msg = '', c = '#7dffff';
-    // envoyé → alterne le "merci" et le rappel de dispo (argument alternance)
     if (sent) { msg = (Math.floor(st.clock / 2.8) % 2 === 0) ? "LET'S WORK TOGETHER" : 'AVAILABLE 09/2026'; c = '#4ade80'; }
     else if (hovered && CH_MSG[hovered]) { msg = CH_MSG[hovered]; c = CH_COL[hovered]; }
     else if (fill > 0) { msg = `LINK ${Math.round(fill * 100)}%`; c = '#7dffff'; }
@@ -253,41 +258,45 @@ function CardMessage() {
       if (st.clock >= st.idleNext && st.clock >= st.idleUntil) {
         st.idleUntil = st.clock + 1.8;
         st.idleNext = st.clock + 9 + Math.random() * 9;
-        st.idleMsg = IDLE_MSGS[(Math.random() * IDLE_MSGS.length) | 0]; // choisit un message au repos
+        st.idleMsg = IDLE_MSGS[(Math.random() * IDLE_MSGS.length) | 0];
       }
       if (st.clock < st.idleUntil) { msg = st.idleMsg; c = '#7dffff'; }
     }
 
-    // nouveau message → relance le décodage (glitch qui se résout)
-    if (msg !== st.target) { st.target = msg; st.glitch = msg ? 0.5 : 0; st.colTarget = c; }
-    st.amt += ((msg ? 1 : 0) - st.amt) * (1 - Math.pow(0.004, dt));
+    // nouveau message → les barres se redressent puis se réagencent (p repart de 0)
+    if (msg !== st.target) { st.target = msg; st.col = c; st.p = 0; }
+    st.p += ((msg ? 1 : 0) - st.p) * (1 - Math.pow(0.004, dt)); // balayage gauche→droite ~0,4 s
+    msgCol.current.set(st.col);
 
-    // texte affiché : caractères qui se résolvent de gauche à droite
-    let shown = st.target;
-    if (st.glitch > 0) {
-      st.glitch -= dt;
-      const p = 1 - Math.max(st.glitch, 0) / 0.5;
-      const rev = Math.floor(st.target.length * p);
-      let out = '';
-      for (let i = 0; i < st.target.length; i++) out += (i < rev || st.target[i] === ' ') ? st.target[i] : GLITCH_CH[(Math.random() * GLITCH_CH.length) | 0];
-      shown = out;
+    // barres : couchées (fines) là où le balayage est passé = "devenues lettres"
+    const k = 1 - Math.pow(0.0008, dt);
+    for (let i = 0; i < NBARS; i++) {
+      const b = bars.current[i]; if (!b) continue;
+      const flat = st.p > i / (NBARS - 1) + 0.02;
+      b.scale.y += ((flat ? 0.14 : 1) - b.scale.y) * k;
+      const m = b.material as THREE.MeshBasicMaterial;
+      m.color.lerp(flat ? msgCol.current : baseCol, k);
+      m.opacity = flat ? 0.5 : 1;
     }
 
-    // setState guardés → pas de re-render hors transition
+    // texte révélé de gauche à droite, en phase avec les barres qui se couchent
+    const rev = Math.floor(st.target.length * clampF(st.p * 1.06, 0, 1));
+    const shown = st.target.substring(0, rev);
     if (shown !== last.current.txt) { last.current.txt = shown; setTxt(shown); }
-    const opR = Math.round(st.amt * 100) / 100;
-    if (opR !== last.current.op) { last.current.op = opR; setOp(opR); }
-    if (st.colTarget !== last.current.col) { last.current.col = st.colTarget; setCol(st.colTarget); }
+    const op = Math.round(clampF((st.p - 0.1) / 0.9, 0, 1) * 100) / 100;
+    if (op !== last.current.op) { last.current.op = op; setTxtOp(op); }
+    if (st.col !== last.current.col) { last.current.col = st.col; setTxtCol(st.col); }
   });
 
   return (
-    <group position={[0, -0.05, 0.023]}>
-      {/* écran qui masque le code-barres quand un message s'affiche */}
-      <mesh>
-        <planeGeometry args={[1.5, 0.28]} />
-        <meshBasicMaterial color="#04070c" transparent opacity={op * 0.92} depthWrite={false} />
-      </mesh>
-      <Text position={[0, 0, 0.004]} fontSize={0.085} maxWidth={1.4} lineHeight={1.05} textAlign="center" anchorX="center" anchorY="middle" color={col} fillOpacity={op} outlineWidth={0.002} outlineColor={col}>
+    <group position={[0, -0.05, 0.0215]}>
+      {baseH.map((h, i) => (
+        <mesh key={i} ref={(el) => { bars.current[i] = el; }} position={[-0.6 + (i / (NBARS - 1)) * 1.2, 0, 0]}>
+          <planeGeometry args={[0.02, h]} />
+          <meshBasicMaterial color="#aef6ff" transparent />
+        </mesh>
+      ))}
+      <Text position={[0, 0, 0.006]} fontSize={0.07} maxWidth={1.4} lineHeight={1.05} textAlign="center" anchorX="center" anchorY="middle" color={txtCol} fillOpacity={txtOp}>
         {txt}
       </Text>
     </group>
@@ -382,14 +391,14 @@ function FinaleCardModel() {
       </mesh>
 
       <group ref={group} scale={1.35}>
-        <IDCardVisual>
+        <IDCardVisual hideBarcode>
           {/* scanline d'activation */}
           <mesh ref={scan} position={[0, 0.52, 0.024]}>
             <planeGeometry args={[1.6, 0.03]} />
             <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
-          {/* code-barres qui se décode en messages */}
-          <CardMessage />
+          {/* code-barres vivant : ses barres se réagencent en texte */}
+          <AnimatedBarcode />
         </IDCardVisual>
       </group>
     </group>

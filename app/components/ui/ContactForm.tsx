@@ -18,20 +18,31 @@ export function NetworkIdentifiers() {
     e.preventDefault();
     openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
   };
-  // survol/focus d'un identifiant → la pluie stellaire autour de la carte réagit (teinte + rush)
+  // survol/focus d'un canal → la CARTE répond (code-barres décodé à la teinte du canal)
   const hoverProps = (id: string) => ({
     onMouseEnter: () => useSceneStore.getState().setContactIdHovered(id),
     onMouseLeave: () => useSceneStore.getState().setContactIdHovered(null),
     onFocus:      () => useSceneStore.getState().setContactIdHovered(id),
     onBlur:       () => useSceneStore.getState().setContactIdHovered(null),
   });
+  // teintes = celles auxquelles la carte répond (le lien et la carte partagent la couleur)
+  const CH = {
+    email:    '#22d3ee',
+    github:   '#c084fc',
+    linkedin: '#38bdf8',
+    cv:       '#f472b6',
+  };
   return (
     <div className="font-mono">
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
-        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.email}</a>
-        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.githubLabel}</a>
-        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} className="text-cyan-300 underline hover:text-cyan-100">{PROFILE.linkedinLabel}</a>
-        <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} className="text-pink-300 underline hover:text-pink-200 cursor-pointer">CV</a>
+      {/* indice : le survol d'un canal fait "parler" la carte */}
+      <div className="text-[10px] text-cyan-300/60 text-center tracking-wider mb-1.5">
+        &gt; SURVOLE UN CANAL — LA CARTE RÉPOND
+      </div>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-xs">
+        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} style={{ color: CH.email }} className="underline decoration-dotted underline-offset-4 hover:brightness-125 transition">◆ {PROFILE.email}</a>
+        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} style={{ color: CH.github }} className="underline decoration-dotted underline-offset-4 hover:brightness-125 transition">◆ {PROFILE.githubLabel}</a>
+        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} style={{ color: CH.linkedin }} className="underline decoration-dotted underline-offset-4 hover:brightness-125 transition">◆ {PROFILE.linkedinLabel}</a>
+        <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} style={{ color: CH.cv }} className="underline decoration-dotted underline-offset-4 hover:brightness-125 transition cursor-pointer">◆ CV</a>
       </div>
       <div className="mt-2 text-[10px] text-gray-500 text-center">⏳ {PROFILE.availability}</div>
     </div>
