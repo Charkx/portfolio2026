@@ -43,6 +43,11 @@ interface SceneState {
   contactIdHovered: string | null
   setContactIdHovered: (id: string | null) => void
 
+  // Saut de nav HUD en cours (partagé main ↔ canvas dynamique) : caméra au plan
+  // large + voile plein pour ne pas rejouer/afficher les sections traversées
+  navJumping: boolean
+  setNavJumping: (b: boolean) => void
+
   // Rotation manuelle des modules à la souris (drag sur le slot de section)
   manualRot: Record<string, { x: number; y: number }> // rotation accumulée par focus
   nudgeRot: (focus: string, dx: number, dy: number) => void
@@ -88,6 +93,9 @@ export const useSceneStore = create<SceneState>((set) => ({
 
   contactIdHovered: null,
   setContactIdHovered: (id) => set({ contactIdHovered: id }),
+
+  navJumping: false,
+  setNavJumping: (b) => set({ navJumping: b }),
 
   manualRot: {},
   nudgeRot: (focus, dx, dy) => set((s) => {

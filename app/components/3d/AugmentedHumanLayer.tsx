@@ -6,7 +6,6 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
 import { useSettingsStore } from '../../store/settingsStore';
-import { isProgrammaticScroll } from '../SmoothScroll';
 
 // CANVAS PERMANENT : plein écran en continu, DERRIÈRE le contenu (zIndex 5 < main z-10).
 // Le monde 3D (voûte + poussière + humain) est le fond de page ; les sections HTML
@@ -90,8 +89,9 @@ export default function AugmentedHumanLayer() {
           const vT = clamp01((travel - 0.12) / 0.28);
           const veil = vT * vT * (3 - 2 * vT); // smoothstep
           // saut de nav : on cache TOUT le contenu HTML (seule l'animation 3D reste
-          // visible pendant le dézoom), puis on révèle la section cible à l'arrivée
-          navVeil += ((isProgrammaticScroll() ? 1 : 0) - navVeil) * 0.14;
+          // visible pendant le dézoom), puis on révèle la section cible à l'arrivée.
+          // Drapeau lu via le store (fiable entre chunks, contrairement au module).
+          navVeil += ((useSceneStore.getState().navJumping ? 1 : 0) - navVeil) * 0.14;
           document.documentElement.style.setProperty('--holo-veil', Math.max(veil, navVeil).toFixed(3));
         }
       }

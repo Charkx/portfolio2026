@@ -13,7 +13,6 @@ import { useSceneStore } from '../../store/sceneStore';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { audioEngine } from '../../lib/audioEngine';
-import { isProgrammaticScroll } from '../SmoothScroll';
 import { TECH_STACK } from '../../utils/constants';
 
 // focuses des modules embarqués (= stations 1..3 ; la station contact n'a pas de module)
@@ -636,8 +635,8 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
 
     // SAUT DE NAV : la caméra recule au plan large "corps entier" au lieu de rejouer
     // le cadrage de chaque station intermédiaire (dézoom → voyage → cadrage cible).
-    // Le scroll molette normal n'est PAS programmatique → chorégraphie inchangée.
-    const navTarget = isProgrammaticScroll() ? 1 : 0;
+    // Le scroll molette normal n'est PAS un saut de nav → chorégraphie inchangée.
+    const navTarget = useSceneStore.getState().navJumping ? 1 : 0;
     navBlendRef.current += (navTarget - navBlendRef.current) * (1 - Math.pow(0.0009, dt));
 
     // recul vers le plan "corps entier" : fin de session (esAppear) OU saut de nav
