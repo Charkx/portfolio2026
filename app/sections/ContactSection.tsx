@@ -6,10 +6,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { ErrorBoundary } from '../hooks/ErrorBoundary';
 import { useSceneStore } from '../store/sceneStore';
-import { ContactCard } from '../components/3d/BiometricCard';
+import BiometricCard from '../components/3d/BiometricCard';
 import { ContactChannels } from '../components/ui/ContactChannels';
 import { SectionTitle } from '../components/ui/SectionTitle';
-import ContactMobileCard from '../components/ContactMobileCard';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -110,15 +109,20 @@ export default function ContactSection() {
   // --- MOBILE : carte CSS 3D (gyroscope) + coordonnées ---
   if (isMobile) {
     return (
-      <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex flex-col items-center justify-center gap-8 py-20 px-4 scroll-mt-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
+      <section id="contact" ref={sectionRef} className="relative min-h-[100svh] flex flex-col items-center justify-center gap-4 py-16 px-4 scroll-mt-20">
         <SectionTitle
           className="relative"
           kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
           title="CONTACT:TRANSMISSION"
-          hint="La carte est le seul artefact qui subsiste — établis le lien."
         />
-        <div className="relative"><ContactMobileCard /></div>
+        {/* slot du canvas partagé : l'hologramme termine son voyage ici (5e ancre) */}
+        <div data-holo="contact" aria-hidden className="h-[16svh] w-full" />
+        {/* LA carte 3D (le même artefact que l'entrée — orbit coupé au tactile) */}
+        <div className="relative w-full max-w-md h-[34svh]">
+          <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
+            <BiometricCard />
+          </ErrorBoundary>
+        </div>
         <div className="relative w-full max-w-md"><ContactChannels /></div>
       </section>
     );
@@ -149,7 +153,7 @@ export default function ContactSection() {
             {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
             <div className="relative w-full max-w-3xl h-[48vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
-                <ContactCard />
+                <BiometricCard />
               </ErrorBoundary>
             </div>
             <div ref={infoRef} className="w-full max-w-xl" style={{ opacity: 0, pointerEvents: 'none' }}>

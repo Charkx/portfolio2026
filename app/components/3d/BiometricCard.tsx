@@ -140,23 +140,41 @@ export function IDCardVisual({ onClick, onPointerOver, onPointerOut, hideBarcode
   );
 }
 
-// Carte du hero : flottement + scan au clic (tour complet → déverrouille le site)
-const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigger }) => {
+// LA carte biométrique — un seul composant pour tout le site :
+//   onScanTrigger fourni  → carte d'ENTRÉE : scan au clic, elle parle (HELLO/SCAN ME)
+//   onScanTrigger absent  → carte CONTACT : code-barres piloté par le store
+//                            (survol des canaux) + célébration à l'ouverture de Calendly
+const CyberpunkIDCard: React.FC<{ onScanTrigger?: () => void }> = ({ onScanTrigger }) => {
   const cardRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const sentAt = useRef<number | null>(null); // instant de la célébration (mode contact)
 
-  useCursor(hovered);
+  useCursor(hovered && !!onScanTrigger);
 
   useFrame((state) => {
-    if (cardRef.current && !isScanning) {
-      cardRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
-      cardRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.3) * 0.05;
+    if (!cardRef.current || isScanning) return;
+    const t = state.clock.elapsedTime;
+
+    // mode contact : Calendly ouvert (endSessionSent) → un tour + pulse
+    let flip = 0, pulse = 0;
+    if (!onScanTrigger) {
+      if (useSceneStore.getState().endSessionSent && sentAt.current === null) sentAt.current = t;
+      if (sentAt.current !== null) {
+        const e = clampF((t - sentAt.current) / 1.2, 0, 1);
+        const ease = e * e * (3 - 2 * e);
+        flip = ease * Math.PI * 2;
+        pulse = Math.sin(e * Math.PI) * 0.12;
+      }
     }
+
+    cardRef.current.rotation.y = Math.sin(t * 0.5) * 0.1 + flip;
+    cardRef.current.rotation.x = Math.cos(t * 0.3) * 0.05;
+    cardRef.current.scale.setScalar(1 + pulse);
   });
 
   const handleClick = () => {
-    if (isScanning) return;
+    if (!onScanTrigger || isScanning) return;
     setIsScanning(true);
 
     gsap.to(cardRef.current!.rotation, {
@@ -182,27 +200,33 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger: () => void }> = ({ onScanTrigge
     <group ref={cardRef}>
       <IDCardVisual
         hideBarcode
-        onClick={handleClick}
+        onClick={onScanTrigger ? handleClick : undefined}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
-        {/* la carte "parle" toute seule avant le scan */}
-        <AnimatedBarcode autoMessages={['HELLO !', 'SCAN ME']} />
+        {/* entrée : la carte parle toute seule · contact : elle répond aux canaux */}
+        {onScanTrigger
+          ? <AnimatedBarcode autoMessages={['HELLO !', 'SCAN ME']} />
+          : <AnimatedBarcode />}
       </IDCardVisual>
     </group>
   );
 };
 
 interface BiometricCardProps {
-  onScan: () => void;
+  onScan?: () => void; // absent = carte de la section Contact
 }
 
 export default function BiometricCard({ onScan }: BiometricCardProps) {
+  // tactile : pas d'orbit (la rotation au doigt casserait le scroll) — flottement seul
+  const [coarse] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
+  );
   return (
-    <Canvas>
-      {/* caméra rapprochée : la carte est LE composant principal de l'entrée */}
+    <Canvas gl={{ antialias: true, alpha: true }}>
+      {/* caméra rapprochée : la carte est LE composant principal */}
       <PerspectiveCamera makeDefault position={[0, 0, 1.55]} />
-      <OrbitControls enableZoom={false} enablePan={false} />
+      {!coarse && <OrbitControls enableZoom={false} enablePan={false} />}
       <ambientLight intensity={0.9} />
       <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
       <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
@@ -317,60 +341,5 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
   );
 }
 
-// Carte de fin de session : MÊME visuel et cadrage que l'entrée (sans barre de scan).
-// Elle flotte, se laisse tourner (OrbitControls) et son code-barres communique.
-function FinaleCardModel() {
-  const group = useRef<THREE.Group>(null);
-  const sentAt = useRef<number | null>(null); // instant de l'envoi → clin d'œil (un tour + pulse)
-  const [hover, setHover] = useState(false);
-  useCursor(hover);
-
-  useFrame((state) => {
-    const g = group.current; if (!g) return;
-    const t = state.clock.elapsedTime;
-
-    // clin d'œil : à l'ouverture de Calendly (endSessionSent) → un tour + pulse
-    if (useSceneStore.getState().endSessionSent && sentAt.current === null) sentAt.current = t;
-    let flip = 0, pulse = 0;
-    if (sentAt.current !== null) {
-      const e = clampF((t - sentAt.current) / 1.2, 0, 1);
-      const ease = e * e * (3 - 2 * e);
-      flip = ease * Math.PI * 2;
-      pulse = Math.sin(e * Math.PI) * 0.12;
-    }
-
-    // flottement, comme la carte d'entrée
-    g.rotation.y = Math.sin(t * 0.5) * 0.1 + flip;
-    g.rotation.x = Math.cos(t * 0.3) * 0.05;
-    g.position.y = Math.sin(t * 0.8) * 0.03;
-    g.scale.setScalar(1 + pulse);
-  });
-
-  return (
-    <group ref={group}>
-      <IDCardVisual hideBarcode onPointerOver={() => setHover(true)} onPointerOut={() => setHover(false)}>
-        {/* code-barres vivant : ses barres se réagencent en texte (survol des coordonnées) */}
-        <AnimatedBarcode />
-      </IDCardVisual>
-    </group>
-  );
-}
-
-// Canvas de la carte de fin de session (utilisé par ContactSection).
-export function ContactCard() {
-  return (
-    <Canvas gl={{ antialias: true, alpha: true }}>
-      {/* même cadrage que la carte d'entrée : caméra rapprochée + orbit (rotation à la souris) */}
-      <PerspectiveCamera makeDefault position={[0, 0, 1.55]} />
-      <OrbitControls enableZoom={false} enablePan={false} />
-      <ambientLight intensity={0.9} />
-      <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
-      <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />
-      <pointLight position={[0, 0, 10]} intensity={0.8} color="#ffffff" />
-      <Suspense fallback={null}>
-        <Environment preset="night" />
-        <FinaleCardModel />
-      </Suspense>
-    </Canvas>
-  );
-}
+// (ContactCard / FinaleCardModel supprimés : la carte de la section Contact
+//  est le MÊME composant BiometricCard, sans onScan — un seul artefact.)

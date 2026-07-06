@@ -16,6 +16,14 @@ function initial<T extends string>(key: string, allowed: readonly T[], def: T): 
   return v && allowed.includes(v) ? v : def
 }
 
+// tactile (téléphone/tablette) sans préférence enregistrée → éco d'office :
+// fluidité garantie au premier contact ; le calibrage permet toujours de passer HIGH
+function initialQuality(): QualityPref {
+  if (typeof window === "undefined") return "high"
+  const def: QualityPref = window.matchMedia("(pointer: coarse)").matches ? "eco" : "high"
+  return initial(QUALITY_KEY, ["high", "eco"], def)
+}
+
 interface SettingsState {
   motion: MotionPref
   quality: QualityPref
@@ -25,7 +33,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   motion: initial(MOTION_KEY, ["auto", "full", "reduced"], "auto"),
-  quality: initial(QUALITY_KEY, ["high", "eco"], "high"),
+  quality: initialQuality(),
   setMotion: (m) => {
     window.localStorage.setItem(MOTION_KEY, m)
     set({ motion: m })

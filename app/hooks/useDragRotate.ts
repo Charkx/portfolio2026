@@ -39,6 +39,12 @@ export function useDragRotate(focus: string) {
     (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
   }, [setDragFocus]);
 
+  // TACTILE : pas de rotation manuelle (le drag casserait le scroll) — l'auto-spin suffit.
+  // matchMedia est stable sur la durée de vie de la page → pas de rupture des règles de hooks.
+  if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+    return {};
+  }
+
   // handlers à spread sur le slot ; ajoute les classes `cursor-grab touch-none` pour l'affordance
   return {
     onPointerDown,

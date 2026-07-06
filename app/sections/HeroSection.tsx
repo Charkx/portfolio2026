@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import TerminalDisplay from "../components/ui/TerminalDisplay"
-import MobileHero from "../components/MobileHero"
 import { ErrorBoundary } from "../hooks/ErrorBoundary"
 import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
@@ -53,20 +52,32 @@ export default function HeroSection({
       className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20 md:bg-none"
     >
       {/* Slot corps-entier : le canvas partagé (page) s'y matérialise une fois la carte scannée.
-          Une fois déverrouillé, on peut faire pivoter l'hologramme à la souris (le terminal reste au-dessus). */}
+          Desktop déverrouillé : pivoter l'hologramme à la souris. Mobile : le slot reste
+          transparent aux gestes (scroll + tap lucioles passent). */}
       <div
         data-holo="hero"
         aria-hidden
-        className={`absolute inset-0 ${unlocked ? "z-20 cursor-grab touch-none" : "pointer-events-none"}`}
-        {...(unlocked ? dragHuman : {})}
+        className={`absolute inset-0 ${unlocked && !isMobile ? "z-20 cursor-grab touch-none" : "pointer-events-none"}`}
+        {...(unlocked && !isMobile ? dragHuman : {})}
       />
 
       <div className="container w-full mx-auto px-4 flex flex-col gap-4 items-center z-10">
         {/* Carte biométrique 3D = clé d'entrée du site. Une fois scannée (UNLOCKED) :
-            desktop → elle s'estompe pour laisser place à l'hologramme (canvas permanent) ;
-            mobile → pas d'hologramme, on la REMPLACE par l'identité + carte gyro + lucioles. */}
+            elle s'estompe pour laisser place à l'hologramme (canvas permanent, mobile inclus).
+            Mobile : identité compacte superposée — l'hologramme reste la star. */}
         {unlocked && isMobile ? (
-          <MobileHero />
+          <div className="relative flex flex-col items-center justify-between h-[70svh] py-6 pointer-events-none hud-boot">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-cyan-300 font-display" style={{ textShadow: "0 0 16px rgba(34,211,238,0.5)" }}>
+                CHARLY MENTHILLER
+              </div>
+              <p className="mt-1.5 text-green-400/90 font-mono text-xs tracking-wider">⏳ Alternance · Septembre 2026</p>
+            </div>
+            <div className="flex flex-col items-center gap-1 text-cyan-400/60 font-mono text-[11px] tracking-[0.25em]">
+              <span>SCROLL</span>
+              <span className="animate-bounce text-cyan-300">▾</span>
+            </div>
+          </div>
         ) : (
           <div
             className="w-full h-[52vh] md:h-[56vh] relative transition-opacity duration-700"

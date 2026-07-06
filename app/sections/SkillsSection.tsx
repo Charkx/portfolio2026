@@ -1,28 +1,48 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import DNAAnalysis from '../components/3d/DNAAnalysis';
 import TechList from '../components/TechList';
-import { LazyMount } from '../components/LazyMount';
 import { TECH_STACK, HELIX_STRANDS } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
+import { useModalStore } from '../store/modalStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
 import { useDiscoveryStore } from '../store/discoveryStore';
 import { SectionTitle } from '../components/ui/SectionTitle';
+
+// Fiche d'une techno pour la MODALE mobile (même contenu que le panneau desktop)
+function TechDecodeBody({ tech, category }: { tech: { name: string; icon: string; level: number; desc: string }; category: string }) {
+  return (
+    <div className="font-mono">
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${tech.icon}/${tech.icon}-original.svg`}
+          alt=""
+          className="w-10 h-10"
+        />
+        <div>
+          <div className="text-cyan-100 text-lg leading-tight">{tech.name}</div>
+          <div className="text-[11px] text-cyan-400/60 uppercase tracking-wider">{category}</div>
+        </div>
+        <div className="ml-auto flex gap-1 text-sm" aria-label={`Niveau ${tech.level} sur 3`}>
+          {[1, 2, 3].map((n) => (
+            <span key={n} className={n <= tech.level ? 'text-cyan-300' : 'text-cyan-400/20'}>●</span>
+          ))}
+        </div>
+      </div>
+      <p className="mt-3 text-sm text-gray-300 leading-relaxed">{tech.desc}</p>
+    </div>
+  );
+}
 
 gsap.registerPlugin(ScrollTrigger);
 
 // --- Helpers ---
 
 const ALL_TECHS = Object.values(TECH_STACK).flat();
-
-// id (nom en minuscules) → niveau de maîtrise
-const LEVEL_BY_ID: Record<string, number> = Object.fromEntries(
-  ALL_TECHS.map((t) => [t.name.toLowerCase(), t.level])
-);
 
 const LEVEL_FILTERS = [
   { value: 0, label: 'Tout' },
@@ -35,7 +55,6 @@ const LEVEL_FILTERS = [
 
 export default function SkillsSection() {
   // États partagés avec l'ADN embarqué dans le canvas humain (via le store)
-  const visibleTechs  = useSceneStore((s) => s.skillsVisible);
   const setVisibleTechs = useSceneStore((s) => s.setSkillsVisible);
   const hoveredTech   = useSceneStore((s) => s.skillsHovered);
   const setHoveredTech  = useSceneStore((s) => s.setSkillsHovered);
@@ -87,20 +106,79 @@ export default function SkillsSection() {
     }
   }
 
-  // Techs affichées dans l'hélice : révélées au scroll ET au niveau filtré
-  const shownTechs = useMemo(
-    () =>
-      levelFilter === 0
-        ? visibleTechs
-        : visibleTechs.filter((id) => LEVEL_BY_ID[id] === levelFilter),
-    [visibleTechs, levelFilter]
-  );
+  // (l'hélice embarquée dans le canvas partagé lit skillsVisible/skillsLevel
+  //  directement dans le store — plus de calcul local nécessaire)
 
   // -- Hover --
   const handleTechHover = useCallback((techName: string | null) => {
     setHoveredTech(techName ? techName.toLowerCase() : null);
   }, [setHoveredTech]);
 
+  // MOBILE : tap sur une techno → la réorganisation moléculaire JOUE À L'ÉCRAN,
+  // puis la fiche s'ouvre en modale (~750 ms plus tard)
+  const openTech = useCallback((techName: string) => {
+    const id = techName.toLowerCase();
+    useSceneStore.getState().setSkillsSelected(id); // toujours ON (pas de toggle en mobile)
+    audioEngine.play('molecular');
+    useDiscoveryStore.getState().discover('adn');
+    for (const [category, items] of Object.entries(TECH_STACK)) {
+      const tech = items.find((t) => t.name.toLowerCase() === id);
+      if (tech) {
+        setTimeout(() => {
+          useModalStore.getState().open({ title: `>> DÉCODAGE : ${tech.name}`, size: 'md', content: <TechDecodeBody tech={tech} category={category} /> });
+        }, 750);
+        break;
+      }
+    }
+  }, []);
+
+
+  // --- MOBILE : ~1 écran — titre, hélice (canvas partagé), liste tapable → modale ---
+  if (isMobile) {
+    return (
+      <section
+        id="skills"
+        className="holo-veil-fade min-h-[100svh] flex flex-col items-center justify-center px-4 py-16 relative scroll-mt-[100px]"
+      >
+        <SectionTitle
+          className="mb-3"
+          kicker="ACCÈS MÉMOIRE.COMPÉTENCES — SÉQUENÇAGE ADN"
+          title="SKILLS:DNA_MODULE_ANALYSIS"
+        />
+        {/* slot du canvas partagé : le zoom ADN se joue ici */}
+        <div data-holo="skills" aria-hidden className="h-[38svh] w-full" />
+        {/* filtre par niveau (compact) */}
+        <div className="mt-3 flex flex-wrap justify-center gap-2 z-10" role="group" aria-label="Filtrer par niveau">
+          {LEVEL_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => { setLevelFilter(f.value); audioEngine.play('molecular'); }}
+              aria-pressed={levelFilter === f.value}
+              className={`px-3 py-1.5 rounded font-mono text-xs border transition-colors ${
+                levelFilter === f.value
+                  ? 'bg-cyan-500 text-black border-cyan-400'
+                  : 'bg-transparent text-cyan-400/70 border-cyan-400/30'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="glass-panel rounded-xl p-4 w-full max-w-xl mt-4 z-10">
+          <TechList
+            selectedTech={selectedTech}
+            hoveredTech={hoveredTech}
+            levelFilter={levelFilter}
+            onTechClick={openTech}
+            onTechHover={handleTechHover}
+          />
+        </div>
+        <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider z-10">
+          ▸ Tape un module — l&apos;hélice réagit puis la fiche s&apos;ouvre
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -140,19 +218,8 @@ export default function SkillsSection() {
           {isMobile === false ? (
             // desktop : emplacement où le canvas partagé (page) se niche pour la station ADN
             <div data-holo="skills" className="w-full cursor-grab touch-none" style={{ height: 'clamp(360px, 44vh, 520px)' }} title="Glisse pour faire pivoter" {...dragDNA} />
-          ) : isMobile ? (
-            // mobile : hauteur raisonnée — l'hélice reste lisible sans engloutir l'écran
-            <LazyMount className="w-full" style={{ height: 'clamp(340px, 46vh, 520px)' }}>
-              <DNAAnalysis
-                visibleTechs={shownTechs}
-                hoveredTech={hoveredTech}
-                selectedTech={selectedTech}
-                onTechClick={handleTechClick}
-                onTechHover={handleTechHover}
-              />
-            </LazyMount>
           ) : (
-            <div className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }} />
+            <div className="w-full" style={{ height: 'clamp(360px, 44vh, 520px)' }} />
           )}
 
           {/* Affordance : on peut décoder un module */}

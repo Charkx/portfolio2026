@@ -339,9 +339,13 @@ export function ProjectsSection() {
               );
             })()}
 
-            {/* Mobile : carrousel de Data Cubes CSS 3D (le panneau se déploie au tap) */}
+            {/* Mobile : la narration d'abord — slot du canvas partagé (POV paume + cubes),
+                puis le carrousel tapable qui déploie les études de cas */}
             {isMobile && (
-              <div className="pt-6 flex justify-center">
+              <div data-holo="projects" aria-hidden className="h-[32svh] w-full" />
+            )}
+            {isMobile && (
+              <div className="pt-4 flex justify-center">
                 <ProjectMobileCubes
                   items={PROJECTS_DATA.map((p) => ({ id: p.memId, title: p.title, short: p.short, color: CONTEXT_HEX[p.context] }))}
                   index={selectedProject ?? 0}

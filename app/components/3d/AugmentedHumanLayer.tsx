@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
@@ -58,22 +58,30 @@ const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
 // sections dont le texte est masquable (celles à voile) — contact affiche son contenu autrement
 const GATED_SECTIONS = ['hero', 'about', 'skills', 'projects'];
 
+// portrait (mobile) : fov élargi pour que l'hologramme ne soit pas rogné sur les côtés
+function ResponsiveFov() {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const c = camera as import('three').PerspectiveCamera;
+    c.fov = size.width < size.height ? 52 : 40;
+    c.updateProjectionMatrix();
+  }, [camera, size]);
+  return null;
+}
+
 export default function AugmentedHumanLayer() {
-  const [desktop, setDesktop] = useState(false);
+  // le canvas permanent tourne AUSSI sur mobile (la narration hologramme est
+  // l'identité du site) — la qualité éco y est le défaut (cf. settingsStore)
+  const [ready, setReady] = useState(false);
   const quality = useSettingsStore((s) => s.quality); // éco : bloom coupé + DPR plafonné
   const wrapperRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0); // station hero au départ (écran verrouillé : environnement seul)
   const coverRef = useRef(1); // canvas permanent → l'environnement (voûte/poussière) est toujours visible
 
-  useEffect(() => {
-    const check = () => setDesktop(window.innerWidth >= 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  useEffect(() => { setReady(true); }, []);
 
   useEffect(() => {
-    if (!desktop) return;
+    if (!ready) return;
     const els: (HTMLElement | null)[] = ANCHORS.map(() => null);
     let raf = 0;
 
@@ -133,9 +141,9 @@ export default function AugmentedHumanLayer() {
       document.documentElement.style.setProperty('--holo-veil', '0'); // contenu rendu visible
       GATED_SECTIONS.forEach((id) => { const s = document.getElementById(id); if (s) s.style.opacity = ''; });
     };
-  }, [desktop]);
+  }, [ready]);
 
-  if (!desktop) return null;
+  if (!ready) return null;
 
   return (
     <div ref={wrapperRef}
@@ -143,6 +151,7 @@ export default function AugmentedHumanLayer() {
       {/* pointerEvents:none explicite → R3F met `auto` par défaut sur son conteneur et
           intercepterait le drag destiné aux slots HTML (rotation manuelle des modules). */}
       <Canvas frameloop="always" dpr={quality === 'eco' ? 1 : [1, 2]} style={{ pointerEvents: 'none' }} resize={{ debounce: 0 }} camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
+        <ResponsiveFov />
         <ambientLight intensity={1} />
         <Suspense fallback={<Loader />}>
           <SceneContents progressRef={progressRef} coverRef={coverRef} linear />

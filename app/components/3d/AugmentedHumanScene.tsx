@@ -361,7 +361,9 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
   const meshes = useRef<(THREE.Mesh | null)[]>([]);
   const mats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
   const clock = useRef(0);
-  const pointer = useRef({ x: 0, y: 0 });
+  const pointer = useRef({ x: -2, y: -2 }); // hors-champ au départ (pas de récolte fantôme)
+  const tapAt = useRef(-1e9);               // instant du dernier tap (récolte tactile)
+  const coarse = useRef(false);             // pointeur grossier = récolte au TAP, pas au survol
   const _ndc = useRef(new THREE.Vector2());
   const _ray = useRef(new THREE.Raycaster());
   const _plane = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
@@ -374,14 +376,22 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
     })
   );
 
-  // le canvas est pointer-events:none → on suit la souris sur la fenêtre
+  // le canvas est pointer-events:none → on suit la souris sur la fenêtre.
+  // Tactile : pointermove ne vit que pendant un drag → on écoute AUSSI pointerdown
+  // (le tap devient le geste de récolte, avec un rayon élargi et une courte fenêtre).
   useEffect(() => {
+    coarse.current = window.matchMedia('(pointer: coarse)').matches;
     const onMove = (e: PointerEvent) => {
       pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       pointer.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
     };
+    const onDown = (e: PointerEvent) => { onMove(e); tapAt.current = performance.now(); };
     window.addEventListener('pointermove', onMove, { passive: true });
-    return () => window.removeEventListener('pointermove', onMove);
+    window.addEventListener('pointerdown', onDown, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerdown', onDown);
+    };
   }, []);
 
   useFrame((_, dt) => {
@@ -394,6 +404,12 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
       _ray.current.setFromCamera(_ndc.current, camera);
       _ray.current.ray.intersectPlane(_plane.current, _cursor.current);
     }
+
+    // rayon de récolte : souris = survol continu · tactile = fenêtre de 250 ms
+    // après un tap, rayon élargi (précision du doigt) — 0 = récolte fermée
+    const reach = coarse.current
+      ? (performance.now() - tapAt.current < 250 ? MOTE_COLLECT_R * 2.2 : 0)
+      : MOTE_COLLECT_R;
 
     motes.current.forEach((m, i) => {
       const mesh = meshes.current[i], mat = mats.current[i];
@@ -431,8 +447,8 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
       mesh.scale.setScalar(MOTE_SIZE * (0.85 + 0.15 * Math.sin(t * 3)));
       mat.opacity = 0.9;
 
-      // récolte : la souris passe à proximité → absorption
-      if (m.pos.distanceTo(_cursor.current) < MOTE_COLLECT_R) {
+      // récolte : souris à proximité (ou tap tactile récent) → absorption
+      if (reach > 0 && m.pos.distanceTo(_cursor.current) < reach) {
         m.collected = true; m.ct = 0;
         audioEngine.play('collect');
         useDiscoveryStore.getState().discover('firefly');
