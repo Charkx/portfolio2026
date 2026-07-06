@@ -19,6 +19,31 @@ export function PdfViewer({ src, downloadName }: { src: string; downloadName?: s
   )
 }
 
+// Prise de rendez-vous Calendly : iframe thémée cyberpunk (sombre + cyan) + lien de secours.
+export function CalendlyViewer({ src }: { src: string }) {
+  // params d'embed Calendly (hex SANS #) : fond sombre, texte holo, accent cyan
+  const embed = `${src}?hide_gdpr_banner=1&background_color=0a0a0a&text_color=aef6ff&primary_color=22d3ee`
+  return (
+    <div className="flex flex-col gap-3 h-[75vh]">
+      <iframe
+        src={embed}
+        title="Prendre rendez-vous"
+        loading="lazy"
+        className="w-full grow rounded border border-cyan-400/20 bg-[#0a0a0a]"
+      />
+      <a
+        href={src}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="self-start inline-flex items-center gap-2 px-4 py-2 rounded border border-cyan-400/40
+                   text-cyan-200 hover:bg-cyan-400/10 transition-colors text-sm"
+      >
+        Ouvrir Calendly ↗
+      </a>
+    </div>
+  )
+}
+
 // Visionneuse de site live (démo) : iframe + lien plein écran de secours (si le site refuse l'iframe).
 export function SiteViewer({ src }: { src: string }) {
   return (

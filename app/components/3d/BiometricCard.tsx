@@ -317,44 +317,20 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
   );
 }
 
+// Carte de fin de session : MÊME visuel et cadrage que l'entrée (sans barre de scan).
+// Elle flotte, se laisse tourner (OrbitControls) et son code-barres communique.
 function FinaleCardModel() {
   const group = useRef<THREE.Group>(null);
-  const scan = useRef<THREE.Mesh>(null);
-  const sentAt = useRef<number | null>(null); // instant de l'envoi → animation finale
-  const drag = useRef({ active: false, lastX: 0, rotY: 0, vel: 0 });
+  const sentAt = useRef<number | null>(null); // instant de l'envoi → clin d'œil (un tour + pulse)
   const [hover, setHover] = useState(false);
-  useCursor(hover, 'grab');
-
-  // le pointeur peut sortir de la carte pendant le drag → on écoute la fenêtre
-  useEffect(() => {
-    const onMove = (e: PointerEvent) => {
-      if (!drag.current.active) return;
-      const dx = e.clientX - drag.current.lastX;
-      drag.current.lastX = e.clientX;
-      drag.current.rotY += dx * 0.012;
-      drag.current.vel = dx * 0.012;
-    };
-    const onUp = () => {
-      if (!drag.current.active) return;
-      drag.current.active = false;
-      document.body.style.cursor = '';
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
-  }, []);
+  useCursor(hover);
 
   useFrame((state) => {
     const g = group.current; if (!g) return;
-    const store = useSceneStore.getState();
-    const es = store.endSessionProgress ?? 0;
-    const reveal = clampF((es - 0.85) / 0.15, 0, 1); // 0→1 : la carte se matérialise
     const t = state.clock.elapsedTime;
 
-    g.visible = reveal > 0.02; // la carte n'apparaît qu'avec la scanline
-
-    // animation finale (message envoyé) : un tour + pulse
-    if (store.endSessionSent && sentAt.current === null) sentAt.current = t;
+    // clin d'œil : à l'ouverture de Calendly (endSessionSent) → un tour + pulse
+    if (useSceneStore.getState().endSessionSent && sentAt.current === null) sentAt.current = t;
     let flip = 0, pulse = 0;
     if (sentAt.current !== null) {
       const e = clampF((t - sentAt.current) / 1.2, 0, 1);
@@ -363,58 +339,19 @@ function FinaleCardModel() {
       pulse = Math.sin(e * Math.PI) * 0.12;
     }
 
-    // drag : rotation manuelle avec inertie + retour vers la face avant au relâché
-    if (!drag.current.active) {
-      drag.current.rotY += drag.current.vel;
-      drag.current.vel *= 0.88;
-      drag.current.rotY *= 0.90; // revient doucement face à l'utilisateur (barcode lisible)
-    }
-    const idle = drag.current.active ? 0 : 1; // pas de flottement pendant qu'on tient la carte
-
-    g.rotation.y = -0.32 + Math.sin(t * 0.5) * 0.06 * idle + flip + drag.current.rotY;
-    g.rotation.x = -0.12 + Math.cos(t * 0.4) * 0.04 * idle;
-    g.position.y = Math.sin(t * 0.8) * 0.03 * idle;
-    g.scale.setScalar(1.35 * (0.94 + reveal * 0.06) * (1 + pulse));
-
-    // scanline qui traverse la carte une fois
-    if (scan.current) {
-      const on = reveal > 0.02 && reveal < 0.98;
-      scan.current.visible = on;
-      scan.current.position.y = THREE.MathUtils.lerp(0.52, -0.52, reveal);
-      (scan.current.material as THREE.MeshBasicMaterial).opacity = on ? 0.8 : 0;
-    }
+    // flottement, comme la carte d'entrée
+    g.rotation.y = Math.sin(t * 0.5) * 0.1 + flip;
+    g.rotation.x = Math.cos(t * 0.3) * 0.05;
+    g.position.y = Math.sin(t * 0.8) * 0.03;
+    g.scale.setScalar(1 + pulse);
   });
 
   return (
-    <group>
-      {/* zone d'interaction FIXE (ne tourne pas) : capte le drag partout devant la carte */}
-      <mesh
-        position={[0, 0, 2]}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          drag.current.active = true;
-          drag.current.lastX = e.clientX;
-          drag.current.vel = 0;
-          document.body.style.cursor = 'grabbing';
-        }}
-        onPointerOver={() => setHover(true)}
-        onPointerOut={() => setHover(false)}
-      >
-        <planeGeometry args={[6, 6]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-
-      <group ref={group} scale={1.35}>
-        <IDCardVisual hideBarcode>
-          {/* scanline d'activation */}
-          <mesh ref={scan} position={[0, 0.52, 0.024]}>
-            <planeGeometry args={[1.6, 0.03]} />
-            <meshBasicMaterial color="#7dffff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} />
-          </mesh>
-          {/* code-barres vivant : ses barres se réagencent en texte */}
-          <AnimatedBarcode />
-        </IDCardVisual>
-      </group>
+    <group ref={group}>
+      <IDCardVisual hideBarcode onPointerOver={() => setHover(true)} onPointerOut={() => setHover(false)}>
+        {/* code-barres vivant : ses barres se réagencent en texte (survol des coordonnées) */}
+        <AnimatedBarcode />
+      </IDCardVisual>
     </group>
   );
 }
@@ -423,7 +360,9 @@ function FinaleCardModel() {
 export function ContactCard() {
   return (
     <Canvas gl={{ antialias: true, alpha: true }}>
-      <PerspectiveCamera makeDefault position={[0, 0, 3]} fov={40} />
+      {/* même cadrage que la carte d'entrée : caméra rapprochée + orbit (rotation à la souris) */}
+      <PerspectiveCamera makeDefault position={[0, 0, 1.55]} />
+      <OrbitControls enableZoom={false} enablePan={false} />
       <ambientLight intensity={0.9} />
       <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
       <pointLight position={[-5, -5, -5]} intensity={0.5} color="#ff00ff" />

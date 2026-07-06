@@ -7,7 +7,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import { ErrorBoundary } from '../hooks/ErrorBoundary';
 import { useSceneStore } from '../store/sceneStore';
 import { ContactCard } from '../components/3d/BiometricCard';
-import ContactForm, { NetworkIdentifiers } from '../components/ui/ContactForm';
+import { ContactChannels } from '../components/ui/ContactChannels';
 import ContactMobileCard from '../components/ContactMobileCard';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -25,8 +25,7 @@ export default function ContactSection() {
   const stageRef = useRef<HTMLDivElement>(null);       // étage collant (budget de scroll)
   const termRef = useRef<HTMLDivElement>(null);        // terminal "fin de session"
   const cardStageRef = useRef<HTMLDivElement>(null);   // overlay carte (canvas dédié)
-  const formRef = useRef<HTMLDivElement>(null);        // panneau formulaire (fondu tardif)
-  const infoRef = useRef<HTMLDivElement>(null);        // identifiants réseau sous la carte (même fondu)
+  const infoRef = useRef<HTMLDivElement>(null);        // coordonnées terminal sous la carte
   const reducedMotion = useReducedMotion();
   const setEndSession = useSceneStore((s) => s.setEndSessionProgress);
   const setCardActive = useSceneStore((s) => s.setEndSessionCardActive);
@@ -59,7 +58,7 @@ export default function ContactSection() {
         const line = p < 0.1 ? ''
           : p < 0.8 ? '> FIN DE SESSION... DÉCONNEXION DU LIEN NEURAL'
           : p < 0.92 ? '> ARTEFACT DÉTECTÉ : CARTE.MENTHILLER_009'
-          : '> INTERFACE DE TRANSMISSION ACTIVE';
+          : '> CANAL DE TRANSMISSION OUVERT';
         if (line !== lineRef.current) { lineRef.current = line; setEndLine(line); }
         if (termRef.current) termRef.current.style.opacity = String(clamp((p - 0.1) / 0.12, 0, 1));
 
@@ -69,13 +68,10 @@ export default function ContactSection() {
         if (frozen !== cardActiveRef.current) { cardActiveRef.current = frozen; setCardActive(frozen); }
         if (cardStageRef.current) cardStageRef.current.style.opacity = String(clamp((p - 0.80) / 0.05, 0, 1));
 
-        if (formRef.current) {
-          formRef.current.style.opacity = String(clamp((p - 0.93) / 0.07, 0, 1));
-          formRef.current.style.pointerEvents = p > 0.96 ? 'auto' : 'none';
-        }
+        // coordonnées terminal : apparition juste après que la carte se pose
         if (infoRef.current) {
-          infoRef.current.style.opacity = String(clamp((p - 0.93) / 0.07, 0, 1));
-          infoRef.current.style.pointerEvents = p > 0.96 ? 'auto' : 'none';
+          infoRef.current.style.opacity = String(clamp((p - 0.90) / 0.06, 0, 1));
+          infoRef.current.style.pointerEvents = p > 0.94 ? 'auto' : 'none';
         }
       },
     });
@@ -93,32 +89,32 @@ export default function ContactSection() {
     return (
       <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex items-center py-20 scroll-mt-20">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
-        <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative">
+        <div className="container mx-auto px-4 flex flex-col items-center gap-10 relative">
           <h2 className="sr-only">Contact</h2>
           {isMobile === false ? (
-            <div data-holo="contact" className="h-72" />
+            <div data-holo="contact" className="h-72 w-full max-w-lg" />
           ) : (
             <div className="flex justify-center"><CardImage /></div>
           )}
-          <div className="flex justify-center"><ContactForm /></div>
+          <div className="w-full max-w-xl"><ContactChannels /></div>
         </div>
       </section>
     );
   }
 
-  // --- MOBILE : carte CSS 3D (gyroscope) + formulaire ---
+  // --- MOBILE : carte CSS 3D (gyroscope) + coordonnées ---
   if (isMobile) {
     return (
       <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex flex-col items-center justify-center gap-10 py-20 px-4 scroll-mt-20">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
         <h2 className="sr-only">Contact</h2>
         <div className="relative"><ContactMobileCard /></div>
-        <div className="relative"><ContactForm /></div>
+        <div className="relative w-full max-w-md"><ContactChannels /></div>
       </section>
     );
   }
 
-  // --- DESKTOP : cinématique complète (désintégration → carte → formulaire) ---
+  // --- DESKTOP : cinématique complète (désintégration → carte plein écran → coordonnées) ---
   // fond transparent : le monde 3D permanent (canvas derrière le contenu) sert de décor
   return (
     <section id="contact" ref={sectionRef} className="relative bg-transparent scroll-mt-20">
@@ -133,25 +129,20 @@ export default function ContactSection() {
         </div>
       )}
 
-      {/* carte "artefact" à GAUCHE + formulaire à DROITE (zones disjointes). Fond semi-
-          transparent : l'environnement (voûte + poussière cyan) reste visible derrière la carte */}
+      {/* carte "artefact" EN GRAND, centrée (comme à l'arrivée sur le site) + coordonnées terminal.
+          Fond semi-transparent : l'environnement (voûte + poussière cyan) reste visible derrière */}
       {isMobile === false && cardPhase && (
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
-          {/* moitié gauche : carte 3D + identifiants réseau en dessous */}
-          <div className="absolute inset-y-0 left-0 w-1/2 flex flex-col items-center justify-center gap-2 p-8">
-            {/* pointer-events-auto : la carte est manipulable (drag pour la retourner) */}
-            <div className="relative w-full h-[60vh] pointer-events-auto">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 py-8">
+            {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
+            <div className="relative w-full max-w-3xl h-[56vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
                 <ContactCard />
               </ErrorBoundary>
             </div>
-            <div ref={infoRef} className="w-full max-w-md" style={{ opacity: 0, pointerEvents: 'none' }}>
-              <NetworkIdentifiers />
+            <div ref={infoRef} className="w-full max-w-xl" style={{ opacity: 0, pointerEvents: 'none' }}>
+              <ContactChannels />
             </div>
-          </div>
-          {/* moitié droite : formulaire (identifiants déjà sous la carte) */}
-          <div ref={formRef} className="absolute inset-y-0 right-0 w-1/2 flex items-center justify-center p-8" style={{ opacity: 0, pointerEvents: 'none' }}>
-            <ContactForm showNetwork={false} />
           </div>
         </div>
       )}

@@ -14,6 +14,7 @@ export const PROFILE = {
   linkedinLabel:"linkedin.com/in/charly-menthiller",
   location:     "Roquemaure (30) — Mobile selon l'offre",
   cv:           "/CV_Charly_Menthiller.pdf",
+  calendly:     "https://calendly.com/charly-menthiller/30min",
 } as const
 
 // --- Stack technique (icônes devicon + DNA 3D) ---
