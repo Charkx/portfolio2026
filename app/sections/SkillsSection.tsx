@@ -183,7 +183,7 @@ export default function SkillsSection() {
   return (
     <section
       id="skills"
-      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-12 relative scroll-mt-[100px] md:bg-none"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-12 relative scroll-mt-[100px]"
     >
       <SectionTitle
         className="mb-4"

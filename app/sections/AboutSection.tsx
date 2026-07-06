@@ -113,7 +113,7 @@ export default function AboutSection() {
   return (
     <section
       id="about"
-      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20 md:bg-none"
+      className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20"
     >
       <SectionTitle
         className="mb-8 lg:mb-12"

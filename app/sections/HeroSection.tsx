@@ -49,7 +49,7 @@ export default function HeroSection({
   return (
     <section
       id="hero"
-      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20 md:bg-none"
+      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4"
     >
       {/* Slot corps-entier : le canvas partagé (page) s'y matérialise une fois la carte scannée.
           Desktop déverrouillé : pivoter l'hologramme à la souris. Mobile : le slot reste
@@ -80,7 +80,7 @@ export default function HeroSection({
           </div>
         ) : (
           <div
-            className="w-full h-[52vh] md:h-[56vh] relative transition-opacity duration-700"
+            className="w-full h-[38vh] md:h-[56vh] relative transition-opacity duration-700"
             style={{ opacity: unlocked ? 0 : 1, pointerEvents: unlocked ? "none" : "auto" }}
           >
             <LazyMount className="w-full h-full relative">

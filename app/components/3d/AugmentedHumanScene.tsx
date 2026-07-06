@@ -368,6 +368,7 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
   const _ray = useRef(new THREE.Raycaster());
   const _plane = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
   const _cursor = useRef(new THREE.Vector3());
+  const _proj = useRef(new THREE.Vector3()); // projection écran d'une luciole (picking tactile)
   const motes = useRef<Mote[]>(
     Array.from({ length: MOTE_COUNT }, () => {
       const m: Mote = { base: new THREE.Vector3(), pos: new THREE.Vector3(), phase: 0, collected: false, ct: 0, respawnAt: 0 };
@@ -405,11 +406,9 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
       _ray.current.ray.intersectPlane(_plane.current, _cursor.current);
     }
 
-    // rayon de récolte : souris = survol continu · tactile = fenêtre de 250 ms
-    // après un tap, rayon élargi (précision du doigt) — 0 = récolte fermée
-    const reach = coarse.current
-      ? (performance.now() - tapAt.current < 250 ? MOTE_COLLECT_R * 2.2 : 0)
-      : MOTE_COLLECT_R;
+    // tactile : fenêtre de 250 ms après un tap — le picking se fait EN ESPACE
+    // ÉCRAN (NDC), insensible à la profondeur (le plan z=0 ratait les lucioles)
+    const tapFresh = coarse.current && performance.now() - tapAt.current < 250;
 
     motes.current.forEach((m, i) => {
       const mesh = meshes.current[i], mat = mats.current[i];
@@ -447,8 +446,14 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
       mesh.scale.setScalar(MOTE_SIZE * (0.85 + 0.15 * Math.sin(t * 3)));
       mat.opacity = 0.9;
 
-      // récolte : souris à proximité (ou tap tactile récent) → absorption
-      if (reach > 0 && m.pos.distanceTo(_cursor.current) < reach) {
+      // récolte : souris à proximité (monde) · tactile : tap proche À L'ÉCRAN (NDC)
+      const hit = coarse.current
+        ? tapFresh && (() => {
+            _proj.current.copy(m.pos).project(camera);
+            return Math.hypot(_proj.current.x - pointer.current.x, _proj.current.y - pointer.current.y) < 0.18;
+          })()
+        : m.pos.distanceTo(_cursor.current) < MOTE_COLLECT_R;
+      if (hit) {
         m.collected = true; m.ct = 0;
         audioEngine.play('collect');
         useDiscoveryStore.getState().discover('firefly');

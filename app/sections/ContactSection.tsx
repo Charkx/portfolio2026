@@ -116,14 +116,15 @@ export default function ContactSection() {
           title="CONTACT:TRANSMISSION"
         />
         {/* slot du canvas partagé : l'hologramme termine son voyage ici (5e ancre) */}
-        <div data-holo="contact" aria-hidden className="h-[16svh] w-full" />
+        <div data-holo="contact" aria-hidden className="h-[14svh] w-full" />
         {/* LA carte 3D (le même artefact que l'entrée — orbit coupé au tactile) */}
-        <div className="relative w-full max-w-md h-[34svh]">
+        <div className="relative w-full max-w-md h-[30svh] z-10">
           <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
             <BiometricCard />
           </ErrorBoundary>
         </div>
-        <div className="relative w-full max-w-md"><ContactChannels /></div>
+        {/* canaux sur panneau de verre : lisibles par-dessus le voyage (même langage que Skills) */}
+        <div className="relative w-full max-w-md glass-panel rounded-xl p-4 z-10"><ContactChannels /></div>
       </section>
     );
   }

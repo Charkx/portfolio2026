@@ -15,7 +15,7 @@ const CORE_R = 1.1            // rayon de garde autour de l'hologramme (brèche 
 const COMBO_WINDOW = 1.6      // délai max entre deux tirs pour enchaîner le combo (s)
 const SHARD_POOL = 56         // pool d'éclats d'explosion
 const SHARDS_PER = 8          // éclats par cube détruit
-const CORE_POS = new THREE.Vector3(0, 0.4, 0)
+// (le centre du noyau se calcule par échelle : (0, 0.4·k, 0) — cf. GameField)
 
 export type Float = { id: number; x: number; y: number; text: string; big: boolean }
 
@@ -70,15 +70,20 @@ function Hologram({ pulse, defeated }: { pulse: Pulse; defeated: boolean }) {
     edgeUniforms.current.forEach((u) => { u.value += ((defeated ? 3 : 1) - u.value) * k })
   })
 
-  return <primitive object={human} />
+  // portrait (mobile) : tout le plateau à ~moitié d'échelle — le groupe wrapper
+  // scale autour de l'origine (où le rig est centré), pas de décentrage
+  const { size } = useThree()
+  const k = size.width < size.height ? 0.55 : 1
+  return <group scale={k}><primitive object={human} /></group>
 }
 
-function spawnCube(c: Cube, speed: number) {
+// k = facteur d'échelle du plateau (1 en paysage · ~0.55 en portrait mobile)
+function spawnCube(c: Cube, speed: number, k: number) {
   const a = Math.random() * Math.PI * 2
-  c.pos.set(Math.cos(a) * RING, Math.sin(a) * RING * 0.6 + 0.4, (Math.random() - 0.5) * 3)
-  c.dir.copy(CORE_POS).sub(c.pos).normalize().multiplyScalar(speed * (0.8 + Math.random() * 0.5))
+  c.pos.set(Math.cos(a) * RING * k, Math.sin(a) * RING * k * 0.6 + 0.4 * k, (Math.random() - 0.5) * 3 * k)
+  c.dir.set(0, 0.4 * k, 0).sub(c.pos).normalize().multiplyScalar(speed * k * (0.8 + Math.random() * 0.5))
   c.spin.set(Math.random() * 2, Math.random() * 2, Math.random() * 2)
-  c.size = 0.9 + Math.random() * 0.6
+  c.size = (0.9 + Math.random() * 0.6) * k
   c.hue = 0.92 + Math.random() * 0.08
   c.alive = true
 }
@@ -94,6 +99,9 @@ function GameField({
   onFloat: (f: Omit<Float, "id">) => void
 }) {
   const { camera, size } = useThree()
+  // portrait (mobile) : plateau à ~moitié d'échelle (aligné sur l'hologramme)
+  const k = size.width < size.height ? 0.55 : 1
+  const core = useMemo(() => new THREE.Vector3(0, 0.4 * k, 0), [k])
   const cubeMeshes = useRef<(THREE.Mesh | null)[]>([])
   const shardMeshes = useRef<(THREE.Mesh | null)[]>([])
   const clock = useRef(0)
@@ -129,7 +137,7 @@ function GameField({
       s.pos.copy(at)
       s.vel.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6)
       s.rot.set(Math.random() * 6, Math.random() * 6, Math.random() * 6)
-      s.size = 0.08 + Math.random() * 0.1
+      s.size = (0.08 + Math.random() * 0.1) * k
       s.life = 1; s.active = true
       if (++spawned >= SHARDS_PER) break
     }
@@ -194,11 +202,11 @@ function GameField({
       const c = cubes[i]; const m = cubeMeshes.current[i]; if (!m) continue
       if (!c.alive) {
         m.visible = false
-        if (activeCount < maxActive && el >= c.respawnAt) { spawnCube(c, speed); activeCount++ }
+        if (activeCount < maxActive && el >= c.respawnAt) { spawnCube(c, speed, k); activeCount++ }
         continue
       }
       c.pos.addScaledVector(c.dir, dt)
-      if (c.pos.distanceTo(CORE_POS) < CORE_R) {
+      if (c.pos.distanceTo(core) < CORE_R * k) {
         pulse.t.value = 0; pulse.o.value.copy(c.pos)
         audioEngine.play("powerdown")
         c.alive = false
