@@ -1,7 +1,8 @@
 "use client"
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import TerminalDisplay from "../components/ui/TerminalDisplay"
+import MobileHero from "../components/MobileHero"
 import { ErrorBoundary } from "../hooks/ErrorBoundary"
 import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
@@ -28,6 +29,16 @@ export default function HeroSection({
   const unlocked = introPhase === "UNLOCKED"
   const dragHuman = useDragRotate("human")
 
+  // mobile : pas de canvas permanent (hologramme desktop-only) → après le boot,
+  // le hero affiche une identité + la carte gyro au lieu d'un écran vide
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener("resize", check)
+    return () => window.removeEventListener("resize", check)
+  }, [])
+
   // Opt-in audio : le choix se fait dans la console de calibrage, appliqué au clic
   // d'entrée (geste utilisateur → l'AudioContext a le droit de démarrer).
   const setSoundEnabled = useAudioStore((s) => s.setEnabled)
@@ -51,24 +62,29 @@ export default function HeroSection({
       />
 
       <div className="container w-full mx-auto px-4 flex flex-col gap-4 items-center z-10">
-        {/* Carte biométrique 3D = clé d'entrée du site. Une fois scannée (UNLOCKED),
-            elle s'estompe pour laisser place à l'hologramme humain. */}
-        <div
-          className="w-full h-[52vh] md:h-[56vh] relative transition-opacity duration-700"
-          style={{ opacity: unlocked ? 0 : 1, pointerEvents: unlocked ? "none" : "auto" }}
-        >
-          <LazyMount className="w-full h-full relative">
-            <ErrorBoundary
-              fallback={
-                <div className="w-full h-full flex items-center justify-center text-cyan-400/50 font-mono text-sm">
-                  <span>{"// module 3D indisponible"}</span>
-                </div>
-              }
-            >
-              <BiometricCard onScan={() => enterWith(onScan)} />
-            </ErrorBoundary>
-          </LazyMount>
-        </div>
+        {/* Carte biométrique 3D = clé d'entrée du site. Une fois scannée (UNLOCKED) :
+            desktop → elle s'estompe pour laisser place à l'hologramme (canvas permanent) ;
+            mobile → pas d'hologramme, on la REMPLACE par l'identité + carte gyro + lucioles. */}
+        {unlocked && isMobile ? (
+          <MobileHero />
+        ) : (
+          <div
+            className="w-full h-[52vh] md:h-[56vh] relative transition-opacity duration-700"
+            style={{ opacity: unlocked ? 0 : 1, pointerEvents: unlocked ? "none" : "auto" }}
+          >
+            <LazyMount className="w-full h-full relative">
+              <ErrorBoundary
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center text-cyan-400/50 font-mono text-sm">
+                    <span>{"// module 3D indisponible"}</span>
+                  </div>
+                }
+              >
+                <BiometricCard onScan={() => enterWith(onScan)} />
+              </ErrorBoundary>
+            </LazyMount>
+          </div>
+        )}
 
         {/* Terminal : invite au repos, puis scan → CALIBRAGE pas-à-pas → boot */}
         <TerminalDisplay />

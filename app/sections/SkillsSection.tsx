@@ -11,6 +11,7 @@ import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
 import { useDiscoveryStore } from '../store/discoveryStore';
+import { SectionTitle } from '../components/ui/SectionTitle';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -106,13 +107,12 @@ export default function SkillsSection() {
       id="skills"
       className="holo-veil-fade min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 px-4 py-12 relative scroll-mt-[100px] md:bg-none"
     >
-      <h2 className="text-3xl md:text-4xl font-bold text-cyan-400 mb-2 font-display z-10 text-center">
-        SKILLS:DNA_MODULE_ANALYSIS
-      </h2>
-      <p className="text-sm md:text-base text-cyan-100 mb-4 max-w-3xl text-center z-10">
-        Chaque technologie que j&apos;apprends devient un fragment de mon ADN de développeur.
-        Cette section explore les modules qui composent mon code génétique professionnel.
-      </p>
+      <SectionTitle
+        className="mb-4"
+        kicker="ACCÈS MÉMOIRE.COMPÉTENCES — SÉQUENÇAGE ADN"
+        title="SKILLS:DNA_MODULE_ANALYSIS"
+        hint="Chaque technologie apprise devient un fragment de mon ADN de développeur — clique un module pour le décoder."
+      />
 
       {/* Filtre par niveau de maîtrise */}
       <div className="flex flex-wrap justify-center gap-2 mb-6 z-10" role="group" aria-label="Filtrer par niveau">
@@ -141,7 +141,8 @@ export default function SkillsSection() {
             // desktop : emplacement où le canvas partagé (page) se niche pour la station ADN
             <div data-holo="skills" className="w-full cursor-grab touch-none" style={{ height: 'clamp(360px, 44vh, 520px)' }} title="Glisse pour faire pivoter" {...dragDNA} />
           ) : isMobile ? (
-            <LazyMount className="w-full" style={{ height: 'clamp(500px, 60vh, 800px)' }}>
+            // mobile : hauteur raisonnée — l'hélice reste lisible sans engloutir l'écran
+            <LazyMount className="w-full" style={{ height: 'clamp(340px, 46vh, 520px)' }}>
               <DNAAnalysis
                 visibleTechs={shownTechs}
                 hoveredTech={hoveredTech}

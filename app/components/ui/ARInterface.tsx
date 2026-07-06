@@ -98,6 +98,12 @@ export default function ARInterface() {
     <div className="fixed inset-0 pointer-events-none z-50">
       {/* Cluster haut-droit TOUJOURS visible : MEMORY_DUMP (CV) + Power */}
       <div className="pointer-events-auto absolute top-0 right-6 h-16 z-20 flex items-center gap-4">
+        {/* mobile : la barre d'état étant masquée, la jauge SIG (easter egg) vit ici */}
+        {booted && (
+          <div className="sm:hidden font-mono text-xs text-cyan-400">
+            <SignalMeter booted={booted} />
+          </div>
+        )}
         <HudTooltip label="Télécharger le CV (memory dump)">
           <a
             href={PROFILE.cv}

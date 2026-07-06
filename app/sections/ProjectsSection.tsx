@@ -9,6 +9,7 @@ import { audioEngine } from '../lib/audioEngine';
 import { useProjectManager } from '../hooks/useProjectManager';
 import { useSceneStore } from '../store/sceneStore';
 import { useDiscoveryStore } from '../store/discoveryStore';
+import { GlitchText } from '../components/ui/SectionTitle';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import ProjectCaseStudy from '../components/ui/ProjectCaseStudy';
@@ -39,31 +40,7 @@ const CONTEXT_HEX: Record<ProjectContext, string> = {
   PERSO: '#a855f7', // violet
 };
 
-// --- GlitchText : décodage scramble → résolution gauche→droite (thème "extraction") ---
-
-const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/01';
-
-function GlitchText({ text, duration = 600, className }: { text: string; duration?: number; className?: string }) {
-  const [display, setDisplay] = useState(text);
-  useEffect(() => {
-    let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
-      const revealed = Math.floor(t * text.length);
-      let s = text.slice(0, revealed);
-      for (let i = revealed; i < text.length; i++) {
-        s += text[i] === ' ' ? ' ' : GLITCH_CHARS[(Math.random() * GLITCH_CHARS.length) | 0];
-      }
-      setDisplay(s);
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else setDisplay(text);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [text, duration]);
-  return <span className={className}>{display}</span>;
-}
+// GlitchText : partagé via SectionTitle (tous les kickers de section l'utilisent)
 
 // --- DecodeProgress : barre d'extraction qui se remplit sur `duration` ---
 

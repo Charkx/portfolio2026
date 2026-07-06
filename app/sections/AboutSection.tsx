@@ -9,6 +9,7 @@ import { useSceneStore } from '../store/sceneStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
 import { useDiscoveryStore } from '../store/discoveryStore';
+import { SectionTitle } from '../components/ui/SectionTitle';
 
 // Aligné sur les couleurs des catégories (PROFIL rose · EXPÉRIENCE vert vif · FORMATION ambre).
 const scanColors = ['#ff00ff', '#2bff66', '#ffc400', '#00ffff', '#9b5de5'];
@@ -40,9 +41,12 @@ export default function AboutSection() {
       id="about"
       className="holo-veil-fade min-h-screen flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20 md:bg-none"
     >
-      <h2 className="text-4xl text-cyan-400 font-bold font-display mb-12 z-10">
-        ABOUT:COGNITIVE_PROFILE
-      </h2>
+      <SectionTitle
+        className="mb-8 lg:mb-12"
+        kicker="ACCÈS MÉMOIRE.PROFIL — SCAN CORTICAL"
+        title="ABOUT:COGNITIVE_PROFILE"
+        hint="Trois couches à scanner : profil, expérience, formation."
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 z-10 w-full max-w-6xl">
         <div className="flex flex-col justify-center gap-6">
@@ -103,11 +107,12 @@ export default function AboutSection() {
         {isMobile === false ? (
           <div data-holo="about" className="h-[68vh] w-full cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragBrain} />
         ) : isMobile ? (
-          <LazyMount className="h-[80vh] w-full">
+          // mobile : le visuel d'abord (accroche), hauteur raisonnée pour laisser voir les onglets
+          <LazyMount className="order-first h-[45vh] min-h-[320px] w-full">
             <CognitiveProfile selected={selected} color={activeColor} count={ABOUT_TEXT.length} />
           </LazyMount>
         ) : (
-          <div className="h-[80vh] w-full" />
+          <div className="h-[45vh] w-full" />
         )}
       </div>
     </section>

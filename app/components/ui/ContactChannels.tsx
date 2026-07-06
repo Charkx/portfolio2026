@@ -45,9 +45,11 @@ export function ContactChannels() {
     onBlur:       () => useSceneStore.getState().setContactIdHovered(null),
   });
 
-  const line = 'block hover:brightness-125 transition';
-  const key = 'inline-block w-24 text-cyan-400/50';
-  const arrow = <span className="text-cyan-400/40">&gt; </span>;
+  // rangée en flex : la VALEUR tronque en ellipse sur petit écran (pas de débordement)
+  const line = 'flex items-baseline gap-2 hover:brightness-125 transition min-w-0';
+  const key = 'w-20 sm:w-24 shrink-0 text-cyan-400/50';
+  const val = 'truncate min-w-0';
+  const arrow = <span className="text-cyan-400/40 shrink-0">&gt;</span>;
 
   return (
     <div className="font-mono text-center">
@@ -56,28 +58,28 @@ export function ContactChannels() {
         CANAUX DE CONTACT
       </div>
 
-      {/* bloc mono aligné à gauche, façon sortie terminal */}
-      <div className="inline-block text-left text-cyan-300 text-sm space-y-1.5">
+      {/* bloc mono aligné à gauche, façon sortie terminal — largeur bornée, valeurs tronquées */}
+      <div className="inline-block w-full max-w-md text-left text-cyan-300 text-sm space-y-1.5">
         <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} className={line}>
-          {arrow}<span className={key}>EMAIL</span><span style={{ color: CH.email }}>◆ {PROFILE.email}</span>
+          {arrow}<span className={key}>EMAIL</span><span className={val} style={{ color: CH.email }}>◆ {PROFILE.email}</span>
         </a>
         <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} className={line}>
-          {arrow}<span className={key}>GITHUB</span><span style={{ color: CH.github }}>◆ {PROFILE.githubLabel}</span>
+          {arrow}<span className={key}>GITHUB</span><span className={val} style={{ color: CH.github }}>◆ {PROFILE.githubLabel}</span>
         </a>
         <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} className={line}>
-          {arrow}<span className={key}>LINKEDIN</span><span style={{ color: CH.linkedin }}>◆ {PROFILE.linkedinLabel}</span>
+          {arrow}<span className={key}>LINKEDIN</span><span className={val} style={{ color: CH.linkedin }}>◆ {PROFILE.linkedinLabel}</span>
         </a>
         <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} className={`${line} cursor-pointer`}>
-          {arrow}<span className={key}>CV</span><span style={{ color: CH.cv }}>◆ Consulter le CV</span>
+          {arrow}<span className={key}>CV</span><span className={val} style={{ color: CH.cv }}>◆ Consulter le CV</span>
         </a>
-        <div>
+        <div className={line}>
           {arrow}<span className={key}>DISPO</span>
-          <span {...hoverProps('dispo')} tabIndex={0} className="text-green-400/90 cursor-default hover:text-green-300 transition">
+          <span {...hoverProps('dispo')} tabIndex={0} className={`${val} text-green-400/90 cursor-default hover:text-green-300 transition`}>
             ⏳ {PROFILE.availability}
           </span>
         </div>
         {/* curseur clignotant */}
-        <div>{arrow}<span className="term-blink text-cyan-400">_</span></div>
+        <div className={line}>{arrow}<span className="term-blink text-cyan-400">_</span></div>
       </div>
 
       {/* prise de rendez-vous Calendly */}
@@ -85,7 +87,7 @@ export function ContactChannels() {
         <button
           type="button"
           onClick={openCalendly}
-          className="mt-5 rounded px-6 py-2.5 font-mono text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
+          className="mt-5 w-full max-w-md sm:w-auto rounded px-6 py-2.5 font-mono text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
         >
           ▸ PRENDRE RENDEZ-VOUS
         </button>

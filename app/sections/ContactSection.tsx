@@ -8,6 +8,7 @@ import { ErrorBoundary } from '../hooks/ErrorBoundary';
 import { useSceneStore } from '../store/sceneStore';
 import { ContactCard } from '../components/3d/BiometricCard';
 import { ContactChannels } from '../components/ui/ContactChannels';
+import { SectionTitle } from '../components/ui/SectionTitle';
 import ContactMobileCard from '../components/ContactMobileCard';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -90,7 +91,11 @@ export default function ContactSection() {
       <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex items-center py-20 scroll-mt-20">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
         <div className="container mx-auto px-4 flex flex-col items-center gap-10 relative">
-          <h2 className="sr-only">Contact</h2>
+          <SectionTitle
+            kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
+            title="CONTACT:TRANSMISSION"
+            hint="La carte est le seul artefact qui subsiste — établis le lien."
+          />
           {isMobile === false ? (
             <div data-holo="contact" className="h-72 w-full max-w-lg" />
           ) : (
@@ -105,9 +110,14 @@ export default function ContactSection() {
   // --- MOBILE : carte CSS 3D (gyroscope) + coordonnées ---
   if (isMobile) {
     return (
-      <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex flex-col items-center justify-center gap-10 py-20 px-4 scroll-mt-20">
+      <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex flex-col items-center justify-center gap-8 py-20 px-4 scroll-mt-20">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
-        <h2 className="sr-only">Contact</h2>
+        <SectionTitle
+          className="relative"
+          kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
+          title="CONTACT:TRANSMISSION"
+          hint="La carte est le seul artefact qui subsiste — établis le lien."
+        />
         <div className="relative"><ContactMobileCard /></div>
         <div className="relative w-full max-w-md"><ContactChannels /></div>
       </section>
@@ -134,8 +144,10 @@ export default function ContactSection() {
       {isMobile === false && cardPhase && (
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 py-8">
+            {/* titre unifié (même hiérarchie que les autres sections) */}
+            <SectionTitle kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ" title="CONTACT:TRANSMISSION" />
             {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
-            <div className="relative w-full max-w-3xl h-[56vh] pointer-events-auto">
+            <div className="relative w-full max-w-3xl h-[48vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
                 <ContactCard />
               </ErrorBoundary>
