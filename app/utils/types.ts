@@ -19,7 +19,7 @@ export interface Project {
   demo:           string;
   contribution?:  string;   // "Ce que j'ai fait"
   highlights?:    string[]; // Points forts
-  image?:         string;   // aperçu visuel (screenshot/GIF) — ex: '/projects/arrakis.png'
+  image?:         string;   // aperçu visuel (screenshot/GIF) — ex: '/projects/arrakis.webp'
   context:        'PRO' | 'ASSO' | 'ECOLE' | 'PERSO'; // cadre du projet (badge)
   short:          string;   // libellé court (onglet)
   // Étude de cas détaillée (facultatif, rédigé plus tard — on affiche l'existant en attendant)

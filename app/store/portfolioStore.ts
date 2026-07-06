@@ -51,40 +51,25 @@ export const usePortfolioStore = create<PortfolioState>()(
       interferenceLevel: 0.3,
       debugMode: process.env.NODE_ENV === "development",
 
-      // Actions
-      setIsLoading: (loading) => {
-        console.log("🔄 Loading state:", loading)
-        set({ isLoading: loading })
-      },
+      // Actions (pas de console.log ici : la console prod doit rester muette)
+      setIsLoading: (loading) => set({ isLoading: loading }),
 
       setIntroPhase: (phase) => set({ introPhase: phase }),
 
       setScrollProgress: (p) => set({ scrollProgress: p }),
 
       setCurrentSection: (section) => {
-        const current = get().currentSection
-        if (current !== section) {
-          console.log("📍 Section changed:", current, "→", section)
-          set({ currentSection: section })
-        }
+        if (get().currentSection !== section) set({ currentSection: section })
       },
 
       setScrollY: (y) => set({ scrollY: y }),
 
       setSkillsProgress: (progress) => {
-        const current = get().skillsProgress
-        if (current !== progress) {
-          console.log("🎯 Skills progress:", current, "→", progress)
-          set({ skillsProgress: progress })
-        }
+        if (get().skillsProgress !== progress) set({ skillsProgress: progress })
       },
 
       setInterferenceLevel: (level) => {
-        const current = get().interferenceLevel
-        if (current !== level) {
-          console.log("🌊 Interference level:", current, "→", level)
-          set({ interferenceLevel: level })
-        }
+        if (get().interferenceLevel !== level) set({ interferenceLevel: level })
       },
 
       toggleDebugMode: () => set((state) => ({ debugMode: !state.debugMode })),

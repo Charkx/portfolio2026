@@ -1,11 +1,33 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
 import { useSettingsStore } from '../../store/settingsStore';
+
+// Garde-fou perfs : < 40 fps pendant 3 s consécutives → bascule qualité "éco"
+// (bloom coupé + DPR 1). Une seule fois par session (on ne lutte pas contre
+// l'utilisateur qui remettrait HIGH au recalibrage).
+function FpsGuard() {
+  const setQuality = useSettingsStore((s) => s.setQuality);
+  const acc = useRef({ t: 0, frames: 0, slow: 0 });
+  useFrame((_, dt) => {
+    const a = acc.current;
+    if (dt > 0.25) { a.t = 0; a.frames = 0; return; } // retour d'onglet caché : fenêtre invalide
+    a.t += dt; a.frames++;
+    if (a.t < 1) return;                              // bilan chaque seconde
+    const fps = a.frames / a.t;
+    a.t = 0; a.frames = 0;
+    a.slow = fps < 40 ? a.slow + 1 : 0;
+    if (a.slow >= 3 && !sessionStorage.getItem('auto-eco')) {
+      sessionStorage.setItem('auto-eco', '1');
+      setQuality('eco');
+    }
+  });
+  return null;
+}
 
 // CANVAS PERMANENT : plein écran en continu, DERRIÈRE le contenu (zIndex 5 < main z-10).
 // Le monde 3D (voûte + poussière + humain) est le fond de page ; les sections HTML
@@ -126,9 +148,12 @@ export default function AugmentedHumanLayer() {
           <SceneContents progressRef={progressRef} coverRef={coverRef} linear />
         </Suspense>
         {quality !== 'eco' && (
-          <EffectComposer>
-            <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
-          </EffectComposer>
+          <>
+            <FpsGuard />
+            <EffectComposer>
+              <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
+            </EffectComposer>
+          </>
         )}
       </Canvas>
     </div>
