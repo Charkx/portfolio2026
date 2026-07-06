@@ -32,6 +32,7 @@ const BOOT_SEQUENCE = [
   '> Initializing neural link...',
   '> Establishing secure connection...',
   '> Neural interface initialized.',
+  '> WARNING: 5 unidentified signals detected — see SIG gauge.',
   '> Welcome, Charly Menthiller.',
 ];
 
