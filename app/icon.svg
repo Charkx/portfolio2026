@@ -1,28 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64">
   <defs>
-    <!-- bleu métallique (façon carte biométrique) -->
-    <linearGradient id="metal" x1="0" y1="0" x2="0.85" y2="1">
-      <stop offset="0" stop-color="#3f6fe0"/>
-      <stop offset="0.5" stop-color="#1b45b8"/>
-      <stop offset="1" stop-color="#0a1f66"/>
-    </linearGradient>
-    <!-- reflet métal en haut -->
-    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
-      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <!-- monogramme CM (blanc, tracé une fois) -->
-    <g id="cm" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.2">
-      <path d="M24 23 A9 9 0 1 0 24 41"/>
-      <path d="M34 41 L34 23 L41 33 L48 23 L48 41"/>
-    </g>
+    <!-- halo néon -->
+    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
-  <!-- plaque métal + reflet + liseré biseauté clair -->
-  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="url(#metal)"/>
-  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="url(#sheen)"/>
-  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="none"
-        stroke="#aac4ff" stroke-opacity="0.45" stroke-width="1.5"/>
+  <!-- fond noir arrondi (le logo est pensé sur fond sombre) -->
+  <rect width="100" height="100" rx="22" fill="#000000"/>
 
-  <use href="#cm"/>
+  <!-- logo : chevron + M, tout en cyan néon, centré -->
+  <g transform="translate(8.75 -5) scale(1.1)" fill="none" stroke="#00f0ff" stroke-width="6"
+     stroke-linecap="round" stroke-linejoin="round" filter="url(#neon)">
+    <path d="M25 30 L5 50 L25 70"/>
+    <path d="M40 70 L40 30 L55 55 L70 30 L70 70"/>
+  </g>
 </svg>
