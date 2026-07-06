@@ -13,12 +13,15 @@ const GRABBABLE = "[data-holo]"
  * - cadre immobile par défaut ; PIVOTE seulement sur un élément cliquable
  * - état "grab" distinct (cadre en losange + remplissage) sur un module 3D, et
  *   "prise" (cadre resserré + blanc) pendant qu'on le fait pivoter.
+ * - état "visée" (croix + au centre, cadre droit) quand une cible est verrouillée :
+ *   activé via `document.body.dataset.aim = "1"` (cubes du mini-jeu /transmission).
  * Actif seulement sur pointeur fin (souris).
  */
 export default function CustomCursor() {
   const [enabled, setEnabled] = useState(false)
   const dotRef = useRef<HTMLDivElement>(null)
   const reticleRef = useRef<HTMLDivElement>(null)
+  const crossRef = useRef<SVGGElement>(null)
 
   useEffect(() => {
     if (!window.matchMedia("(pointer: fine)").matches) return
@@ -49,12 +52,14 @@ export default function CustomCursor() {
       const dt = Math.min((now - last) / 1000, 0.05); last = now
       const dragging = useSceneStore.getState().dragFocus !== null
       const grab = overGrab || dragging
+      // visée (mini-jeu) : cible verrouillée → croix + au centre, cadre droit
+      const aim = document.body.dataset.aim === "1"
 
       // rotation : SEULEMENT sur cliquable ; sinon on rejoint 0° (ou 45° en mode grab) au plus court
-      if (overClick && !grab) {
+      if (overClick && !grab && !aim) {
         angle += 150 * dt
       } else {
-        const target = grab ? 0 : 45 // normal = losange · grab = carré
+        const target = grab || aim ? 0 : 45 // normal = losange · grab/visée = carré
         let a = angle % 360; if (a < 0) a += 360
         let diff = target - a
         if (diff > 180) diff -= 360
@@ -63,20 +68,21 @@ export default function CustomCursor() {
       }
 
       // échelle selon l'état
-      const targetScale = dragging ? 0.9 : overGrab ? 1.7 : overClick ? 1.4 : 1
+      const targetScale = dragging ? 0.9 : aim ? 1.55 : overGrab ? 1.7 : overClick ? 1.4 : 1
       scale += (targetScale - scale) * 0.25
 
-      const d = dotRef.current, r = reticleRef.current
+      const d = dotRef.current, r = reticleRef.current, x = crossRef.current
       // point ET cadre exactement sur le curseur → le point ne sort jamais du cadre
       if (d) {
         d.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`
-        d.style.opacity = grab ? "0" : "1" // en mode grab, le cadre suffit
+        d.style.opacity = grab || aim ? "0" : "1" // en mode grab/visée, le cadre suffit
       }
+      if (x) x.style.opacity = aim ? "1" : "0" // croix de visée
       if (r) {
         r.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%) rotate(${angle}deg) scale(${scale})`
         r.style.color = dragging ? "#ffffff" : "rgb(34,211,238)"
         r.style.background = grab ? "rgba(34,211,238,0.12)" : "transparent"
-        r.style.filter = overClick || grab
+        r.style.filter = overClick || grab || aim
           ? "drop-shadow(0 0 5px rgba(34,211,238,0.9))"
           : "drop-shadow(0 0 2px rgba(34,211,238,0.5))"
       }
@@ -111,6 +117,14 @@ export default function CustomCursor() {
             <path d="M25 6 H32 V13" />
             <path d="M6 25 V32 H13" />
             <path d="M25 32 H32 V25" />
+          </g>
+          {/* croix de visée (mode aim : cible verrouillée dans le mini-jeu) */}
+          <g ref={crossRef} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+             style={{ opacity: 0, transition: "opacity 120ms" }}>
+            <path d="M19 12 V16.5" />
+            <path d="M19 21.5 V26" />
+            <path d="M12 19 H16.5" />
+            <path d="M21.5 19 H26" />
           </g>
         </svg>
       </div>

@@ -116,6 +116,12 @@ function GameField({
     shards.forEach((s) => { s.active = false })
   }, [running, cubes, shards])
 
+  // démontage (retour au site) : ne pas laisser la visée/le crosshair collés
+  useEffect(() => () => {
+    delete document.body.dataset.aim
+    document.body.style.cursor = ""
+  }, [])
+
   const burst = useCallback((at: THREE.Vector3) => {
     let spawned = 0
     for (const s of shards) {
@@ -135,6 +141,9 @@ function GameField({
     if (!running || !c.alive) return
     c.alive = false
     c.respawnAt = clock.current + Math.max(0.25, 1.2 - clock.current * 0.03)
+    // le mesh disparaît sous le curseur → pointerOut ne viendra pas : on libère la visée ici
+    delete document.body.dataset.aim
+    document.body.style.cursor = ""
     audioEngine.play("derez")
     burst(c.pos)
 
@@ -217,8 +226,9 @@ function GameField({
           key={i}
           ref={(el) => { cubeMeshes.current[i] = el }}
           onClick={hit(i)}
-          onPointerOver={() => { document.body.style.cursor = "crosshair" }}
-          onPointerOut={() => { document.body.style.cursor = "" }}
+          // cible verrouillée → curseur custom en mode "visée" (croix +) ; crosshair natif en repli
+          onPointerOver={() => { document.body.dataset.aim = "1"; document.body.style.cursor = "crosshair" }}
+          onPointerOut={() => { delete document.body.dataset.aim; document.body.style.cursor = "" }}
           visible={false}
         >
           <boxGeometry args={[1, 1, 1]} />

@@ -9,6 +9,7 @@ import { useDiscoveryStore, isDiscoveryComplete } from "../store/discoveryStore"
 import type { Pulse } from "../components/3d/holoMaterial"
 import type { Float } from "./TransmissionCanvas"
 import { audioEngine } from "../lib/audioEngine"
+import CustomCursor from "../components/ui/CustomCursor"
 
 // Le canvas 3D (three/GLTF) n'est chargé que côté client : évite toute exécution
 // WebGL au prerender/build (même parti pris que le canvas permanent du site).
@@ -36,6 +37,13 @@ export default function TransmissionPage() {
   useEffect(() => {
     setAllowed(isDiscoveryComplete(useDiscoveryStore.getState().found))
     setBest(Number(localStorage.getItem("cm-transmission-best") || 0))
+  }, [])
+
+  // thème d'ENTRÉE (arpège tendu de l'arrivée sur le site) pendant tout le mini-jeu,
+  // puis retour à la variante douce du site en repartant
+  useEffect(() => {
+    audioEngine.setScene("entry")
+    return () => audioEngine.setScene("site")
   }, [])
 
   const endGame = useCallback((result: "win" | "lose") => {
@@ -79,7 +87,8 @@ export default function TransmissionPage() {
 
   if (!allowed) {
     return (
-      <main className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-6 text-center font-mono px-6">
+      <main className="page-fade-in fixed inset-0 bg-black flex flex-col items-center justify-center gap-6 text-center font-mono px-6">
+        <CustomCursor />
         <div className="text-cyan-300 text-lg tracking-[0.3em]">&gt; SIGNAL INCOMPLET</div>
         <p className="text-cyan-400/60 text-sm max-w-md">
           Cette transmission se déverrouille en captant les 5 signaux disséminés dans le site (jauge SIG).
@@ -94,7 +103,9 @@ export default function TransmissionPage() {
   const integrityPct = Math.round(integrity)
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-black">
+    <main className="page-fade-in fixed inset-0 overflow-hidden bg-black">
+      {/* curseur custom cyan (croix de visée sur les cubes) — même langage que le site */}
+      <CustomCursor />
       <TransmissionCanvas
         running={phase === "playing"} pulse={pulse} defeated={phase === "over" && outcome === "lose"}
         onHit={onHit} onBreach={onBreach} onCombo={setCombo} onFloat={onFloat}
