@@ -49,7 +49,7 @@ export default function HeroSection({
   return (
     <section
       id="hero"
-      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4"
+      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4 pt-16 pb-24 md:py-0"
     >
       {/* Slot corps-entier : le canvas partagé (page) s'y matérialise une fois la carte scannée.
           Desktop déverrouillé : pivoter l'hologramme à la souris. Mobile : le slot reste

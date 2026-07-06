@@ -76,7 +76,7 @@ export default function AboutSection() {
     return (
       <section
         id="about"
-        className="holo-veil-fade min-h-[100svh] flex flex-col items-center justify-center px-4 py-16"
+        className="holo-veil-fade min-h-[100svh] flex flex-col items-center justify-center px-4 pt-16 pb-24"
       >
         <SectionTitle
           className="mb-3"
@@ -84,7 +84,7 @@ export default function AboutSection() {
           title="ABOUT:COGNITIVE_PROFILE"
         />
         {/* slot du canvas partagé : le zoom cerveau se joue ici, plein cadre */}
-        <div data-holo="about" aria-hidden className="h-[44svh] w-full" />
+        <div data-holo="about" aria-hidden className="h-[40svh] w-full" />
         <div role="tablist" className="mt-4 flex flex-wrap justify-center gap-2 z-10">
           {ABOUT_TEXT.map((block, i) => (
             <button

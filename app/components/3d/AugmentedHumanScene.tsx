@@ -607,6 +607,16 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     _base.current.lerpVectors(A.camPos, B.camPos, f);
     _baseTgt.current.lerpVectors(A.target, B.target, f);
 
+    // PORTRAIT (mobile) : les stations cadrent le module À CÔTÉ du texte (décalage
+    // latéral pensé pour le desktop) → cerveau/ADN sortaient du cadre. Empilé en
+    // portrait, on rabat le x vers 0 : chaque module revient plein centre.
+    // (le POV projets, piloté par les os, n'est pas concerné)
+    const el = camera as THREE.PerspectiveCamera;
+    if (el.aspect < 1) {
+      _base.current.x *= 0.22;
+      _baseTgt.current.x *= 0.22;
+    }
+
     // Vue subjective "yeux de l'hologramme" à la station projets : la caméra glisse
     // vers la tête et regarde la main levée (là où gravitent les cubes).
     let heartW = 0;

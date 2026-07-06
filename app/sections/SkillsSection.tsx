@@ -138,7 +138,7 @@ export default function SkillsSection() {
     return (
       <section
         id="skills"
-        className="holo-veil-fade min-h-[100svh] flex flex-col items-center justify-center px-4 py-16 relative scroll-mt-[100px]"
+        className="holo-veil-fade min-h-[100svh] flex flex-col items-center justify-center px-4 pt-16 pb-24 relative scroll-mt-[100px]"
       >
         <SectionTitle
           className="mb-3"
@@ -146,7 +146,7 @@ export default function SkillsSection() {
           title="SKILLS:DNA_MODULE_ANALYSIS"
         />
         {/* slot du canvas partagé : le zoom ADN se joue ici */}
-        <div data-holo="skills" aria-hidden className="h-[38svh] w-full" />
+        <div data-holo="skills" aria-hidden className="h-[34svh] w-full" />
         {/* filtre par niveau (compact) */}
         <div className="mt-3 flex flex-wrap justify-center gap-2 z-10" role="group" aria-label="Filtrer par niveau">
           {LEVEL_FILTERS.map((f) => (

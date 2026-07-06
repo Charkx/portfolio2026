@@ -262,7 +262,7 @@ export function ProjectsSection() {
     <section
       id="projects"
       ref={sectionRef}
-      className="holo-veil-fade min-h-screen py-20 lg:h-screen lg:py-0 relative overflow-hidden"
+      className="holo-veil-fade min-h-screen pt-16 pb-24 lg:h-screen lg:py-0 relative overflow-hidden"
       aria-labelledby="projects-title"
     >
       {/* Fond */}
@@ -274,15 +274,15 @@ export function ProjectsSection() {
 
         {/* Titre */}
         <div className="text-center pt-8 lg:pt-14">
-          <div className="text-cyan-300/80 text-xs font-mono tracking-[0.25em] mb-2" aria-hidden="true">
+          <div className="text-cyan-300/80 text-[10px] sm:text-xs font-mono tracking-[0.15em] sm:tracking-[0.25em] mb-2 px-2" aria-hidden="true">
             <GlitchText text="> ACCÈS MÉMOIRE.PROJETS — MANIPULATION DE RÉALITÉ" duration={900} />
           </div>
           <h2
             id="projects-title"
-            className="projects-title text-3xl md:text-4xl font-bold
-                       text-cyan-400 font-display"
+            className="projects-title font-bold text-cyan-400 font-display leading-tight px-2"
+            style={{ fontSize: 'clamp(1.25rem, 5.5vw, 2.25rem)' }}
           >
-            PROJECTS:MANIPULATION_REALITE
+            PROJECTS:<wbr />MANIPULATION_REALITE
           </h2>
           <p className="projects-hint mt-3 text-gray-400 text-sm md:text-base">
             {isMobile
@@ -341,7 +341,7 @@ export function ProjectsSection() {
             {/* Mobile : la narration d'abord — slot du canvas partagé (POV paume + cubes),
                 puis le carrousel tapable qui déploie les études de cas */}
             {isMobile && (
-              <div data-holo="projects" aria-hidden className="h-[32svh] w-full" />
+              <div data-holo="projects" aria-hidden className="h-[26svh] w-full" />
             )}
             {isMobile && (
               <div className="pt-4 flex justify-center">

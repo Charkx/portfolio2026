@@ -109,7 +109,7 @@ export default function ContactSection() {
   // --- MOBILE : carte CSS 3D (gyroscope) + coordonnées ---
   if (isMobile) {
     return (
-      <section id="contact" ref={sectionRef} className="relative min-h-[100svh] flex flex-col items-center justify-center gap-4 py-16 px-4 scroll-mt-20">
+      <section id="contact" ref={sectionRef} className="relative min-h-[100svh] flex flex-col items-center justify-center gap-4 pt-16 pb-24 px-4 scroll-mt-20">
         <SectionTitle
           className="relative"
           kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"

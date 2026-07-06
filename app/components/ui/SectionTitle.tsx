@@ -44,13 +44,19 @@ export function SectionTitle({
   hint?: string;
   className?: string;
 }) {
+  // césure autorisée après le ':' → sur mobile le titre passe sur 2 lignes
+  // au lieu de déborder de l'écran (SECTION: / NOM_DE_CODE)
+  const [head, ...rest] = title.split(':');
+  const tail = rest.join(':');
+
   return (
-    <div className={`text-center z-10 ${className}`}>
-      <div className="text-cyan-300/80 text-xs font-mono tracking-[0.25em] mb-2" aria-hidden="true">
+    <div className={`text-center z-10 max-w-full px-2 ${className}`}>
+      <div className="text-cyan-300/80 text-[10px] sm:text-xs font-mono tracking-[0.15em] sm:tracking-[0.25em] mb-2" aria-hidden="true">
         <GlitchText text={`> ${kicker}`} duration={900} />
       </div>
-      <h2 className="text-3xl md:text-4xl font-bold text-cyan-400 font-display">
-        {title}
+      {/* taille fluide : ne déborde jamais, plafonne à la taille desktop */}
+      <h2 className="font-bold text-cyan-400 font-display leading-tight" style={{ fontSize: 'clamp(1.25rem, 5.5vw, 2.25rem)' }}>
+        {tail ? (<>{head}:<wbr />{tail}</>) : title}
       </h2>
       {hint && (
         <p className="mt-3 text-gray-400 text-sm md:text-base max-w-3xl mx-auto">

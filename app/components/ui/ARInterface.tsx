@@ -173,10 +173,11 @@ export default function ARInterface() {
    {introPhase !== "LOCKED" && (
       <div className="hud-boot relative w-full h-full">
       <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent">
-        {/* pr large : réserve la place du cluster droit (CV + volume + langue + power) */}
-        <div className="flex justify-between items-center h-full pl-6 pr-[22rem] text-cyan-400 font-mono text-sm">
+        {/* pr large (desktop) : réserve la place du cluster droit (CV + volume + langue + power).
+            MOBILE : le cluster droit occupe seul la barre → tout le reste est masqué (sm:). */}
+        <div className="flex justify-between items-center h-full pl-6 pr-6 sm:pr-[22rem] text-cyan-400 font-mono text-sm">
 
-            <div className="flex items-center space-x-6">
+            <div className="hidden sm:flex items-center space-x-6">
                 ID:
               <div className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 0 } as React.CSSProperties}>
                 <span className="animate-pulse">●</span> {PROFILE.name.toUpperCase()}
