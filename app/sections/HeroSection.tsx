@@ -67,8 +67,9 @@ export default function HeroSection({
             Mobile : identité compacte superposée — l'hologramme reste la star. */}
         {unlocked && isMobile ? (
           <div className="relative flex flex-col items-center justify-between h-[70svh] py-6 pointer-events-none hud-boot">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-cyan-300 font-display" style={{ textShadow: "0 0 16px rgba(34,211,238,0.5)" }}>
+            {/* panneau translucide : le titre reste lisible PAR-DESSUS l'hologramme cyan */}
+            <div className="text-center rounded-xl bg-black/55 backdrop-blur-sm px-5 py-3 border border-cyan-400/15">
+              <div className="text-3xl font-bold text-cyan-300 font-display" style={{ textShadow: "0 0 10px rgba(0,0,0,0.9), 0 0 22px rgba(34,211,238,0.55)" }}>
                 CHARLY MENTHILLER
               </div>
               <p className="mt-1.5 text-green-400/90 font-mono text-xs tracking-wider">⏳ Alternance · Septembre 2026</p>

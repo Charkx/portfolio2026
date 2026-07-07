@@ -13,7 +13,6 @@ import { GlitchText } from '../components/ui/SectionTitle';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import ProjectCaseStudy from '../components/ui/ProjectCaseStudy';
-import ProjectMobileCubes from '../components/ProjectMobileCubes';
 import { PROJECTS_DATA } from '../utils/projectsData';
 import type { Project } from '@/app/utils/types';
 
@@ -262,7 +261,7 @@ export function ProjectsSection() {
     <section
       id="projects"
       ref={sectionRef}
-      className="holo-veil-fade min-h-screen pt-16 pb-24 lg:h-screen lg:py-0 relative overflow-hidden"
+      className="holo-veil-fade min-h-screen pt-20 pb-28 lg:h-screen lg:py-0 relative overflow-hidden"
       aria-labelledby="projects-title"
     >
       {/* Fond */}
@@ -270,7 +269,10 @@ export function ProjectsSection() {
         <div className="scanlines" />
       </div>
 
-      <div className="container mx-auto px-4 flex flex-col gap-8 lg:h-full lg:justify-center lg:gap-6">
+      {/* mobile : ancre plein cadre → la paume + les Data Cubes 3D se calent au centre, EN FOND */}
+      {isMobile && <div data-holo="projects" aria-hidden className="absolute inset-0 pointer-events-none" />}
+
+      <div className="container mx-auto px-4 relative z-10 flex flex-col gap-8 lg:h-full lg:justify-center lg:gap-6">
 
         {/* Titre */}
         <div className="text-center pt-8 lg:pt-14">
@@ -338,20 +340,12 @@ export function ProjectsSection() {
               );
             })()}
 
-            {/* Mobile : la narration d'abord — slot du canvas partagé (POV paume + cubes),
-                puis le carrousel tapable qui déploie les études de cas */}
+            {/* Mobile : les cubes de la scène 3D (POV paume) SONT le visuel — plus de
+                carrousel CSS en doublon. Un tap sur un fragment ci-dessus déploie l'étude de cas. */}
             {isMobile && (
-              <div data-holo="projects" aria-hidden className="h-[26svh] w-full" />
-            )}
-            {isMobile && (
-              <div className="pt-4 flex justify-center">
-                <ProjectMobileCubes
-                  items={PROJECTS_DATA.map((p) => ({ id: p.memId, title: p.title, short: p.short, color: CONTEXT_HEX[p.context] }))}
-                  index={selectedProject ?? 0}
-                  onChange={(i) => selectProject(i, () => {})}
-                  onOpen={handleOpen}
-                />
-              </div>
+              <p className="pt-1 text-center text-[11px] text-cyan-400/50 font-mono tracking-wider">
+                ▸ Tape un fragment pour déployer son étude de cas
+              </p>
             )}
 
             {/* Desktop : toute la zone restante = scène 3D libre (drag de rotation) */}

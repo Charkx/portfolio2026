@@ -138,44 +138,49 @@ export default function SkillsSection() {
     return (
       <section
         id="skills"
-        className="holo-veil-fade min-h-[100svh] flex flex-col items-center justify-center px-4 pt-16 pb-24 relative scroll-mt-[100px]"
+        className="holo-veil-fade relative min-h-[100svh] flex flex-col justify-center px-4 pt-20 pb-28 scroll-mt-[100px]"
       >
-        <SectionTitle
-          className="mb-3"
-          kicker="ACCÈS MÉMOIRE.COMPÉTENCES — SÉQUENÇAGE ADN"
-          title="SKILLS:DNA_MODULE_ANALYSIS"
-        />
-        {/* slot du canvas partagé : le zoom ADN se joue ici */}
-        <div data-holo="skills" aria-hidden className="h-[34svh] w-full" />
-        {/* filtre par niveau (compact) */}
-        <div className="mt-3 flex flex-wrap justify-center gap-2 z-10" role="group" aria-label="Filtrer par niveau">
-          {LEVEL_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => { setLevelFilter(f.value); audioEngine.play('molecular'); }}
-              aria-pressed={levelFilter === f.value}
-              className={`px-3 py-1.5 rounded font-mono text-xs border transition-colors ${
-                levelFilter === f.value
-                  ? 'bg-cyan-500 text-black border-cyan-400'
-                  : 'bg-transparent text-cyan-400/70 border-cyan-400/30'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="glass-panel rounded-xl p-4 w-full max-w-xl mt-4 z-10">
-          <TechList
-            selectedTech={selectedTech}
-            hoveredTech={hoveredTech}
-            levelFilter={levelFilter}
-            onTechClick={openTech}
-            onTechHover={handleTechHover}
+        {/* ancre plein cadre : l'hélice ADN se cale au centre de la section, EN FOND */}
+        <div data-holo="skills" aria-hidden className="absolute inset-0 pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col items-center">
+          <SectionTitle
+            className="mb-3"
+            kicker="ACCÈS MÉMOIRE.COMPÉTENCES — SÉQUENÇAGE ADN"
+            title="SKILLS:DNA_MODULE_ANALYSIS"
           />
+          {/* filtres de niveau : juste sous le titre */}
+          <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Filtrer par niveau">
+            {LEVEL_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => { setLevelFilter(f.value); audioEngine.play('molecular'); }}
+                aria-pressed={levelFilter === f.value}
+                className={`px-3 py-1.5 rounded font-mono text-xs border transition-colors ${
+                  levelFilter === f.value
+                    ? 'bg-cyan-500 text-black border-cyan-400'
+                    : 'bg-black/30 text-cyan-400/70 border-cyan-400/30'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {/* liste translucide, scrollable : les 3 catégories (Frontend/Backend/DevOps) sont
+              toutes accessibles, l'ADN reste visible derrière */}
+          <div className="mt-4 w-full max-w-xl max-h-[52svh] overflow-y-auto rounded-xl border border-cyan-400/20 bg-black/45 backdrop-blur-[3px] p-4">
+            <TechList
+              selectedTech={selectedTech}
+              hoveredTech={hoveredTech}
+              levelFilter={levelFilter}
+              onTechClick={openTech}
+              onTechHover={handleTechHover}
+            />
+          </div>
+          <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider">
+            ▸ Tape un module — l&apos;hélice réagit puis la fiche s&apos;ouvre
+          </p>
         </div>
-        <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider z-10">
-          ▸ Tape un module — l&apos;hélice réagit puis la fiche s&apos;ouvre
-        </p>
       </section>
     );
   }

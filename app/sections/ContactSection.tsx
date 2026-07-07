@@ -106,25 +106,27 @@ export default function ContactSection() {
     );
   }
 
-  // --- MOBILE : carte CSS 3D (gyroscope) + coordonnées ---
+  // --- MOBILE : la carte artefact SEULE (fond sombre → l'hologramme est masqué) + coordonnées ---
   if (isMobile) {
     return (
-      <section id="contact" ref={sectionRef} className="relative min-h-[100svh] flex flex-col items-center justify-center gap-4 pt-16 pb-24 px-4 scroll-mt-20">
-        <SectionTitle
-          className="relative"
-          kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
-          title="CONTACT:TRANSMISSION"
-        />
-        {/* slot du canvas partagé : l'hologramme termine son voyage ici (5e ancre) */}
-        <div data-holo="contact" aria-hidden className="h-[14svh] w-full" />
-        {/* LA carte 3D (le même artefact que l'entrée — orbit coupé au tactile) */}
-        <div className="relative w-full max-w-md h-[30svh] z-10">
-          <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
-            <BiometricCard />
-          </ErrorBoundary>
+      <section id="contact" ref={sectionRef} className="relative z-20 min-h-[100svh] flex flex-col items-center justify-center gap-4 pt-20 pb-28 px-4 scroll-mt-20 bg-[#05070a]">
+        {/* ancre 5e station : sert UNIQUEMENT à mapper le scroll (le fond sombre masque
+            l'hologramme partagé — au contact, seule la carte subsiste) */}
+        <div data-holo="contact" aria-hidden className="absolute inset-0 pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center gap-4 w-full">
+          <SectionTitle
+            kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
+            title="CONTACT:TRANSMISSION"
+          />
+          {/* LA carte 3D, seule (le même artefact que l'entrée — orbit coupé au tactile) */}
+          <div className="relative w-full max-w-md h-[40svh]">
+            <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
+              <BiometricCard />
+            </ErrorBoundary>
+          </div>
+          {/* canaux : intitulé = la carte parle · valeur = ouvre le canal */}
+          <div className="w-full max-w-md glass-panel rounded-xl p-4"><ContactChannels /></div>
         </div>
-        {/* canaux sur panneau de verre : lisibles par-dessus le voyage (même langage que Skills) */}
-        <div className="relative w-full max-w-md glass-panel rounded-xl p-4 z-10"><ContactChannels /></div>
       </section>
     );
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { useSceneStore } from '../../store/sceneStore';
 import { useDiscoveryStore } from '../../store/discoveryStore';
@@ -21,6 +22,7 @@ const CH = {
 
 export function ContactChannels() {
   const openModal = useModalStore((s) => s.open);
+  const pokeTimer = useRef<number | undefined>(undefined);
 
   const openCv = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -33,22 +35,25 @@ export function ContactChannels() {
     openModal({ title: 'Prendre rendez-vous', size: 'lg', content: <CalendlyViewer src={PROFILE.calendly} /> });
   };
 
-  // survol/focus d'un canal → la CARTE répond + capte le signal "canal ouvert"
-  const openChannel = (id: string) => {
+  // tap/survol de l'INTITULÉ → la CARTE affiche le message + capte le signal "canal ouvert",
+  // SANS ouvrir le lien (tactile : on rétablit la carte après un court instant).
+  const pokeCard = (id: string) => {
     useSceneStore.getState().setContactIdHovered(id);
     useDiscoveryStore.getState().discover('card');
+    window.clearTimeout(pokeTimer.current);
+    pokeTimer.current = window.setTimeout(() => useSceneStore.getState().setContactIdHovered(null), 2600);
   };
+  // survol/focus (desktop) : la carte répond tant que le pointeur reste sur la ligne
   const hoverProps = (id: string) => ({
-    onMouseEnter: () => openChannel(id),
+    onMouseEnter: () => { window.clearTimeout(pokeTimer.current); useSceneStore.getState().setContactIdHovered(id); useDiscoveryStore.getState().discover('card'); },
     onMouseLeave: () => useSceneStore.getState().setContactIdHovered(null),
-    onFocus:      () => openChannel(id),
-    onBlur:       () => useSceneStore.getState().setContactIdHovered(null),
   });
 
   // rangée en flex : la VALEUR tronque en ellipse sur petit écran (pas de débordement)
-  const line = 'flex items-baseline gap-2 hover:brightness-125 transition min-w-0';
-  const key = 'w-20 sm:w-24 shrink-0 text-cyan-400/50';
-  const val = 'truncate min-w-0';
+  const line = 'flex items-baseline gap-2 transition min-w-0';
+  // intitulé = bouton : tap = la carte parle (aucune navigation)
+  const key = 'w-20 sm:w-24 shrink-0 text-left text-cyan-400/60 cursor-pointer hover:text-cyan-200 transition';
+  const val = 'truncate min-w-0 hover:brightness-125';
   const arrow = <span className="text-cyan-400/40 shrink-0">&gt;</span>;
 
   return (
@@ -58,25 +63,28 @@ export function ContactChannels() {
         CANAUX DE CONTACT
       </div>
 
-      {/* bloc mono aligné à gauche, façon sortie terminal — largeur bornée, valeurs tronquées */}
+      {/* bloc mono aligné à gauche, façon sortie terminal — largeur bornée, valeurs tronquées.
+          Intitulé (bouton) fait parler la carte · Valeur (lien) ouvre le canal. */}
       <div className="inline-block w-full max-w-md text-left text-cyan-300 text-sm space-y-1.5">
-        <a href={`mailto:${PROFILE.email}`} {...hoverProps('email')} className={line}>
-          {arrow}<span className={key}>EMAIL</span><span className={val} style={{ color: CH.email }}>◆ {PROFILE.email}</span>
-        </a>
-        <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" {...hoverProps('github')} className={line}>
-          {arrow}<span className={key}>GITHUB</span><span className={val} style={{ color: CH.github }}>◆ {PROFILE.githubLabel}</span>
-        </a>
-        <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" {...hoverProps('linkedin')} className={line}>
-          {arrow}<span className={key}>LINKEDIN</span><span className={val} style={{ color: CH.linkedin }}>◆ {PROFILE.linkedinLabel}</span>
-        </a>
-        <a href={PROFILE.cv} onClick={openCv} {...hoverProps('cv')} className={`${line} cursor-pointer`}>
-          {arrow}<span className={key}>CV</span><span className={val} style={{ color: CH.cv }}>◆ Consulter le CV</span>
-        </a>
+        <div className={line} {...hoverProps('email')}>
+          {arrow}<button type="button" onClick={() => pokeCard('email')} className={key}>EMAIL</button>
+          <a href={`mailto:${PROFILE.email}`} className={val} style={{ color: CH.email }}>◆ {PROFILE.email}</a>
+        </div>
+        <div className={line} {...hoverProps('github')}>
+          {arrow}<button type="button" onClick={() => pokeCard('github')} className={key}>GITHUB</button>
+          <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" className={val} style={{ color: CH.github }}>◆ {PROFILE.githubLabel}</a>
+        </div>
+        <div className={line} {...hoverProps('linkedin')}>
+          {arrow}<button type="button" onClick={() => pokeCard('linkedin')} className={key}>LINKEDIN</button>
+          <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" className={val} style={{ color: CH.linkedin }}>◆ {PROFILE.linkedinLabel}</a>
+        </div>
+        <div className={line} {...hoverProps('cv')}>
+          {arrow}<button type="button" onClick={() => pokeCard('cv')} className={key}>CV</button>
+          <a href={PROFILE.cv} onClick={openCv} className={`${val} cursor-pointer`} style={{ color: CH.cv }}>◆ Consulter le CV</a>
+        </div>
         <div className={line}>
-          {arrow}<span className={key}>DISPO</span>
-          <span {...hoverProps('dispo')} tabIndex={0} className={`${val} text-green-400/90 cursor-default hover:text-green-300 transition`}>
-            ⏳ {PROFILE.availability}
-          </span>
+          {arrow}<button type="button" onClick={() => pokeCard('dispo')} className={key}>DISPO</button>
+          <span className={`${val} text-green-400/90`}>⏳ {PROFILE.availability}</span>
         </div>
         {/* curseur clignotant */}
         <div className={line}>{arrow}<span className="term-blink text-cyan-400">_</span></div>
