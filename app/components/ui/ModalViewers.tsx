@@ -3,7 +3,7 @@
 // Visionneuse PDF (CV) : iframe + bouton de secours (téléchargement/ouverture — fiable sur mobile).
 export function PdfViewer({ src, downloadName }: { src: string; downloadName?: string }) {
   return (
-    <div className="flex flex-col gap-3 h-[75vh]">
+    <div className="flex flex-col gap-3 h-[70svh]">
       <iframe src={src} title="CV" className="w-full grow rounded border border-cyan-400/20 bg-white" />
       <a
         href={src}
@@ -24,7 +24,7 @@ export function CalendlyViewer({ src }: { src: string }) {
   // params d'embed Calendly (hex SANS #) : fond sombre, texte holo, accent cyan
   const embed = `${src}?hide_gdpr_banner=1&background_color=0a0a0a&text_color=aef6ff&primary_color=22d3ee`
   return (
-    <div className="flex flex-col gap-3 h-[75vh]">
+    <div className="flex flex-col gap-3 h-[70svh]">
       <iframe
         src={embed}
         title="Prendre rendez-vous"
@@ -47,7 +47,7 @@ export function CalendlyViewer({ src }: { src: string }) {
 // Visionneuse de site live (démo) : iframe + lien plein écran de secours (si le site refuse l'iframe).
 export function SiteViewer({ src }: { src: string }) {
   return (
-    <div className="flex flex-col gap-3 h-[75vh]">
+    <div className="flex flex-col gap-3 h-[70svh]">
       <iframe
         src={src}
         title="Démo du projet"

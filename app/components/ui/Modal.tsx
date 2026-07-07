@@ -90,7 +90,7 @@ export default function Modal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`relative z-10 w-full ${MAX_W[size]} max-h-[90vh] flex flex-col rounded-lg
+        className={`relative z-10 w-full ${MAX_W[size]} max-h-[90svh] flex flex-col rounded-lg
                     border border-cyan-400/30 bg-[#04070c]/95 outline-none
                     shadow-[0_0_40px_rgba(34,211,238,0.15)]`}
       >
