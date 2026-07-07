@@ -9,6 +9,8 @@ import { useSceneStore } from '../store/sceneStore';
 import BiometricCard from '../components/3d/BiometricCard';
 import { ContactChannels } from '../components/ui/ContactChannels';
 import { SectionTitle } from '../components/ui/SectionTitle';
+import { useT } from '../i18n';
+import { getDict } from '../i18n';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -17,7 +19,7 @@ const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
 // Repli image (WebGL indisponible / reduced-motion)
 function CardImage() {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src="/images/id_card.jpg" alt="Carte d'identité — Charly Menthiller" className="w-[300px] max-w-full rounded-lg border border-cyan-400/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]" />;
+  return <img src="/images/id_card.jpg" alt={getDict().contact.cardAlt} className="w-[300px] max-w-full rounded-lg border border-cyan-400/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]" />;
 }
 
 export default function ContactSection() {
@@ -31,6 +33,7 @@ export default function ContactSection() {
   const setCardActive = useSceneStore((s) => s.setEndSessionCardActive);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [cardPhase, setCardPhase] = useState(false);
+  const t = useT();
   const [endLine, setEndLine] = useState('');
   const cardPhaseRef = useRef(false);
   const cardActiveRef = useRef(false);
@@ -55,10 +58,11 @@ export default function ContactSection() {
         const p = self.progress;
         setEndSession(p);
 
+        const d = getDict().contact;
         const line = p < 0.1 ? ''
-          : p < 0.8 ? '> FIN DE SESSION... DÉCONNEXION DU LIEN NEURAL'
-          : p < 0.92 ? '> ARTEFACT DÉTECTÉ : CARTE.MENTHILLER_009'
-          : '> CANAL DE TRANSMISSION OUVERT';
+          : p < 0.8 ? d.endLine1
+          : p < 0.92 ? d.endLine2
+          : d.endLine3;
         if (line !== lineRef.current) { lineRef.current = line; setEndLine(line); }
         if (termRef.current) termRef.current.style.opacity = String(clamp((p - 0.1) / 0.12, 0, 1));
 
@@ -91,9 +95,9 @@ export default function ContactSection() {
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
         <div className="container mx-auto px-4 flex flex-col items-center gap-10 relative">
           <SectionTitle
-            kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
-            title="CONTACT:TRANSMISSION"
-            hint="La carte est le seul artefact qui subsiste — établis le lien."
+            kicker={t.contact.kicker}
+            title={t.contact.title}
+            hint={t.contact.hint}
           />
           {isMobile === false ? (
             <div data-holo="contact" className="h-72 w-full max-w-lg" />
@@ -115,12 +119,12 @@ export default function ContactSection() {
         <div data-holo="contact" aria-hidden className="absolute inset-0 pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center gap-4 w-full">
           <SectionTitle
-            kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
-            title="CONTACT:TRANSMISSION"
+            kicker={t.contact.kicker}
+            title={t.contact.title}
           />
           {/* fonctionnement de la section */}
           <p className="-mt-1 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
-            ▸ Touche un intitulé pour interroger la carte · la valeur ouvre le canal
+            {t.contact.howto}
           </p>
           {/* LA carte 3D, seule (le même artefact que l'entrée — orbit coupé au tactile) */}
           <div className="relative w-full max-w-md h-[40svh]">
@@ -156,7 +160,7 @@ export default function ContactSection() {
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 py-8">
             {/* titre unifié (même hiérarchie que les autres sections) */}
-            <SectionTitle kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ" title="CONTACT:TRANSMISSION" />
+            <SectionTitle kicker={t.contact.kicker} title={t.contact.title} />
             {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
             <div className="relative w-full max-w-3xl h-[48vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>

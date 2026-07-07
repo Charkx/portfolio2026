@@ -2,21 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { useTypewriter } from '../hooks/useTypewriter';
-import { ABOUT_TEXT } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
 import { useModalStore } from '../store/modalStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
 import { useDiscoveryStore } from '../store/discoveryStore';
 import { SectionTitle } from '../components/ui/SectionTitle';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/dict';
 
 // Aligné sur les couleurs des catégories (PROFIL rose · EXPÉRIENCE vert vif · FORMATION ambre).
 const scanColors = ['#ff00ff', '#2bff66', '#ffc400', '#00ffff', '#9b5de5'];
+const blockColors = ['text-pink-400', 'text-green-400', 'text-yellow-400'];
 
 // Contenu d'une couche pour la MODALE mobile (texte statique : en modale on lit,
 // l'effet machine à écrire reste un plaisir desktop)
-function AboutBlockBody({ index }: { index: number }) {
-  const block = ABOUT_TEXT[index];
+function AboutBlockBody({ block, color }: { block: Dict['about']['blocks'][number]; color: string }) {
   return (
     <div className="font-mono">
       {block.text.map((line, idx) => {
@@ -26,7 +27,7 @@ function AboutBlockBody({ index }: { index: number }) {
             key={idx}
             className={
               isEntry
-                ? `${block.color} text-base font-semibold mt-4 mb-1`
+                ? `${color} text-base font-semibold mt-4 mb-1`
                 : 'text-gray-400 text-sm mb-2 leading-relaxed pl-1'
             }
           >
@@ -43,6 +44,8 @@ export default function AboutSection() {
   const selected = useSceneStore((s) => s.aboutSelected);
   const setSelected = useSceneStore((s) => s.setAboutSelected);
   const dragBrain = useDragRotate('brain');
+  const t = useT();
+  const blocks = t.about.blocks;
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
   // desktop → slot du canvas partagé (cerveau) · mobile → cerveau local (3D conservé)
@@ -54,7 +57,8 @@ export default function AboutSection() {
   }, []);
 
   // Valeurs DÉRIVÉES de `selected` (pas de state en plus).
-  const active = ABOUT_TEXT[selected];
+  const active = blocks[selected];
+  const activeBlockColor = blockColors[selected];
   const activeColor = scanColors[selected];
 
   // Effet machine à écrire : se relance quand `selected` change.
@@ -66,9 +70,9 @@ export default function AboutSection() {
     setSelected(i);
     audioEngine.play('scan');
     useDiscoveryStore.getState().discover('brain');
-    const block = ABOUT_TEXT[i];
+    const block = blocks[i];
     setTimeout(() => {
-      useModalStore.getState().open({ title: `>> ${block.title}`, size: 'md', content: <AboutBlockBody index={i} /> });
+      useModalStore.getState().open({ title: `>> ${block.title}`, size: 'md', content: <AboutBlockBody block={block} color={blockColors[i]} /> });
     }, 750);
   };
 
@@ -84,12 +88,12 @@ export default function AboutSection() {
         <div className="relative z-10 flex flex-col items-center">
           <SectionTitle
             className="mb-4"
-            kicker="ACCÈS MÉMOIRE.PROFIL — SCAN CORTICAL"
-            title="ABOUT:COGNITIVE_PROFILE"
+            kicker={t.about.kicker}
+            title={t.about.title}
           />
           {/* onglets juste sous le titre */}
           <div role="tablist" className="flex flex-wrap justify-center gap-2">
-            {ABOUT_TEXT.map((block, i) => (
+            {blocks.map((block, i) => (
               <button
                 key={block.title}
                 role="tab"
@@ -98,7 +102,7 @@ export default function AboutSection() {
                 style={selected === i ? { textShadow: `0 0 10px ${scanColors[i]}` } : undefined}
                 className={`px-4 py-2 rounded border font-mono text-sm transition-all ${
                   selected === i
-                    ? `${block.color} border-current bg-black/50`
+                    ? `${blockColors[i]} border-current bg-black/50`
                     : 'text-cyan-400/60 border-cyan-400/25 bg-black/30 active:border-cyan-400/60'
                 }`}
               >
@@ -107,7 +111,7 @@ export default function AboutSection() {
             ))}
           </div>
           <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
-            ▸ Tape une couche — le cerveau se scanne, puis le dossier s&apos;ouvre
+            {t.about.tapHint}
           </p>
         </div>
       </section>
@@ -121,9 +125,9 @@ export default function AboutSection() {
     >
       <SectionTitle
         className="mb-8 lg:mb-12"
-        kicker="ACCÈS MÉMOIRE.PROFIL — SCAN CORTICAL"
-        title="ABOUT:COGNITIVE_PROFILE"
-        hint="Trois couches à scanner : profil, expérience, formation."
+        kicker={t.about.kicker}
+        title={t.about.title}
+        hint={t.about.hint}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 z-10 w-full max-w-6xl">
@@ -131,7 +135,7 @@ export default function AboutSection() {
 
           {/* --- Nav (onglets terminal) : actif = couleur de la catégorie + glow --- */}
           <div className="flex flex-wrap gap-1 border-b border-cyan-400/15" role="tablist">
-            {ABOUT_TEXT.map((block, i) => {
+            {blocks.map((block, i) => {
               const isActive = selected === i;
               return (
                 <button
@@ -142,7 +146,7 @@ export default function AboutSection() {
                   style={isActive ? { textShadow: `0 0 10px ${scanColors[i]}` } : undefined}
                   className={`-mb-px px-3 py-1.5 font-mono text-sm tracking-wide border-b-2 transition-all cursor-pointer ${
                     isActive
-                      ? `${block.color} border-current`
+                      ? `${blockColors[i]} border-current`
                       : 'text-cyan-400/40 border-transparent hover:text-cyan-400/80 hover:border-cyan-400/30'
                   }`}
                 >
@@ -154,7 +158,7 @@ export default function AboutSection() {
 
           {/* --- Panneau : texte révélé en machine à écrire --- */}
           <div className="glass-panel min-h-[30rem] rounded p-4">
-            <h3 className={`${active.color} text-sm mb-3 font-mono`}>
+            <h3 className={`${activeBlockColor} text-sm mb-3 font-mono`}>
               &gt;&gt; {active.title}
             </h3>
             {active.text.map((line, idx) => {
@@ -166,7 +170,7 @@ export default function AboutSection() {
                   key={idx}
                   className={
                     isEntry
-                    ? `${active.color} font-mono text-base font-semibold mt-4 mb-1`
+                    ? `${activeBlockColor} font-mono text-base font-semibold mt-4 mb-1`
                     : 'text-gray-400 font-mono text-sm mb-2 leading-relaxed pl-1'
                   }
                 >
@@ -182,7 +186,7 @@ export default function AboutSection() {
 
         {/* desktop : slot où le canvas partagé (page) se niche pour la station cerveau */}
         {isMobile === false ? (
-          <div data-holo="about" className="h-[68vh] w-full cursor-grab touch-none" title="Glisse pour faire pivoter" {...dragBrain} />
+          <div data-holo="about" className="h-[68vh] w-full cursor-grab touch-none" title={t.misc.dragTitle} {...dragBrain} />
         ) : (
           <div className="h-[45vh] w-full" />
         )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { TECH_STACK } from '@/app/utils/constants';
+import { useT } from '@/app/i18n';
 
 interface Props {
   selectedTech: string | null;
@@ -17,6 +18,7 @@ export default function TechList({
   onTechClick,
   onTechHover,
 }: Props) {
+  const t = useT();
   return (
     // compact : TOUTES les catégories visibles d'un coup (pas de scroll caché)
     <div className="space-y-5">
@@ -71,7 +73,7 @@ export default function TechList({
                   <span className="mt-1 text-[11px] font-mono text-cyan-300 text-center leading-tight">
                     {tech.name}
                   </span>
-                  <div className="mt-1 flex gap-0.5 text-[8px] leading-none" aria-label={`Niveau ${tech.level} sur 3`}>
+                  <div className="mt-1 flex gap-0.5 text-[8px] leading-none" aria-label={t.skills.levelOf(tech.level)}>
                     {[1, 2, 3].map((n) => (
                       <span key={n} className={n <= tech.level ? 'text-cyan-300' : 'text-cyan-400/20'}>●</span>
                     ))}
@@ -79,7 +81,7 @@ export default function TechList({
 
                   {isSelected && (
                     <span className="mt-1 text-[10px] font-mono text-cyan-400 opacity-70">
-                      ▸ décodé
+                      {t.skills.decoded}
                     </span>
                   )}
                 </div>

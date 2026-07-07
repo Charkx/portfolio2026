@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import type { ModalSize } from "../../store/modalStore"
 import { lenisStart, lenisStop } from "../SmoothScroll"
+import { useT } from "../../i18n"
 
 const MAX_W: Record<ModalSize, string> = {
   md: "max-w-2xl",
@@ -31,6 +32,7 @@ export default function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const prevFocus = useRef<HTMLElement | null>(null)
+  const t = useT()
 
   useEffect(() => {
     prevFocus.current = document.activeElement as HTMLElement
@@ -99,7 +101,7 @@ export default function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t.misc.closeAria}
             className="text-cyan-400/70 hover:text-cyan-200 text-2xl leading-none w-8 h-8
                        flex items-center justify-center rounded hover:bg-cyan-400/10 transition-colors cursor-pointer"
           >

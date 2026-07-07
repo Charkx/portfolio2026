@@ -8,6 +8,8 @@ import { audioEngine } from '../../lib/audioEngine';
 import { scrollToId } from '../SmoothScroll';
 import { SignalMeter, SignalToast } from './SignalMeter';
 import { Power, PowerOff, FileDown, Volume2, VolumeX } from 'lucide-react';
+import { useLangStore } from '../../store/langStore';
+import { useT } from '../../i18n';
 
 // Infobulle custom : instantanée et stylée (contrairement au `title` natif).
 // `pointer-events-auto` sur le wrapper pour que le :hover se déclenche même
@@ -43,12 +45,15 @@ export default function ARInterface() {
   const toggleSound = useAudioStore((s) => s.toggle);
   const volume = useAudioStore((s) => s.volume);
   const setVolume = useAudioStore((s) => s.setVolume);
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
+  const t = useT();
 
   // Ouvre le CV dans la modale (sans quitter la page) — le href reste le repli sans JS.
   const openCv = (e: React.MouseEvent) => {
     e.preventDefault();
     openModal({
-      title: "CV — Charly Menthiller",
+      title: t.hud.cvModalTitle,
       size: "xl",
       content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" />,
     });
@@ -57,20 +62,14 @@ export default function ARInterface() {
   const batteryLevel = Math.max(1, Math.round(scrollProgress * 100));
 
   const NAV = [
-  { prefix: "COGNITIVE_PROFIL", label: "PROFIL",   section: "about" },
-  { prefix: "SCAN_STATUS",      label: "SKILLS",   section: "skills" },
-  { prefix: "MEMORY_ACCESS",    label: "PROJECTS", section: "projects" },
-  { prefix: "UPLINK",           label: "CONTACT",  section: "contact" },
+  { prefix: "COGNITIVE_PROFIL", label: t.hud.nav.about,    section: "about" },
+  { prefix: "SCAN_STATUS",      label: t.hud.nav.skills,   section: "skills" },
+  { prefix: "MEMORY_ACCESS",    label: t.hud.nav.projects, section: "projects" },
+  { prefix: "UPLINK",           label: t.hud.nav.contact,  section: "contact" },
 ] as const;
 
   // Chapitres narratifs : le voyage se lit dans le HUD (change avec la section active)
-  const CHAPTERS: Record<string, string> = {
-    hero:     "01 · IDENTIFICATION",
-    about:    "02 · MÉMOIRE.PROFIL",
-    skills:   "03 · STRUCTURE.ADN",
-    projects: "04 · MANIPULATION.RÉALITÉ",
-    contact:  "05 · DÉCONNEXION",
-  };
+  const CHAPTERS = t.hud.chapters;
 
   // Son du déverrouillage (system power-on) / re-verrouillage (power-down) — no-op si son coupé
   const prevPhase = useRef(introPhase);
@@ -104,12 +103,12 @@ export default function ARInterface() {
             <SignalMeter booted={booted} />
           </div>
         )}
-        <HudTooltip label="Télécharger le CV (memory dump)">
+        <HudTooltip label={t.hud.tipCv}>
           <a
             href={PROFILE.cv}
             onClick={openCv}
             onMouseEnter={() => audioEngine.play('hover')}
-            aria-label="Voir le CV"
+            aria-label={t.hud.tipCv}
             className="flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
           >
             <FileDown size={14}/>
@@ -117,9 +116,9 @@ export default function ARInterface() {
           </a>
         </HudTooltip>
         <div className="flex items-center gap-2">
-          <HudTooltip label={soundEnabled ? "Couper le son" : "Activer le son (effets de section)"}>
+          <HudTooltip label={soundEnabled ? t.hud.tipSoundOff : t.hud.tipSoundOn}>
             <button
-              aria-label={soundEnabled ? "Couper le son" : "Activer le son"}
+              aria-label={soundEnabled ? t.hud.tipSoundOff : t.hud.tipSoundOn}
               aria-pressed={soundEnabled}
               className={`transition-colors cursor-pointer ${soundEnabled ? "text-cyan-300 hover:text-cyan-100" : "text-cyan-400/50 hover:text-cyan-200"}`}
               onClick={toggleSound}
@@ -130,13 +129,13 @@ export default function ARInterface() {
           </HudTooltip>
           {/* volume en barres de signal (langage HUD) : cliquer une barre = niveau n/5,
               cliquer alors que le son est coupé = le réactiver à ce niveau */}
-          <div role="group" aria-label="Volume du son" className="flex items-end gap-[3px] h-4">
+          <div role="group" aria-label={t.hud.volume} className="flex items-end gap-[3px] h-4">
             {[1, 2, 3, 4, 5].map((n) => {
               const lit = soundEnabled && volume >= n / 5 - 0.001;
               return (
                 <button
                   key={n}
-                  aria-label={`Volume ${n} sur 5`}
+                  aria-label={t.misc.volumeOf(n)}
                   aria-pressed={lit}
                   onClick={() => setVolume(n / 5)}
                   onMouseEnter={() => audioEngine.play('hover')}
@@ -148,17 +147,29 @@ export default function ARInterface() {
             })}
           </div>
         </div>
-        {/* langue : FR actif, EN à venir (même promesse que la console de calibrage) */}
-        <div className="flex items-center gap-1 font-mono text-xs" role="group" aria-label="Langue">
-          <button aria-pressed="true" className="text-cyan-300 cursor-pointer">FR</button>
-          <span className="text-cyan-400/30" aria-hidden="true">·</span>
-          <HudTooltip label="English — bientôt disponible">
-            <button disabled className="text-gray-700 cursor-not-allowed">EN</button>
-          </HudTooltip>
-        </div>
-        <HudTooltip label={introPhase === "LOCKED" ? "Déverrouiller l'accès au site" : "Reverrouiller (rejouer l'intro)"}>
+        {/* langue : bascule FR/EN à chaud (choix persisté) */}
+        <div className="flex items-center gap-1 font-mono text-xs" role="group" aria-label={t.hud.language}>
           <button
-            aria-label={introPhase === "LOCKED" ? "Déverrouiller l'interface" : "Verrouiller l'interface"}
+            aria-pressed={lang === 'fr'}
+            onClick={() => { setLang('fr'); audioEngine.play('nav'); }}
+            onMouseEnter={() => audioEngine.play('hover')}
+            className={`cursor-pointer transition-colors ${lang === 'fr' ? 'text-cyan-300' : 'text-gray-600 hover:text-cyan-400/80'}`}
+          >
+            FR
+          </button>
+          <span className="text-cyan-400/30" aria-hidden="true">·</span>
+          <button
+            aria-pressed={lang === 'en'}
+            onClick={() => { setLang('en'); audioEngine.play('nav'); }}
+            onMouseEnter={() => audioEngine.play('hover')}
+            className={`cursor-pointer transition-colors ${lang === 'en' ? 'text-cyan-300' : 'text-gray-600 hover:text-cyan-400/80'}`}
+          >
+            EN
+          </button>
+        </div>
+        <HudTooltip label={introPhase === "LOCKED" ? t.hud.tipUnlock : t.hud.tipLock}>
+          <button
+            aria-label={introPhase === "LOCKED" ? t.hud.tipUnlock : t.hud.tipLock}
             className="text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
             onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
             onMouseEnter={() => audioEngine.play('hover')}
@@ -217,9 +228,9 @@ export default function ARInterface() {
               {NAV.map((item, idx) => (        // ← idx = la position
                 <div key={item.section} className="flex items-center">
                   <div aria-hidden="true" className="hidden sm:flex text-cyan-400/40">{item.prefix}:</div>
-                  <HudTooltip label={`Aller à la section ${item.label}`} side="top">
+                  <HudTooltip label={`${t.hud.navGoTo} ${item.label}`} side="top">
                     <button
-                      aria-label={`Aller à la section ${item.label}`}
+                      aria-label={`${t.hud.navGoTo} ${item.label}`}
                       onClick={() => { audioEngine.play('nav'); scrollToId(item.section); }}
                       onMouseEnter={() => audioEngine.play('hover')}
                       className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
@@ -239,7 +250,7 @@ export default function ARInterface() {
 
           <div aria-hidden="true" className="flex hidden sm:flex items-center space-x-6">
             <div>
-              MODE: <span className={booted ? "hud-reveal text-cyan-400" : "opacity-0"} style={{ '--i': 9 } as React.CSSProperties}>ALTERNANCE</span>
+              MODE: <span className={booted ? "hud-reveal text-cyan-400" : "opacity-0"} style={{ '--i': 9 } as React.CSSProperties}>{t.hud.mode}</span>
             </div>
               <div className="text-cyan-300">
                 DISPO: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 10 } as React.CSSProperties}>09/2026</span>

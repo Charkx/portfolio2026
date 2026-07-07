@@ -15,6 +15,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import ProjectCaseStudy from '../components/ui/ProjectCaseStudy';
 import { PROJECTS_DATA } from '../utils/projectsData';
 import type { Project } from '@/app/utils/types';
+import { useT } from '../i18n';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -68,13 +69,15 @@ function DecodeProgress({ duration, color, runKey }: { duration: number; color: 
 // Roving tabindex + flèches. Pilote la sélection + le survol (puces 3D). Couleur = contexte.
 
 function ProjectSelector({
-  projects, selected, onSelect, onOpen, onHover,
+  projects, selected, onSelect, onOpen, onHover, groupLabel, contextLabels,
 }: {
   projects: Project[];
   selected: number | null;
   onSelect: (i: number) => void;   // flèches : sélectionne (prévisualise)
   onOpen:   (i: number) => void;   // clic/Entrée : déploie le panneau (un seul geste)
   onHover:  (i: number | null) => void;
+  groupLabel: string;
+  contextLabels: Record<string, string>;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -96,7 +99,7 @@ function ProjectSelector({
   const tabTarget = selected ?? 0; // roving : l'actif (ou le 1er) est focusable au Tab
 
   return (
-    <div role="group" aria-label="Projets" className="flex flex-wrap gap-1 border-b border-cyan-400/15">
+    <div role="group" aria-label={groupLabel} className="flex flex-wrap gap-1 border-b border-cyan-400/15">
       {projects.map((p, i) => {
         const isSel = selected === i;
         const c = CONTEXT_HEX[p.context];
@@ -107,7 +110,7 @@ function ProjectSelector({
             type="button"
             aria-pressed={isSel}
             tabIndex={i === tabTarget ? 0 : -1}
-            aria-label={`${p.title} — ${CONTEXT_LABEL[p.context]}`}
+            aria-label={`${p.title} — ${contextLabels[p.context] ?? CONTEXT_LABEL[p.context]}`}
             onClick={() => onOpen(i)}
             onMouseEnter={() => onHover(i)}
             onMouseLeave={() => onHover(null)}
@@ -139,6 +142,7 @@ export function ProjectsSection() {
   // null = pas encore détecté (SSR safe), évite le flash hydration
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const reducedMotion = useReducedMotion();
+  const t = useT();
 
   const {
     selectedProject,
@@ -168,13 +172,14 @@ export function ProjectsSection() {
     return () => window.clearTimeout(t);
   }, [projectDeployed, reducedMotion, isMobile]);
 
-  // Couleurs de statut + données des cartes flottantes → réacteur (données statiques)
+  // Couleurs de statut + données des cartes flottantes → réacteur (mises à jour au
+  // changement de langue : les labels de contexte suivent le dictionnaire)
   useEffect(() => {
     setProjectColors(PROJECTS_DATA.map((p) => CONTEXT_HEX[p.context]));
     setProjectCards(PROJECTS_DATA.map((p) => ({
-      id: p.memId, title: p.title, tech: p.tech, statusLabel: CONTEXT_LABEL[p.context],
+      id: p.memId, title: p.title, tech: p.tech, statusLabel: t.projects.contexts[p.context] ?? CONTEXT_LABEL[p.context],
     })));
-  }, [setProjectColors, setProjectCards]);
+  }, [setProjectColors, setProjectCards, t]);
 
   // Miroir sélection/survol → store (le réacteur lit, reset au démontage)
   useEffect(() => { setProjectSelected(selectedProject); }, [selectedProject, setProjectSelected]);
@@ -277,7 +282,7 @@ export function ProjectsSection() {
         {/* Titre */}
         <div className="text-center pt-8 lg:pt-14">
           <div className="text-cyan-300/80 text-[10px] sm:text-xs font-mono tracking-[0.15em] sm:tracking-[0.25em] mb-2 px-2" aria-hidden="true">
-            <GlitchText text="> ACCÈS MÉMOIRE.PROJETS — MANIPULATION DE RÉALITÉ" duration={900} />
+            <GlitchText text={t.projects.kicker} duration={900} />
           </div>
           <h2
             id="projects-title"
@@ -290,7 +295,7 @@ export function ProjectsSection() {
               plus bas suffit) → moins de texte empilé sur petit écran. */}
           {isMobile === false && (
             <p className="projects-hint mt-3 text-gray-400 text-sm md:text-base">
-              Quatre fragments de réalité gravitent au-dessus de ma paume — clique sur un cube pour le déployer
+              {t.projects.hintDesktop}
             </p>
           )}
         </div>
@@ -306,6 +311,8 @@ export function ProjectsSection() {
                 onSelect={handleProjectSelect}
                 onOpen={handleOpen}
                 onHover={handleHoverPreview}
+                groupLabel={t.projects.group}
+                contextLabels={t.projects.contexts}
               />
             </div>
 
@@ -326,7 +333,7 @@ export function ProjectsSection() {
                       <GlitchText text={p.title} duration={p.extractionTime} />
                     </span>
                     <span className="text-[10px] font-bold tracking-wider shrink-0" style={{ color: c }}>
-                      {CONTEXT_LABEL[p.context]}
+                      {t.projects.contexts[p.context] ?? CONTEXT_LABEL[p.context]}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -345,7 +352,7 @@ export function ProjectsSection() {
                 carrousel CSS en doublon. Un tap sur un fragment ci-dessus déploie l'étude de cas. */}
             {isMobile && (
               <p className="pt-1 text-center text-[11px] text-cyan-400/50 font-mono tracking-wider">
-                ▸ Tape un fragment pour déployer son étude de cas
+                {t.projects.tapHint}
               </p>
             )}
 
@@ -354,7 +361,7 @@ export function ProjectsSection() {
               <div
                 data-holo="projects"
                 className="w-full grow min-h-[40vh] cursor-grab touch-none"
-                title="Glisse pour faire pivoter"
+                title={t.misc.dragTitle}
                 {...dragReactor}
               />
             )}
@@ -366,7 +373,7 @@ export function ProjectsSection() {
           <div
             role="status"
             aria-live="polite"
-            aria-label="Chargement en cours"
+            aria-label={t.projects.loadingLabel}
             className="flex items-center justify-center gap-3 py-2"
           >
             <div
@@ -375,7 +382,7 @@ export function ProjectsSection() {
               aria-hidden="true"
             />
             <span className="text-cyan-400 font-mono text-xs">
-              Mise sous tension...
+              {t.projects.powering}
             </span>
           </div>
         )}

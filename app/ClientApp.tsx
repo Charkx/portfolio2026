@@ -20,6 +20,8 @@ import LegalContent from "./components/LegalContent"
 import { preloadAssets } from "./lib/preloadAssets"
 import { ErrorBoundary } from "./hooks/ErrorBoundary"
 import { useReducedMotion } from "./hooks/useReducedMotion"
+import { useT } from "./i18n"
+import { useLangStore } from "./store/langStore"
 
 // Modèles 3D lourds préchargés pendant l'écran de chargement (progression réelle).
 const HEAVY_ASSETS = [
@@ -61,6 +63,7 @@ const AugmentedHumanLayer = dynamic(() => import("./components/3d/AugmentedHuman
 
 export default function ClientApp() {
   const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
+  const t = useT()
   const openModal = useModalStore((s) => s.open)
   const [progress, setProgress] = useState(0)
 
@@ -73,6 +76,13 @@ export default function ClientApp() {
   useEffect(() => {
     document.documentElement.dataset.motion = reducedMotion ? "reduced" : "full"
   }, [reducedMotion])
+
+  // <html lang> suit la langue persistée dès le boot (la réhydratation du store
+  // ne repasse pas par setLang) puis chaque bascule FR/EN
+  const lang = useLangStore((s) => s.lang)
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   // Vrai chargement : précharge les modèles 3D (le loader reflète la progression réelle).
   useEffect(() => {
@@ -141,11 +151,11 @@ export default function ClientApp() {
             href="/mentions-legales"
             onClick={(e) => {
               e.preventDefault()
-              openModal({ title: "Mentions légales", size: "md", content: <LegalContent /> })
+              openModal({ title: t.misc.legalModal, size: "md", content: <LegalContent /> })
             }}
             className="hover:text-cyan-300 transition-colors underline"
           >
-            Mentions légales
+            {t.misc.footerLegal}
           </a>
         </footer>
       </main>

@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import CalibrationConsole from './CalibrationConsole';
 import type { IntroPhase } from '../../utils/types';
+import { useT } from '../../i18n';
 
 // --- Constantes : elles ne dépendent ni des props ni de l'état du composant.
 // Donc elles vivent AU NIVEAU MODULE (créées une seule fois, pas à chaque rendu). ---
@@ -40,6 +41,7 @@ const BOOT_SEQUENCE = [
 // bandeau fixe au bas de l'écran, effacé dès que l'utilisateur scrolle.
 function AccessGrantedHint() {
   const [visible, setVisible] = useState(true);
+  const t = useT();
   useEffect(() => {
     const onScroll = () => { if (window.scrollY > 80) setVisible(false); };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -49,7 +51,7 @@ function AccessGrantedHint() {
   return (
     <div className="pointer-events-none fixed bottom-20 inset-x-0 z-40 text-center font-mono hud-reveal">
       <div className="text-green-400 text-lg neon-glow animate-pulse tracking-[0.3em]">ACCESS GRANTED</div>
-      <div className="text-cyan-300/80 text-xs mt-1">Scroll pour initialiser l&apos;interface neurale…</div>
+      <div className="text-cyan-300/80 text-xs mt-1">{t.hero.grantedHint}</div>
     </div>
   );
 }

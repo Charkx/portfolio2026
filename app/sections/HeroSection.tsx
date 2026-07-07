@@ -7,6 +7,7 @@ import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
 import { useAudioStore } from "../store/audioStore"
 import { useDragRotate } from "../hooks/useDragRotate"
+import { useT } from "../i18n"
 
 // Canvas 3D (Three.js) chargé côté client après le 1er paint : le shell du Hero
 // s'affiche immédiatement, Three.js arrive ensuite → meilleur FCP/LCP.
@@ -27,6 +28,7 @@ export default function HeroSection({
   const { introPhase, setIntroPhase } = usePortfolioStore()
   const unlocked = introPhase === "UNLOCKED"
   const dragHuman = useDragRotate("human")
+  const t = useT()
 
   // mobile : pas de canvas permanent (hologramme desktop-only) → après le boot,
   // le hero affiche une identité + la carte gyro au lieu d'un écran vide
@@ -72,10 +74,10 @@ export default function HeroSection({
               <div className="text-3xl font-bold text-cyan-300 font-display" style={{ textShadow: "0 0 10px rgba(0,0,0,0.9), 0 0 22px rgba(34,211,238,0.55)" }}>
                 CHARLY MENTHILLER
               </div>
-              <p className="mt-1.5 text-green-400/90 font-mono text-xs tracking-wider" style={{ textShadow: "0 0 8px rgba(0,0,0,0.9)" }}>⏳ Alternance · Septembre 2026</p>
+              <p className="mt-1.5 text-green-400/90 font-mono text-xs tracking-wider" style={{ textShadow: "0 0 8px rgba(0,0,0,0.9)" }}>{t.hero.availability}</p>
             </div>
             <div className="flex flex-col items-center gap-1 text-cyan-400/60 font-mono text-[11px] tracking-[0.25em]">
-              <span>SCROLL</span>
+              <span>{t.hero.scroll}</span>
               <span className="animate-bounce text-cyan-300">▾</span>
             </div>
           </div>
@@ -88,7 +90,7 @@ export default function HeroSection({
               <ErrorBoundary
                 fallback={
                   <div className="w-full h-full flex items-center justify-center text-cyan-400/50 font-mono text-sm">
-                    <span>{"// module 3D indisponible"}</span>
+                    <span>{t.hero.module3dKo}</span>
                   </div>
                 }
               >
@@ -114,7 +116,7 @@ export default function HeroSection({
                            hover:bg-cyan-400/15 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)]
                            focus-visible:outline-2 focus-visible:outline-cyan-400"
               >
-                INITIER LE SCAN
+                {t.hero.scan}
               </button>
             )}
             <button
@@ -123,7 +125,7 @@ export default function HeroSection({
               className="text-gray-500 hover:text-cyan-300 font-mono text-xs underline underline-offset-4
                          cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400"
             >
-              Passer l&apos;intro
+              {t.hero.skip}
             </button>
           </div>
         )}

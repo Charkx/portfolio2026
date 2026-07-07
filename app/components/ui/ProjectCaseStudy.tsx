@@ -10,6 +10,7 @@ import { audioEngine } from '../../lib/audioEngine';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { SiteViewer } from './ModalViewers';
 import { lenisStart, lenisStop } from '../SmoothScroll';
+import { useT } from '../../i18n';
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea,input,select,iframe,[tabindex]:not([tabindex="-1"])';
@@ -42,6 +43,9 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
   const prevFocus = useRef<HTMLElement | null>(null);
   const openModal = useModalStore((s) => s.open);
   const reducedMotion = useReducedMotion();
+  const t = useT();
+  // contenu traduit du dossier (repli : données FR du projet)
+  const td = t.projects.data[project.memId];
 
   // REMATÉRIALISATION : une grille de tuiles (teintées couleur projet) recouvre le
   // panneau puis se dissout carré par carré en ordre aléatoire — les éclats du cube
@@ -114,7 +118,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
   // démo live dans la modale globale (sans quitter la page) — href reste le repli sans JS
   const openDemo = (e: React.MouseEvent) => {
     e.preventDefault();
-    openModal({ title: `${project.title} — démo live`, size: 'xl', content: <SiteViewer src={project.demo} /> });
+    openModal({ title: `${project.title} — ${t.projects.demoModal}`, size: 'xl', content: <SiteViewer src={project.demo} /> });
   };
 
   if (typeof document === 'undefined') return null;
@@ -161,7 +165,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
         <button
           type="button"
           onClick={requestClose}
-          aria-label="Fermer"
+          aria-label={t.misc.closeAria}
           className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded
                      text-cyan-400/70 hover:text-cyan-200 hover:bg-cyan-400/10 text-2xl leading-none
                      transition-colors cursor-pointer"
@@ -174,7 +178,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
           <div className="relative h-44 md:h-56 w-full overflow-hidden rounded-t-xl border-b border-cyan-400/20">
             <Image
               src={project.image}
-              alt={`Aperçu — ${project.title}`}
+              alt={`${t.projects.previewAlt} ${project.title}`}
               fill
               sizes="(max-width: 768px) 100vw, 768px"
               className="object-cover"
@@ -186,20 +190,20 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
         <div className="p-6 space-y-5">
           <header>
             <div className="text-pink-400/70 text-[11px] font-mono tracking-wider mb-1">
-              &gt; DOSSIER PROJET — {project.memId} · {project.classification}
+              {t.projects.caseFolder} {project.memId} · {project.classification}
             </div>
             <h2 id="cs-title" className="text-2xl font-bold text-cyan-300 font-mono">{project.title}</h2>
           </header>
 
-          <Block label="Contexte">{project.probleme ?? project.description}</Block>
-          <Block label="Ma contribution">{project.solution ?? project.contribution}</Block>
-          <Block label="Résultat">
-            {project.resultat || project.highlights?.length ? (
+          <Block label={t.projects.caseContext}>{td?.probleme ?? project.probleme ?? project.description}</Block>
+          <Block label={t.projects.caseContribution}>{td?.solution ?? project.solution ?? project.contribution}</Block>
+          <Block label={t.projects.caseResult}>
+            {(td?.resultat || project.resultat) || project.highlights?.length ? (
               <>
-                {project.resultat && <p>{project.resultat}</p>}
+                {(td?.resultat || project.resultat) && <p>{td?.resultat || project.resultat}</p>}
                 {project.highlights?.length ? (
-                  <ul className={`flex flex-wrap gap-2 ${project.resultat ? 'mt-3' : ''}`}>
-                    {project.highlights.map((h) => (
+                  <ul className={`flex flex-wrap gap-2 ${(td?.resultat || project.resultat) ? 'mt-3' : ''}`}>
+                    {(td?.highlights ?? project.highlights).map((h) => (
                       <li key={h} className="text-xs px-2.5 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200 font-mono">
                         ✓ {h}
                       </li>
@@ -212,7 +216,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
 
           {/* stack technique */}
           <div>
-            <div className="text-xs text-cyan-400/60 font-mono mb-2 uppercase tracking-[0.2em]">Stack technique</div>
+            <div className="text-xs text-cyan-400/60 font-mono mb-2 uppercase tracking-[0.2em]">{t.projects.caseStack}</div>
             <div className="flex flex-wrap gap-2">
               {project.tech.map((t) => (
                 <span key={t} className="text-xs px-3 py-1 bg-pink-900/50 text-pink-300 rounded-full border border-pink-400/30 font-mono">
@@ -232,7 +236,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
                 className="px-4 py-2 border border-cyan-400/40 rounded-lg text-cyan-300 text-sm font-mono
                            hover:bg-cyan-400/10 hover:border-cyan-400/70 transition-all cursor-pointer"
               >
-                VOIR LE CODE
+                {t.projects.caseCode}
               </a>
             )}
             {project.demo && (
@@ -242,7 +246,7 @@ export default function ProjectCaseStudy({ project, accent = '#22d3ee', onClose 
                 className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 rounded-lg text-black text-sm font-mono
                            font-semibold transition-all cursor-pointer"
               >
-                LANCER LA DÉMO
+                {t.projects.caseDemo}
               </a>
             )}
           </div>

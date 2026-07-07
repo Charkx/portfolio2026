@@ -6,6 +6,7 @@ import { useSceneStore } from '../../store/sceneStore';
 import { useDiscoveryStore } from '../../store/discoveryStore';
 import { useModalStore } from '../../store/modalStore';
 import { PdfViewer, CalendlyViewer } from './ModalViewers';
+import { useT } from '../../i18n';
 
 // Coordonnées "terminal" (fin de session) : reprend le look du terminal d'accueil
 // (en-tête néon + lignes mono cyan préfixées `>` + curseur clignotant). Le survol
@@ -22,17 +23,18 @@ const CH = {
 
 export function ContactChannels() {
   const openModal = useModalStore((s) => s.open);
+  const t = useT();
   const pokeTimer = useRef<number | undefined>(undefined);
 
   const openCv = (e: React.MouseEvent) => {
     e.preventDefault();
-    openModal({ title: 'CV — Charly Menthiller', size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
+    openModal({ title: t.hud.cvModalTitle, size: 'xl', content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" /> });
   };
 
   const openCalendly = () => {
     // clin d'œil : la carte célèbre (LET'S WORK TOGETHER) à l'ouverture de la prise de RDV
     useSceneStore.getState().setEndSessionSent(true);
-    openModal({ title: 'Prendre rendez-vous', size: 'lg', content: <CalendlyViewer src={PROFILE.calendly} /> });
+    openModal({ title: t.contact.calendlyModal, size: 'lg', content: <CalendlyViewer src={PROFILE.calendly} /> });
   };
 
   // tap/survol de l'INTITULÉ → la CARTE affiche le message + capte le signal "canal ouvert",
@@ -60,7 +62,7 @@ export function ContactChannels() {
     <div className="font-mono text-center">
       {/* en-tête néon, comme le terminal d'accueil */}
       <div className="text-cyan-400 text-lg md:text-xl neon-glow animate-pulse mb-3 tracking-[0.2em]">
-        CANAUX DE CONTACT
+        {t.contact.channelsHeader}
       </div>
 
       {/* bloc mono aligné à gauche, façon sortie terminal — largeur bornée, valeurs tronquées.
@@ -80,11 +82,11 @@ export function ContactChannels() {
         </div>
         <div className={line} {...hoverProps('cv')}>
           {arrow}<button type="button" onClick={() => pokeCard('cv')} className={key}>CV</button>
-          <a href={PROFILE.cv} onClick={openCv} className={`${val} cursor-pointer`} style={{ color: CH.cv }}>◆ Consulter le CV</a>
+          <a href={PROFILE.cv} onClick={openCv} className={`${val} cursor-pointer`} style={{ color: CH.cv }}>{t.contact.cvValue}</a>
         </div>
         <div className={line}>
           {arrow}<button type="button" onClick={() => pokeCard('dispo')} className={key}>DISPO</button>
-          <span className={`${val} text-green-400/90`}>⏳ {PROFILE.availability}</span>
+          <span className={`${val} text-green-400/90`}>{t.contact.availability}</span>
         </div>
         {/* curseur clignotant */}
         <div className={line}>{arrow}<span className="term-blink text-cyan-400">_</span></div>
@@ -97,9 +99,9 @@ export function ContactChannels() {
           onClick={openCalendly}
           className="mt-5 w-full max-w-md sm:w-auto rounded px-6 py-2.5 font-mono text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
         >
-          ▸ PRENDRE RENDEZ-VOUS
+          {t.contact.calendlyBtn}
         </button>
-        <div className="mt-1 text-[10px] text-cyan-400/40 tracking-wider">via Calendly · créneau de 30 min</div>
+        <div className="mt-1 text-[10px] text-cyan-400/40 tracking-wider">{t.contact.calendlySub}</div>
       </div>
     </div>
   );

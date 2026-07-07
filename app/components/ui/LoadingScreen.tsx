@@ -1,17 +1,13 @@
 "use client"
 
-const LOADING_STEPS = [
-  "INITIALISATION...",
-  "CHARGEMENT DES MODULES HOLOGRAPHIQUES...",
-  "DÉCOMPRESSION DU MODÈLE NEURAL...",
-  "CALIBRAGE DE L'INTERFACE...",
-  "SYSTÈME PRÊT",
-]
+import { useT } from "../../i18n"
 
 // Loader contrôlé : `progress` (0-100) reflète le chargement réel des modèles 3D.
 export function CyberpunkLoader({ progress = 0 }: { progress?: number }) {
+  const t = useT()
+  const steps = t.loader.steps
   const pct = Math.round(progress)
-  const loadingText = LOADING_STEPS[Math.min(LOADING_STEPS.length - 1, Math.floor((pct / 100) * LOADING_STEPS.length))]
+  const loadingText = steps[Math.min(steps.length - 1, Math.floor((pct / 100) * steps.length))]
 
   return (
     <div className="fixed inset-0 bg-black flex items-center justify-center z-50 px-6">
@@ -34,7 +30,7 @@ export function CyberpunkLoader({ progress = 0 }: { progress?: number }) {
           </div>
 
           <div className="flex justify-between text-sm font-mono">
-            <span className="text-gray-400">Chargement...</span>
+            <span className="text-gray-400">{t.loader.loading}</span>
             <span className="text-cyan-400">{pct}%</span>
           </div>
         </div>

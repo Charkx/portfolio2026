@@ -9,6 +9,7 @@ import {
   isDiscoveryComplete,
 } from "../../store/discoveryStore"
 import { audioEngine } from "../../lib/audioEngine"
+import { useT } from "../../i18n"
 
 /**
  * Jauge SIG du HUD — reflète les 5 signaux cachés captés (0 → 100 %).
@@ -17,6 +18,7 @@ import { audioEngine } from "../../lib/audioEngine"
  */
 export function SignalMeter({ booted }: { booted: boolean }) {
   const router = useRouter()
+  const t = useT()
   const found = useDiscoveryStore((s) => s.found)
   const pct = Math.round(discoveryProgress(found) * 100)
   const complete = isDiscoveryComplete(found)
@@ -32,11 +34,11 @@ export function SignalMeter({ booted }: { booted: boolean }) {
         <button
           onClick={open}
           onMouseEnter={() => audioEngine.play("hover")}
-          aria-label="Signal complet — ouvrir la transmission secrète"
+          aria-label={t.signals.accessAria}
           className="font-mono text-green-300 hover:text-green-100 animate-pulse cursor-pointer transition-colors"
           style={{ textShadow: "0 0 8px rgba(74,222,128,0.8)" }}
         >
-          SIG: <span className="tracking-wider">[ACCÈS] ▸</span>
+          SIG: <span className="tracking-wider">{t.signals.access}</span>
         </button>
       ) : (
         <span>
@@ -57,7 +59,7 @@ export function SignalMeter({ booted }: { booted: boolean }) {
                    opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50"
       >
         <div className="mb-1.5 tracking-widest text-cyan-300/90">
-          &gt; SIGNAUX CAPTÉS · {found.length}/{SIGNALS.length}
+          {t.signals.panelHeader} {found.length}/{SIGNALS.length}
         </div>
         {SIGNALS.map((sig) => {
           const got = found.includes(sig.id)
@@ -66,15 +68,15 @@ export function SignalMeter({ booted }: { booted: boolean }) {
               key={sig.id}
               className={got ? "text-cyan-300" : "text-cyan-400/30"}
             >
-              {got ? `◆ ${sig.label}` : "◇ ▓▓▓▓ ▓▓▓▓"}
+              {got ? `◆ ${t.signals.labels[sig.id] ?? sig.label}` : "◇ ▓▓▓▓ ▓▓▓▓"}
             </div>
           )
         })}
         <div className="mt-2 pt-2 border-t border-cyan-400/15 text-[9px] tracking-wide">
           {complete ? (
-            <span className="text-green-400">▸ TRANSMISSION DÉVERROUILLÉE</span>
+            <span className="text-green-400">{t.signals.unlocked}</span>
           ) : (
-            <span className="text-cyan-400/50">Capte tous les signaux pour déverrouiller</span>
+            <span className="text-cyan-400/50">{t.signals.hint}</span>
           )}
         </div>
       </div>
@@ -87,6 +89,7 @@ export function SignalMeter({ booted }: { booted: boolean }) {
  * Se monte à la racine du HUD ; disparaît seul après ~2,6 s.
  */
 export function SignalToast() {
+  const t = useT()
   const lastFound = useDiscoveryStore((s) => s.lastFound)
   const clearLast = useDiscoveryStore((s) => s.clearLast)
   const found = useDiscoveryStore((s) => s.found)
@@ -120,10 +123,10 @@ export function SignalToast() {
                       ${complete ? "border-green-400/60 bg-green-950/40" : "border-cyan-400/50 bg-black/80"}`}
         >
           <div className={`text-xs tracking-widest ${complete ? "text-green-300" : "text-cyan-300"}`}>
-            ◆ {sig.label}
+            ◆ {t.signals.labels[sig.id] ?? sig.label}
           </div>
           <div className={`mt-0.5 text-[10px] ${complete ? "text-green-400" : "text-cyan-400/70"}`}>
-            {complete ? "SIGNAL COMPLET — TRANSMISSION DÉVERROUILLÉE" : `SIGNAL +20% · SIG ${pct}%`}
+            {complete ? t.signals.toastComplete : t.signals.toastStep(pct)}
           </div>
         </div>
       )}

@@ -10,6 +10,7 @@ import type { Pulse } from "../components/3d/holoMaterial"
 import type { Float } from "./TransmissionCanvas"
 import { audioEngine } from "../lib/audioEngine"
 import CustomCursor from "../components/ui/CustomCursor"
+import { useT } from "../i18n"
 
 // Le canvas 3D (three/GLTF) n'est chargé que côté client : évite toute exécution
 // WebGL au prerender/build (même parti pris que le canvas permanent du site).
@@ -21,6 +22,7 @@ const HIT_DMG = 15            // dégâts par brèche
 
 export default function TransmissionPage() {
   const router = useRouter()
+  const t = useT()
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [phase, setPhase] = useState<"idle" | "playing" | "over">("idle")
   const [outcome, setOutcome] = useState<"win" | "lose">("win")
@@ -89,12 +91,12 @@ export default function TransmissionPage() {
     return (
       <main className="page-fade-in fixed inset-0 bg-black flex flex-col items-center justify-center gap-6 text-center font-mono px-6">
         <CustomCursor />
-        <div className="text-cyan-300 text-lg tracking-[0.3em]">&gt; SIGNAL INCOMPLET</div>
+        <div className="text-cyan-300 text-lg tracking-[0.3em]">{t.transmission.lockedTitle}</div>
         <p className="text-cyan-400/60 text-sm max-w-md">
-          Cette transmission se déverrouille en captant les 5 signaux disséminés dans le site (jauge SIG).
+          {t.transmission.lockedBody}
         </p>
         <button onClick={() => router.push("/")} className="rounded border border-cyan-400/50 px-5 py-2 text-cyan-300 hover:bg-cyan-400/10 transition-colors cursor-pointer">
-          ◂ RETOUR
+          {t.transmission.back}
         </button>
       </main>
     )
@@ -128,12 +130,12 @@ export default function TransmissionPage() {
       <div className="pointer-events-none absolute inset-0 flex flex-col font-mono text-cyan-300">
         <div className="flex items-start justify-between p-6">
           <Link href="/" className="pointer-events-auto rounded border border-cyan-400/40 px-4 py-1.5 text-xs tracking-widest hover:bg-cyan-400/10 transition-colors">
-            ◂ QUITTER
+            {t.transmission.quit}
           </Link>
 
           {/* intégrité de l'hôte + combo */}
           <div className="flex flex-col items-center gap-1">
-            <div className="text-[10px] tracking-[0.3em] text-cyan-400/70">INTÉGRITÉ DE L&apos;HÔTE</div>
+            <div className="text-[10px] tracking-[0.3em] text-cyan-400/70">{t.transmission.integrity}</div>
             <div className="w-56 h-2 rounded-full bg-cyan-950/60 border border-cyan-400/30 overflow-hidden">
               <div
                 className="h-full transition-all duration-200"
@@ -141,14 +143,14 @@ export default function TransmissionPage() {
               />
             </div>
             {combo > 1 && phase === "playing" && (
-              <div className="text-pink-300 text-sm tracking-widest animate-pulse">COMBO ×{combo}</div>
+              <div className="text-pink-300 text-sm tracking-widest animate-pulse">{t.transmission.combo}{combo}</div>
             )}
           </div>
 
           <div className="text-right text-xs">
-            <div>SCORE <span className="text-cyan-100 text-base">{score}</span></div>
+            <div>{t.transmission.score} <span className="text-cyan-100 text-base">{score}</span></div>
             <div className={timeLeft <= 10 && phase === "playing" ? "text-pink-400" : "text-cyan-400/70"}>
-              {phase === "playing" ? `${timeLeft}s` : `RECORD ${best}`}
+              {phase === "playing" ? `${timeLeft}s` : `${t.transmission.record} ${best}`}
             </div>
           </div>
         </div>
@@ -160,22 +162,21 @@ export default function TransmissionPage() {
               {phase === "over" ? (
                 <>
                   <div className={`text-sm tracking-[0.3em] mb-2 ${outcome === "win" ? "text-green-300" : "text-pink-300"}`}>
-                    &gt; {outcome === "win" ? "HÔTE PRÉSERVÉ" : "HÔTE COMPROMIS"}
+                    &gt; {outcome === "win" ? t.transmission.win : t.transmission.lose}
                   </div>
                   <div className="text-4xl text-cyan-100 mb-1">{score}</div>
-                  <div className="text-cyan-400/60 text-xs mb-6">menaces neutralisées · record {best}</div>
+                  <div className="text-cyan-400/60 text-xs mb-6">{t.transmission.neutralized(best)}</div>
                 </>
               ) : (
                 <>
-                  <div className="text-cyan-200 text-lg tracking-[0.25em] mb-2">SIGNAL CAPTÉ ✦</div>
+                  <div className="text-cyan-200 text-lg tracking-[0.25em] mb-2">{t.transmission.idleTitle}</div>
                   <p className="text-cyan-400/70 text-xs leading-relaxed mb-6">
-                    Des data-cubes convergent vers l&apos;hôte holographique. Clique-les avant l&apos;impact —
-                    enchaîne pour le combo. Une brèche entame l&apos;intégrité. Tiens {GAME_TIME}s.
+                    {t.transmission.brief(GAME_TIME)}
                   </p>
                 </>
               )}
               <button onClick={start} className="rounded bg-cyan-500 hover:bg-cyan-400 text-black font-semibold px-6 py-2.5 text-sm tracking-widest transition-colors cursor-pointer">
-                {phase === "over" ? "REJOUER" : "▸ LANCER"}
+                {phase === "over" ? t.transmission.replay : t.transmission.launch}
               </button>
             </div>
           </div>

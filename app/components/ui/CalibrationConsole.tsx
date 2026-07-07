@@ -5,6 +5,8 @@ import { useAudioStore } from '../../store/audioStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { audioEngine } from '../../lib/audioEngine';
+import { useLangStore } from '../../store/langStore';
+import { useT } from '../../i18n';
 
 // Bouton [OPTION] de la console — style terminal
 function Opt({ active, disabled, title, onClick, children }: {
@@ -65,6 +67,9 @@ export default function CalibrationConsole({ onConfirm }: { onConfirm: () => voi
   const reduced = useReducedMotion(); // effectif (réglage manuel OU préférence système)
 
   const [step, setStep] = useState(STEP_AUDIO);
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
+  const t = useT();
   const [volumeSkipped, setVolumeSkipped] = useState(false); // audio coupé → pas de question volume
 
   // répondre à l'étape COURANTE fait apparaître la suivante (re-cliquer une
@@ -85,29 +90,29 @@ export default function CalibrationConsole({ onConfirm }: { onConfirm: () => voi
   return (
     <div className="space-y-1.5">
       <Line>
-        <span className="text-cyan-400/70">&gt; Sujet reconnu — calibrage de session requis :</span>
+        <span className="text-cyan-400/70">{t.calibration.intro}</span>
       </Line>
 
       {step >= STEP_AUDIO && (
         <Line>
-          <span className="text-cyan-400/60">&gt; FLUX AUDIO :</span>
+          <span className="text-cyan-400/60">{t.calibration.audio}</span>
           {/* effet immédiat : [ACTIVÉ] lance la musique (geste utilisateur) → mire du volume */}
-          <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); advance(STEP_AUDIO); }}>[ACTIVÉ]</Opt>
-          <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); setVolumeSkipped(true); advance(STEP_AUDIO, true); }}>[COUPÉ]</Opt>
+          <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); advance(STEP_AUDIO); }}>{t.calibration.audioOn}</Opt>
+          <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); setVolumeSkipped(true); advance(STEP_AUDIO, true); }}>{t.calibration.audioOff}</Opt>
         </Line>
       )}
 
       {step >= STEP_VOLUME && !volumeSkipped && (
         <Line>
-          <span className="text-cyan-400/60">&gt; VOLUME :</span>
-          <span role="group" aria-label="Volume du son" className="flex items-end gap-[3px] h-4">
+          <span className="text-cyan-400/60">{t.calibration.volume}</span>
+          <span role="group" aria-label={t.hud.volume} className="flex items-end gap-[3px] h-4">
             {[1, 2, 3, 4, 5].map((n) => {
               const lit = enabled && volume >= n / 5 - 0.001;
               return (
                 <button
                   key={n}
                   type="button"
-                  aria-label={`Volume ${n} sur 5`}
+                  aria-label={t.misc.volumeOf(n)}
                   aria-pressed={lit}
                   onClick={() => { setVolume(n / 5); advance(STEP_VOLUME); }}
                   onMouseEnter={() => audioEngine.play('hover')}
@@ -123,31 +128,31 @@ export default function CalibrationConsole({ onConfirm }: { onConfirm: () => voi
 
       {step >= STEP_MOTION && (
         <Line>
-          <span className="text-cyan-400/60">&gt; ANIMATIONS :</span>
-          <Opt active={!reduced} onClick={() => { setMotion('full'); advance(STEP_MOTION); }}>[COMPLÈTES]</Opt>
-          <Opt active={reduced} onClick={() => { setMotion('reduced'); advance(STEP_MOTION); }}>[RÉDUITES]</Opt>
+          <span className="text-cyan-400/60">{t.calibration.motion}</span>
+          <Opt active={!reduced} onClick={() => { setMotion('full'); advance(STEP_MOTION); }}>{t.calibration.motionFull}</Opt>
+          <Opt active={reduced} onClick={() => { setMotion('reduced'); advance(STEP_MOTION); }}>{t.calibration.motionReduced}</Opt>
         </Line>
       )}
 
       {step >= STEP_QUALITY && (
         <Line>
-          <span className="text-cyan-400/60">&gt; QUALITÉ :</span>
-          <Opt active={quality === 'high'} onClick={() => { setQuality('high'); advance(STEP_QUALITY); }}>[HAUTE]</Opt>
-          <Opt active={quality === 'eco'} title="Bloom coupé, rendu allégé" onClick={() => { setQuality('eco'); advance(STEP_QUALITY); }}>[ÉCO]</Opt>
+          <span className="text-cyan-400/60">{t.calibration.quality}</span>
+          <Opt active={quality === 'high'} onClick={() => { setQuality('high'); advance(STEP_QUALITY); }}>{t.calibration.qHigh}</Opt>
+          <Opt active={quality === 'eco'} title={t.calibration.qEcoTip} onClick={() => { setQuality('eco'); advance(STEP_QUALITY); }}>{t.calibration.qEco}</Opt>
         </Line>
       )}
 
       {step >= STEP_LANG && (
         <Line>
-          <span className="text-cyan-400/60">&gt; LANGUE :</span>
-          <Opt active onClick={() => advance(STEP_LANG)}>[FR]</Opt>
-          <Opt disabled title="English — bientôt disponible">[EN]</Opt>
+          <span className="text-cyan-400/60">{t.calibration.lang}</span>
+          <Opt active={lang === 'fr'} onClick={() => { setLang('fr'); advance(STEP_LANG); }}>[FR]</Opt>
+          <Opt active={lang === 'en'} onClick={() => { setLang('en'); advance(STEP_LANG); }}>[EN]</Opt>
         </Line>
       )}
 
       {step >= DONE ? (
         <Line>
-          <span className="text-green-400">&gt; Paramètres verrouillés — établissement du lien neural…</span>
+          <span className="text-green-400">{t.calibration.locked}</span>
           <span className="animate-pulse text-cyan-300" aria-hidden="true">_</span>
         </Line>
       ) : (
