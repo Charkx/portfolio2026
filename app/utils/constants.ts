@@ -9,8 +9,8 @@ export const PROFILE = {
   availability: "Alternance · Septembre 2026",
   subtitle:     "Ingénieur Bac+5 Polytech Marseille · Bachelor CODA Avignon",
   email:        "charly.menthiller@gmail.com",
-  phone:        "0651726048",
-  phoneDisplay: "06 51 72 60 48",
+  // (pas de téléphone ici : constants.ts part dans le bundle client — le numéro
+  //  perso ne doit être exposé nulle part, même non affiché)
   github:       "https://github.com/Charkx",
   githubLabel:  "github.com/Charkx",
   linkedin:     "https://www.linkedin.com/in/charly-menthiller/",

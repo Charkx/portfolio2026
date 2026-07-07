@@ -4,25 +4,10 @@ import { PROJECTS_DATA } from "./utils/projectsData"
 
 // Page serveur : rend un résumé indexable (SEO + lecteurs d'écran) dans le HTML
 // initial — l'expérience 3D interactive (ClientApp) se superpose côté client.
+// (les données structurées JSON-LD vivent dans layout.tsx — une seule source)
 export default function Page() {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: PROFILE.name,
-    jobTitle: "Développeur Full Stack",
-    description: `${PROFILE.title} — ${PROFILE.availability}`,
-    email: `mailto:${PROFILE.email}`,
-    url: "https://charlymenthiller.vercel.app",
-    sameAs: [PROFILE.github, PROFILE.linkedin],
-  }
-
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
       {/* Résumé accessible et indexable (sr-only : lu par les crawlers et lecteurs
           d'écran, invisible à l'écran). Liens en tabIndex -1 : pas de tab fantôme. */}
       <section className="sr-only" aria-label="Résumé du portfolio">
