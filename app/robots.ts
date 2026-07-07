@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next"
+import { SITE_URL } from "./utils/constants"
 
 // Génère /robots.txt — autorise tout + pointe le sitemap.
 export default function robots(): MetadataRoute.Robots {
-  const base = "https://charlymenthiller.vercel.app"
   return {
     rules: { userAgent: "*", allow: "/" },
-    sitemap: `${base}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   }
 }

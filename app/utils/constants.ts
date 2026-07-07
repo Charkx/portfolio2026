@@ -1,5 +1,8 @@
 // --- Profil / identité ---
 
+// URL canonique du site (domaine custom) — source unique pour metadata/sitemap/robots.
+export const SITE_URL = "https://charlymenthiller.com"
+
 export const PROFILE = {
   name:         "Charly Menthiller",
   title:        "Ingénieur Informatique - Développeur Full Stack",
