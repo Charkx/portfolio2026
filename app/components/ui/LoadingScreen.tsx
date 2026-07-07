@@ -14,11 +14,11 @@ export function CyberpunkLoader({ progress = 0 }: { progress?: number }) {
   const loadingText = LOADING_STEPS[Math.min(LOADING_STEPS.length - 1, Math.floor((pct / 100) * LOADING_STEPS.length))]
 
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-      <div className="text-center space-y-8 max-w-md">
+    <div className="fixed inset-0 bg-black flex items-center justify-center z-50 px-6">
+      <div className="text-center space-y-8 w-full max-w-md">
         {/* Logo/Titre */}
         <div className="space-y-4">
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 font-display">
+          <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 font-display break-words">
             NEURAL_INTERFACE
           </h1>
           <div className="text-cyan-400 font-mono text-sm">v2.077</div>
@@ -26,7 +26,7 @@ export function CyberpunkLoader({ progress = 0 }: { progress?: number }) {
 
         {/* Barre de progression */}
         <div className="space-y-4">
-          <div className="w-80 h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div className="w-full max-w-xs mx-auto h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-cyan-400 to-green-400 transition-all duration-200 ease-out"
               style={{ width: `${pct}%` }}
@@ -43,7 +43,7 @@ export function CyberpunkLoader({ progress = 0 }: { progress?: number }) {
         <div className="text-green-400 font-mono text-sm animate-pulse">{loadingText}</div>
 
         {/* Indicateurs de statut */}
-        <div className="flex justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span className="text-green-400 text-xs font-mono">NEURAL_LINK</span>

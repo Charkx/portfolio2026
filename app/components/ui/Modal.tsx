@@ -107,7 +107,7 @@ export default function Modal({
           </button>
         </header>
 
-        <div className="overflow-auto p-5 grow">{children}</div>
+        <div className="overflow-auto p-5 grow min-h-0">{children}</div>
       </div>
     </div>,
     document.body

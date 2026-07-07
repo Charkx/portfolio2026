@@ -133,7 +133,7 @@ export default function ClientApp() {
           </>
         )}
 
-        <footer className="relative z-10 pt-6 pb-24 md:pb-6 text-center text-cyan-100/30 font-mono text-xs">
+        <footer className="relative z-20 bg-[#05070a] md:bg-transparent pt-6 pb-24 md:pb-6 text-center text-cyan-100/30 font-mono text-xs">
           <span>© {new Date().getFullYear()} Charly Menthiller</span>
           <span className="mx-2">·</span>
           {/* href = repli sans JS (page indexable) · onClick = modale sans quitter la page */}

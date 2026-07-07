@@ -9,8 +9,6 @@ import { useSceneStore } from '../store/sceneStore';
 import BiometricCard from '../components/3d/BiometricCard';
 import { ContactChannels } from '../components/ui/ContactChannels';
 import { SectionTitle } from '../components/ui/SectionTitle';
-import { useModalStore } from '../store/modalStore';
-import LegalContent from '../components/LegalContent';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -111,7 +109,7 @@ export default function ContactSection() {
   // --- MOBILE : la carte artefact SEULE (fond sombre → l'hologramme est masqué) + coordonnées ---
   if (isMobile) {
     return (
-      <section id="contact" ref={sectionRef} className="relative z-20 min-h-[100svh] flex flex-col items-center justify-center gap-4 pt-20 pb-28 px-4 scroll-mt-20 bg-[#05070a]">
+      <section id="contact" ref={sectionRef} className="relative z-20 flex flex-col items-center justify-start gap-4 pt-20 pb-8 px-4 scroll-mt-20 bg-[#05070a]">
         {/* ancre 5e station : sert UNIQUEMENT à mapper le scroll (le fond sombre masque
             l'hologramme partagé — au contact, seule la carte subsiste) */}
         <div data-holo="contact" aria-hidden className="absolute inset-0 pointer-events-none" />
@@ -132,14 +130,6 @@ export default function ContactSection() {
           </div>
           {/* canaux : intitulé = la carte parle · valeur = ouvre le canal */}
           <div className="w-full max-w-md glass-panel rounded-xl p-4"><ContactChannels /></div>
-          {/* mentions légales accessibles ici (plutôt qu'en pied de page, trop bas) */}
-          <button
-            type="button"
-            onClick={() => useModalStore.getState().open({ title: 'Mentions légales', size: 'md', content: <LegalContent /> })}
-            className="text-cyan-100/40 hover:text-cyan-300 underline underline-offset-4 font-mono text-xs transition-colors cursor-pointer"
-          >
-            Mentions légales
-          </button>
         </div>
       </section>
     );
