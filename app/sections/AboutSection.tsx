@@ -9,6 +9,7 @@ import { audioEngine } from '../lib/audioEngine';
 import { useDiscoveryStore } from '../store/discoveryStore';
 import { SectionTitle } from '../components/ui/SectionTitle';
 import { useT } from '../i18n';
+import { useLangStore } from '../store/langStore';
 import type { Dict } from '../i18n/dict';
 
 // Aligné sur les couleurs des catégories (PROFIL rose · EXPÉRIENCE vert vif · FORMATION ambre).
@@ -45,6 +46,7 @@ export default function AboutSection() {
   const setSelected = useSceneStore((s) => s.setAboutSelected);
   const dragBrain = useDragRotate('brain');
   const t = useT();
+  const lang = useLangStore((s) => s.lang);
   const blocks = t.about.blocks;
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
@@ -61,8 +63,9 @@ export default function AboutSection() {
   const activeBlockColor = blockColors[selected];
   const activeColor = scanColors[selected];
 
-  // Effet machine à écrire : se relance quand `selected` change.
-  const { shown, typingLine, done } = useTypewriter(active.text, selected);
+  // Effet machine à écrire : se relance quand `selected` OU la langue change
+  // (les lignes changent avec la langue → la frappe rejoue dans la nouvelle langue).
+  const { shown, typingLine, done } = useTypewriter(active.text, `${lang}-${selected}`);
 
   // MOBILE : tap sur une couche → le scan du cerveau JOUE À L'ÉCRAN (rien ne le
   // recouvre), puis le dossier s'ouvre en modale (~750 ms plus tard, le temps du scan).
