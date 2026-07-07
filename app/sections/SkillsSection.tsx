@@ -54,8 +54,8 @@ const LEVEL_FILTERS = [
 // Contenu de la MODALE mobile "séquenceur ADN" : filtres + liste des modules + les 2
 // brins de l'hélice. Autonome (son propre état de filtre). Tap sur un module → la
 // fiche de décodage remplace cette modale (drill-down).
-function SkillsBrowser() {
-  const [level, setLevel] = useState(0);
+function SkillsBrowser({ initialLevel = 0 }: { initialLevel?: number }) {
+  const [level, setLevel] = useState(initialLevel);
 
   const openTech = (techName: string) => {
     const id = techName.toLowerCase();
@@ -191,17 +191,34 @@ export default function SkillsSection() {
             kicker="ACCÈS MÉMOIRE.COMPÉTENCES — SÉQUENÇAGE ADN"
             title="SKILLS:DNA_MODULE_ANALYSIS"
           />
-          {/* landing épuré : l'ADN reste PLEINEMENT visible en fond ; les modules
-              (langages, méthodes, IA) s'ouvrent dans une modale */}
-          <button
-            type="button"
-            onClick={() => useModalStore.getState().open({ title: '>> SÉQUENÇAGE ADN — MODULES', size: 'md', content: <SkillsBrowser /> })}
-            className="rounded px-6 py-2.5 font-mono text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
-          >
-            ▸ ANALYSER MES MODULES
-          </button>
+          {/* boutons de maîtrise : tap → l'hélice se réorganise à l'écran, puis (petit
+              délai) la modale des modules s'ouvre, filtrée sur le niveau choisi.
+              L'ADN reste PLEINEMENT visible en fond. */}
+          <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Niveau de maîtrise">
+            {LEVEL_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => {
+                  setLevelFilter(f.value);                    // l'hélice réagit dans le canvas
+                  audioEngine.play('molecular');
+                  useDiscoveryStore.getState().discover('adn');
+                  setTimeout(() => {
+                    useModalStore.getState().open({ title: '>> SÉQUENÇAGE ADN — MODULES', size: 'md', content: <SkillsBrowser initialLevel={f.value} /> });
+                  }, 750);
+                }}
+                aria-pressed={levelFilter === f.value}
+                className={`px-3 py-1.5 rounded font-mono text-xs border transition-colors ${
+                  levelFilter === f.value
+                    ? 'bg-cyan-500 text-black border-cyan-400'
+                    : 'bg-black/30 text-cyan-400/70 border-cyan-400/30'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
-            ▸ Ouvre le séquenceur : langages, méthodes &amp; IA — tape un module pour le décoder
+            ▸ Choisis un niveau — l&apos;hélice se réorganise, puis les modules s&apos;ouvrent
           </p>
         </div>
       </section>

@@ -63,7 +63,7 @@ const OX_BY_FOCUS: Record<string, number> = {
 
 // portrait : on descend légèrement cerveau/ADN pour qu'ils apparaissent SOUS les
 // boutons (on vise un poil plus haut → le module glisse vers le bas de l'écran)
-const OY_PORTRAIT: Record<string, number> = { brain: 0.14, adn: 0.05 };
+const OY_PORTRAIT: Record<string, number> = { brain: 0.06, adn: 0.018 };
 
 // Station projets : caméra à la place des yeux de l'hologramme, regardant sa main levée.
 // Mettre false pour revenir au cadrage frontal "corps entier".
