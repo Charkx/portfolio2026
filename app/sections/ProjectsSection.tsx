@@ -286,12 +286,13 @@ export function ProjectsSection() {
           >
             PROJECTS:<wbr />MANIPULATION_REALITE
           </h2>
-          <p className="projects-hint mt-3 text-gray-400 text-sm md:text-base">
-            {isMobile
-              ? "Les fragments de réalité que j'ai construits"
-              : 'Quatre fragments de réalité gravitent au-dessus de ma paume — clique sur un cube pour le déployer'
-            }
-          </p>
+          {/* desktop : phrase d'ambiance. mobile : on l'omet (la consigne d'interaction
+              plus bas suffit) → moins de texte empilé sur petit écran. */}
+          {isMobile === false && (
+            <p className="projects-hint mt-3 text-gray-400 text-sm md:text-base">
+              Quatre fragments de réalité gravitent au-dessus de ma paume — clique sur un cube pour le déployer
+            </p>
+          )}
         </div>
 
         {/* Sélecteur : chemin clavier de référence, centré sous le titre — sans cadre,
