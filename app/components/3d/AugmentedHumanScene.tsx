@@ -56,6 +56,11 @@ const CFG = {
   contact: { scale: 0.20, x: 0, y: 0.55, z: 0, zoom: 4.4, ox: 0, oy: 0 },
 } as const;
 
+// décalage de composition par focus (annulé en portrait pour centrer le module)
+const OX_BY_FOCUS: Record<string, number> = {
+  brain: CFG.brain.ox, adn: CFG.adn.ox, heart: CFG.heart.ox, contact: CFG.contact.ox,
+} as const;
+
 // Station projets : caméra à la place des yeux de l'hologramme, regardant sa main levée.
 // Mettre false pour revenir au cadrage frontal "corps entier".
 const PROJECTS_POV = true;
@@ -608,13 +613,16 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     _baseTgt.current.lerpVectors(A.target, B.target, f);
 
     // PORTRAIT (mobile) : les stations cadrent le module À CÔTÉ du texte (décalage
-    // latéral pensé pour le desktop) → cerveau/ADN sortaient du cadre. Empilé en
-    // portrait, on rabat le x vers 0 : chaque module revient plein centre.
-    // (le POV projets, piloté par les os, n'est pas concerné)
+    // de composition `ox` pensé pour le desktop) → cerveau/ADN sortaient du cadre
+    // (l'ADN, très zoomé, partait carrément hors écran). Empilé en portrait, on
+    // ANNULE exactement ce décalage : caméra + cible reviennent sur le x réel du
+    // module → chaque module plein centre. (le POV projets, piloté par les os, n'est
+    // pas concerné : son override arrive juste après.)
     const el = camera as THREE.PerspectiveCamera;
     if (el.aspect < 1) {
-      _base.current.x *= 0.22;
-      _baseTgt.current.x *= 0.22;
+      const oxBlend = (OX_BY_FOCUS[A.focus] ?? 0) * (1 - f) + (OX_BY_FOCUS[B.focus] ?? 0) * f;
+      _base.current.x -= oxBlend;
+      _baseTgt.current.x -= oxBlend;
     }
 
     // Vue subjective "yeux de l'hologramme" à la station projets : la caméra glisse

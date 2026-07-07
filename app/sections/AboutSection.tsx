@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { ABOUT_TEXT } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
+import { useModalStore } from '../store/modalStore';
 import { useDragRotate } from '../hooks/useDragRotate';
 import { audioEngine } from '../lib/audioEngine';
 import { useDiscoveryStore } from '../store/discoveryStore';
@@ -59,19 +60,23 @@ export default function AboutSection() {
   // Effet machine à écrire : se relance quand `selected` change.
   const { shown, typingLine, done } = useTypewriter(active.text, selected);
 
-  // MOBILE : tap sur une couche → le scan du cerveau JOUE À L'ÉCRAN (en fond) et le
-  // dossier s'affiche INLINE, sous les onglets (fond translucide, cerveau derrière).
+  // MOBILE : tap sur une couche → le scan du cerveau JOUE À L'ÉCRAN (rien ne le
+  // recouvre), puis le dossier s'ouvre en modale (~750 ms plus tard, le temps du scan).
   const openBlock = (i: number) => {
     setSelected(i);
     audioEngine.play('scan');
     useDiscoveryStore.getState().discover('brain');
+    const block = ABOUT_TEXT[i];
+    setTimeout(() => {
+      useModalStore.getState().open({ title: `>> ${block.title}`, size: 'md', content: <AboutBlockBody index={i} /> });
+    }, 750);
   };
 
   if (isMobile) {
     return (
       <section
         id="about"
-        className="holo-veil-fade relative min-h-[100svh] flex flex-col justify-center px-4 pt-20 pb-28"
+        className="holo-veil-fade relative min-h-[100svh] flex flex-col justify-start px-4 pt-20 pb-28"
       >
         {/* ancre plein cadre : le cerveau se cale au centre de la section, EN FOND */}
         <div data-holo="about" aria-hidden className="absolute inset-0 pointer-events-none" />
@@ -101,12 +106,9 @@ export default function AboutSection() {
               </button>
             ))}
           </div>
-
-          {/* dossier INLINE — fond translucide, le cerveau reste visible derrière */}
-          <div className="mt-4 w-full max-w-lg max-h-[46svh] overflow-y-auto rounded-lg border border-cyan-400/20 bg-black/45 backdrop-blur-[3px] p-4">
-            <h3 className={`${active.color} text-sm mb-2 font-mono`}>&gt;&gt; {active.title}</h3>
-            <AboutBlockBody index={selected} />
-          </div>
+          <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
+            ▸ Tape une couche — le cerveau se scanne, puis le dossier s&apos;ouvre
+          </p>
         </div>
       </section>
     );

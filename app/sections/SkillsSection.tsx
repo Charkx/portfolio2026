@@ -138,7 +138,7 @@ export default function SkillsSection() {
     return (
       <section
         id="skills"
-        className="holo-veil-fade relative min-h-[100svh] flex flex-col justify-center px-4 pt-20 pb-28 scroll-mt-[100px]"
+        className="holo-veil-fade relative min-h-[100svh] flex flex-col justify-start px-4 pt-20 pb-28 scroll-mt-[100px]"
       >
         {/* ancre plein cadre : l'hélice ADN se cale au centre de la section, EN FOND */}
         <div data-holo="skills" aria-hidden className="absolute inset-0 pointer-events-none" />
@@ -166,9 +166,9 @@ export default function SkillsSection() {
               </button>
             ))}
           </div>
-          {/* liste translucide, scrollable : les 3 catégories (Frontend/Backend/DevOps) sont
-              toutes accessibles, l'ADN reste visible derrière */}
-          <div className="mt-4 w-full max-w-xl max-h-[52svh] overflow-y-auto rounded-xl border border-cyan-400/20 bg-black/45 backdrop-blur-[3px] p-4">
+          {/* liste translucide, scrollable : Frontend/Backend/DevOps + les 2 brins de
+              l'hélice (Méthodes, IA & Productivité). L'ADN reste visible derrière. */}
+          <div className="mt-4 w-full max-w-xl max-h-[56svh] overflow-y-auto rounded-xl border border-cyan-400/20 bg-black/35 backdrop-blur-[3px] p-4">
             <TechList
               selectedTech={selectedTech}
               hoveredTech={hoveredTech}
@@ -176,6 +176,23 @@ export default function SkillsSection() {
               onTechClick={openTech}
               onTechHover={handleTechHover}
             />
+            {/* les 2 brins de l'hélice — ce qui relie les langages (méthodes + IA) */}
+            <div className="mt-5 pt-4 border-t border-cyan-400/15 grid grid-cols-1 gap-4">
+              {HELIX_STRANDS.map((strand) => (
+                <div key={strand.label} className="border-l-2 pl-3" style={{ borderColor: strand.color }}>
+                  <h3 className="flex items-center gap-2 font-mono text-xs mb-2" style={{ color: strand.color }}>
+                    <span>●</span> {strand.label}
+                  </h3>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {strand.items.map((item) => (
+                      <li key={item} className="text-[10px] px-2 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200 font-mono">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
           <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider">
             ▸ Tape un module — l&apos;hélice réagit puis la fiche s&apos;ouvre
