@@ -9,6 +9,8 @@ import { useSceneStore } from '../store/sceneStore';
 import BiometricCard from '../components/3d/BiometricCard';
 import { ContactChannels } from '../components/ui/ContactChannels';
 import { SectionTitle } from '../components/ui/SectionTitle';
+import { useModalStore } from '../store/modalStore';
+import LegalContent from '../components/LegalContent';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -118,6 +120,10 @@ export default function ContactSection() {
             kicker="FIN DE SESSION — ARTEFACT DÉTECTÉ"
             title="CONTACT:TRANSMISSION"
           />
+          {/* fonctionnement de la section */}
+          <p className="-mt-1 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
+            ▸ Touche un intitulé pour interroger la carte · la valeur ouvre le canal
+          </p>
           {/* LA carte 3D, seule (le même artefact que l'entrée — orbit coupé au tactile) */}
           <div className="relative w-full max-w-md h-[40svh]">
             <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
@@ -126,6 +132,14 @@ export default function ContactSection() {
           </div>
           {/* canaux : intitulé = la carte parle · valeur = ouvre le canal */}
           <div className="w-full max-w-md glass-panel rounded-xl p-4"><ContactChannels /></div>
+          {/* mentions légales accessibles ici (plutôt qu'en pied de page, trop bas) */}
+          <button
+            type="button"
+            onClick={() => useModalStore.getState().open({ title: 'Mentions légales', size: 'md', content: <LegalContent /> })}
+            className="text-cyan-100/40 hover:text-cyan-300 underline underline-offset-4 font-mono text-xs transition-colors cursor-pointer"
+          >
+            Mentions légales
+          </button>
         </div>
       </section>
     );

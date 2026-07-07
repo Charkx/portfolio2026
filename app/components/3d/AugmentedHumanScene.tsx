@@ -61,6 +61,10 @@ const OX_BY_FOCUS: Record<string, number> = {
   brain: CFG.brain.ox, adn: CFG.adn.ox, heart: CFG.heart.ox, contact: CFG.contact.ox,
 } as const;
 
+// portrait : on descend légèrement cerveau/ADN pour qu'ils apparaissent SOUS les
+// boutons (on vise un poil plus haut → le module glisse vers le bas de l'écran)
+const OY_PORTRAIT: Record<string, number> = { brain: 0.14, adn: 0.05 };
+
 // Station projets : caméra à la place des yeux de l'hologramme, regardant sa main levée.
 // Mettre false pour revenir au cadrage frontal "corps entier".
 const PROJECTS_POV = true;
@@ -623,6 +627,10 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       const oxBlend = (OX_BY_FOCUS[A.focus] ?? 0) * (1 - f) + (OX_BY_FOCUS[B.focus] ?? 0) * f;
       _base.current.x -= oxBlend;
       _baseTgt.current.x -= oxBlend;
+      // module poussé un peu plus bas (sous les boutons) : caméra + cible visent plus haut
+      const oyBlend = (OY_PORTRAIT[A.focus] ?? 0) * (1 - f) + (OY_PORTRAIT[B.focus] ?? 0) * f;
+      _base.current.y += oyBlend;
+      _baseTgt.current.y += oyBlend;
     }
 
     // Vue subjective "yeux de l'hologramme" à la station projets : la caméra glisse

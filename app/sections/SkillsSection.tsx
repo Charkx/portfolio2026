@@ -51,6 +51,64 @@ const LEVEL_FILTERS = [
   { value: 1, label: '●○○ Familier' },
 ] as const;
 
+// Contenu de la MODALE mobile "séquenceur ADN" : filtres + liste des modules + les 2
+// brins de l'hélice. Autonome (son propre état de filtre). Tap sur un module → la
+// fiche de décodage remplace cette modale (drill-down).
+function SkillsBrowser() {
+  const [level, setLevel] = useState(0);
+
+  const openTech = (techName: string) => {
+    const id = techName.toLowerCase();
+    useSceneStore.getState().setSkillsSelected(id);   // l'hélice réagit derrière
+    audioEngine.play('molecular');
+    useDiscoveryStore.getState().discover('adn');
+    for (const [category, items] of Object.entries(TECH_STACK)) {
+      const tech = items.find((t) => t.name.toLowerCase() === id);
+      if (tech) {
+        useModalStore.getState().open({ title: `>> DÉCODAGE : ${tech.name}`, size: 'md', content: <TechDecodeBody tech={tech} category={category} /> });
+        break;
+      }
+    }
+  };
+
+  return (
+    <div className="font-mono">
+      <div className="flex flex-wrap justify-center gap-2 mb-4" role="group" aria-label="Filtrer par niveau">
+        {LEVEL_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => { setLevel(f.value); audioEngine.play('molecular'); }}
+            aria-pressed={level === f.value}
+            className={`px-3 py-1.5 rounded text-xs border transition-colors ${
+              level === f.value ? 'bg-cyan-500 text-black border-cyan-400' : 'bg-transparent text-cyan-400/70 border-cyan-400/30'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      <TechList selectedTech={null} hoveredTech={null} levelFilter={level} onTechClick={openTech} onTechHover={() => {}} />
+      {/* les 2 brins de l'hélice — méthodes + IA */}
+      <div className="mt-5 pt-4 border-t border-cyan-400/15 grid grid-cols-1 gap-4">
+        {HELIX_STRANDS.map((strand) => (
+          <div key={strand.label} className="border-l-2 pl-3" style={{ borderColor: strand.color }}>
+            <h3 className="flex items-center gap-2 text-xs mb-2" style={{ color: strand.color }}>
+              <span>●</span> {strand.label}
+            </h3>
+            <ul className="flex flex-wrap gap-1.5">
+              {strand.items.map((item) => (
+                <li key={item} className="text-[10px] px-2 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // --- Composant ---
 
 export default function SkillsSection() {
@@ -114,23 +172,7 @@ export default function SkillsSection() {
     setHoveredTech(techName ? techName.toLowerCase() : null);
   }, [setHoveredTech]);
 
-  // MOBILE : tap sur une techno → la réorganisation moléculaire JOUE À L'ÉCRAN,
-  // puis la fiche s'ouvre en modale (~750 ms plus tard)
-  const openTech = useCallback((techName: string) => {
-    const id = techName.toLowerCase();
-    useSceneStore.getState().setSkillsSelected(id); // toujours ON (pas de toggle en mobile)
-    audioEngine.play('molecular');
-    useDiscoveryStore.getState().discover('adn');
-    for (const [category, items] of Object.entries(TECH_STACK)) {
-      const tech = items.find((t) => t.name.toLowerCase() === id);
-      if (tech) {
-        setTimeout(() => {
-          useModalStore.getState().open({ title: `>> DÉCODAGE : ${tech.name}`, size: 'md', content: <TechDecodeBody tech={tech} category={category} /> });
-        }, 750);
-        break;
-      }
-    }
-  }, []);
+  // (mobile : la liste des modules s'ouvre désormais dans une modale via <SkillsBrowser/>)
 
 
   // --- MOBILE : ~1 écran — titre, hélice (canvas partagé), liste tapable → modale ---
@@ -145,57 +187,21 @@ export default function SkillsSection() {
 
         <div className="relative z-10 flex flex-col items-center">
           <SectionTitle
-            className="mb-3"
+            className="mb-4"
             kicker="ACCÈS MÉMOIRE.COMPÉTENCES — SÉQUENÇAGE ADN"
             title="SKILLS:DNA_MODULE_ANALYSIS"
           />
-          {/* filtres de niveau : juste sous le titre */}
-          <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Filtrer par niveau">
-            {LEVEL_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => { setLevelFilter(f.value); audioEngine.play('molecular'); }}
-                aria-pressed={levelFilter === f.value}
-                className={`px-3 py-1.5 rounded font-mono text-xs border transition-colors ${
-                  levelFilter === f.value
-                    ? 'bg-cyan-500 text-black border-cyan-400'
-                    : 'bg-black/30 text-cyan-400/70 border-cyan-400/30'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          {/* liste translucide, scrollable : Frontend/Backend/DevOps + les 2 brins de
-              l'hélice (Méthodes, IA & Productivité). L'ADN reste visible derrière. */}
-          <div className="mt-4 w-full max-w-xl max-h-[56svh] overflow-y-auto rounded-xl border border-cyan-400/20 bg-black/35 backdrop-blur-[3px] p-4">
-            <TechList
-              selectedTech={selectedTech}
-              hoveredTech={hoveredTech}
-              levelFilter={levelFilter}
-              onTechClick={openTech}
-              onTechHover={handleTechHover}
-            />
-            {/* les 2 brins de l'hélice — ce qui relie les langages (méthodes + IA) */}
-            <div className="mt-5 pt-4 border-t border-cyan-400/15 grid grid-cols-1 gap-4">
-              {HELIX_STRANDS.map((strand) => (
-                <div key={strand.label} className="border-l-2 pl-3" style={{ borderColor: strand.color }}>
-                  <h3 className="flex items-center gap-2 font-mono text-xs mb-2" style={{ color: strand.color }}>
-                    <span>●</span> {strand.label}
-                  </h3>
-                  <ul className="flex flex-wrap gap-1.5">
-                    {strand.items.map((item) => (
-                      <li key={item} className="text-[10px] px-2 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-cyan-200 font-mono">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-          <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider">
-            ▸ Tape un module — l&apos;hélice réagit puis la fiche s&apos;ouvre
+          {/* landing épuré : l'ADN reste PLEINEMENT visible en fond ; les modules
+              (langages, méthodes, IA) s'ouvrent dans une modale */}
+          <button
+            type="button"
+            onClick={() => useModalStore.getState().open({ title: '>> SÉQUENÇAGE ADN — MODULES', size: 'md', content: <SkillsBrowser /> })}
+            className="rounded px-6 py-2.5 font-mono text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
+          >
+            ▸ ANALYSER MES MODULES
+          </button>
+          <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
+            ▸ Ouvre le séquenceur : langages, méthodes &amp; IA — tape un module pour le décoder
           </p>
         </div>
       </section>
