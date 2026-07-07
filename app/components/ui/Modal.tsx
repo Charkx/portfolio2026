@@ -107,7 +107,10 @@ export default function Modal({
           </button>
         </header>
 
-        <div className="overflow-auto p-5 grow min-h-0">{children}</div>
+        {/* data-lenis-prevent : Lenis capte les touchmove du document et bloquerait le
+            scroll natif ici — cet attribut lui dit de laisser cette zone défiler seule.
+            overscroll-contain : pas de chaînage de scroll vers la page derrière. */}
+        <div data-lenis-prevent className="overflow-auto overscroll-contain p-5 grow min-h-0">{children}</div>
       </div>
     </div>,
     document.body
