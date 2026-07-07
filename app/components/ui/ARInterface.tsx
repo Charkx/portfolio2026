@@ -211,7 +211,7 @@ export default function ARInterface() {
 
       {/* Bottom HUD */}
       <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent">
-        <div className="flex justify-between items-center h-full px-6 text-cyan-400 font-mono text-sm">
+        <div className="flex justify-center sm:justify-between items-center h-full px-6 text-cyan-400 font-mono text-sm">
           <div className="flex items-center space-x-6">
             <div className="flex items-center gap-4">
               {NAV.map((item, idx) => (        // ← idx = la position
