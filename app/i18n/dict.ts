@@ -57,6 +57,9 @@ export const fr = {
   // --- Hero / entrée ---
   hero: {
     availability: "⏳ Alternance · Septembre 2026",
+    // identité affichée EN CLAIR sur l'écran verrouillé : un visiteur doit savoir
+    // qui il regarde avant d'avoir à jouer la séquence d'entrée
+    role: "Développeur Full Stack · Ingénieur informatique",
     scan: "INITIER LE SCAN",
     skip: "Passer l'intro",
     scroll: "SCROLL",
@@ -68,6 +71,7 @@ export const fr = {
   // --- Console de calibrage ---
   calibration: {
     intro: "> Sujet reconnu — calibrage de session requis :",
+    help: "Clique une option sur la ligne clignotante — rien n'est validé d'avance.",
     audio: "> FLUX AUDIO :", audioOn: "[ACTIVÉ]", audioOff: "[COUPÉ]",
     volume: "> VOLUME :",
     motion: "> ANIMATIONS :", motionFull: "[COMPLÈTES]", motionReduced: "[RÉDUITES]",
@@ -229,6 +233,7 @@ export const en: Dict = {
 
   hero: {
     availability: "⏳ Apprenticeship · September 2026",
+    role: "Full Stack Developer · Software Engineer",
     scan: "INITIATE SCAN",
     skip: "Skip intro",
     scroll: "SCROLL",
@@ -239,6 +244,7 @@ export const en: Dict = {
 
   calibration: {
     intro: "> Subject identified — session calibration required:",
+    help: "Click an option on the blinking line — nothing is preset.",
     audio: "> AUDIO FEED:", audioOn: "[ON]", audioOff: "[OFF]",
     volume: "> VOLUME:",
     motion: "> ANIMATIONS:", motionFull: "[FULL]", motionReduced: "[REDUCED]",

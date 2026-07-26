@@ -29,6 +29,13 @@ const SCAN_SEQUENCE = [
   '> Subject: MENTHILLER.CHARLY_009',
 ];
 
+// Rythme d'une ligne de terminal : apparition + temps de lecture + effacement.
+// Ces lignes sont du DÉCOR, pas du contenu : à 5 lignes, chaque 100 ms coûte une
+// demi-seconde sur le temps d'accès au site. Le visiteur doit arriver vite.
+const LINE_IN = 0.22;    // s — fondu entrant (gsap)
+const LINE_HOLD = 380;   // ms — lecture
+const LINE_OUT = 0.22;   // s — fondu sortant (gsap)
+
 const BOOT_SEQUENCE = [
   '> Initializing neural link...',
   '> Establishing secure connection...',
@@ -102,17 +109,17 @@ export default function TerminalDisplay() {
               el,
               { opacity: 0, y: 20 },
               {
-                opacity: 1, y: 0, duration: 0.3, ease: 'power2.out',
+                opacity: 1, y: 0, duration: LINE_IN, ease: 'power2.out',
                 onComplete: () => {
                   setTimeout(() => {
                     gsap.to(el, {
-                      opacity: 0, y: -20, duration: 0.3, ease: 'power2.in',
+                      opacity: 0, y: -20, duration: LINE_OUT, ease: 'power2.in',
                       onComplete: () => {
                         setLines((prev) => prev.filter((l) => l.id !== id));
                         resolve(); // ← débloque le `await` : on passe à la ligne suivante
                       },
                     });
-                  }, 800);
+                  }, LINE_HOLD);
                 },
               }
             );
@@ -140,9 +147,14 @@ export default function TerminalDisplay() {
         {calibrating ? 'SESSION CALIBRATION' : HEADER[introPhase]}
       </div>
 
+      {/* min-h réservé UNIQUEMENT quand des lignes vont s'imprimer (évite le saut de
+          mise en page pendant les séquences). Verrouillé, le terminal est vide : ces
+          100 px de vide poussaient le bouton d'entrée hors de l'écran sur petit mobile. */}
       <div
         ref={terminalRef}
-        className="text-left text-cyan-300 text-sm font-mono max-h-64 overflow-y-hidden px-4 min-h-[100px]"
+        className={`text-left text-cyan-300 text-sm font-mono max-h-64 overflow-y-hidden px-4 ${
+          introPhase === 'LOCKED' ? '' : 'min-h-[100px]'
+        }`}
       >
         {lines.map((line) => (
           <div key={line.id} id={line.id} className="terminal-line">

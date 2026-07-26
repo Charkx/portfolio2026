@@ -8,9 +8,13 @@ import { audioEngine } from '../../lib/audioEngine';
 import { useLangStore } from '../../store/langStore';
 import { useT } from '../../i18n';
 
-// Bouton [OPTION] de la console — style terminal
-function Opt({ active, disabled, title, onClick, children }: {
+// Bouton [OPTION] de la console — style terminal.
+// `pending` = ligne EN ATTENTE de réponse : les deux options s'affichent à égalité
+// (et clignotent). Sans ça, la valeur par défaut du store s'affichait comme un choix
+// déjà fait — l'utilisateur ne comprenait pas qu'on attendait une action de lui.
+function Opt({ active, pending, disabled, title, onClick, children }: {
   active?: boolean;
+  pending?: boolean;
   disabled?: boolean;
   title?: string;
   onClick?: () => void;
@@ -27,19 +31,33 @@ function Opt({ active, disabled, title, onClick, children }: {
       className={`transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400
         ${disabled
           ? 'text-gray-700 cursor-not-allowed'
-          : active
-            ? 'text-cyan-300 cursor-pointer'
-            : 'text-gray-600 hover:text-cyan-400/80 cursor-pointer'}`}
+          : pending
+            ? 'text-cyan-200 animate-pulse cursor-pointer'
+            : active
+              ? 'text-cyan-300 cursor-pointer'
+              : 'text-gray-600 hover:text-cyan-400/80 cursor-pointer'}`}
     >
       {children}
     </button>
   );
 }
 
-// Ligne de terminal (apparition douce au montage)
-function Line({ children }: { children: React.ReactNode }) {
+// Ligne de terminal (apparition douce au montage). `tag` = compteur [n/N] et curseur
+// ▸ sur la ligne active : le repère ne dépend PAS que du clignotement (il reste lisible
+// en mouvement réduit, et il dit où on en est dans la séquence).
+function Line({ current = false, tag, children }: {
+  current?: boolean;
+  tag?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="hud-reveal flex flex-wrap items-center gap-x-2" style={{ animationDelay: '0.1s' }}>
+      {tag && (
+        <>
+          <span aria-hidden="true" className={current ? 'text-cyan-300 animate-pulse' : 'text-cyan-400/20'}>▸</span>
+          <span className={current ? 'text-cyan-300/70' : 'text-cyan-400/25'}>{tag}</span>
+        </>
+      )}
       {children}
     </div>
   );
@@ -47,6 +65,10 @@ function Line({ children }: { children: React.ReactNode }) {
 
 // Étapes du calibrage (une seule question à la fois)
 const STEP_AUDIO = 0, STEP_VOLUME = 1, STEP_MOTION = 2, STEP_QUALITY = 3, STEP_LANG = 4, DONE = 5;
+
+// Ordre d'apparition — sert à numéroter les questions ([n/N]). La question VOLUME
+// saute si le son est coupé : le total se recalcule pour ne jamais mentir.
+const ORDER = [STEP_AUDIO, STEP_VOLUME, STEP_MOTION, STEP_QUALITY, STEP_LANG];
 
 /**
  * Calibrage de session pas-à-pas, au cœur de la séquence de scan : une seule
@@ -87,25 +109,37 @@ export default function CalibrationConsole({ onConfirm }: { onConfirm: () => voi
     return () => window.clearTimeout(t);
   }, [step, onConfirm]);
 
+  // numérotation des questions réellement posées (le volume saute si le son est coupé)
+  const visible = ORDER.filter((s) => !(s === STEP_VOLUME && volumeSkipped));
+  const tag = (s: number) => `[${visible.indexOf(s) + 1}/${visible.length}]`;
+
   return (
     <div className="space-y-1.5">
       <Line>
         <span className="text-cyan-400/70">{t.calibration.intro}</span>
       </Line>
+      {/* consigne explicite : le repère visuel seul ne suffit pas à dire "à toi de jouer" */}
+      {step < DONE && (
+        <Line>
+          <span className="text-cyan-300/60 text-xs">{t.calibration.help}</span>
+        </Line>
+      )}
 
       {step >= STEP_AUDIO && (
-        <Line>
+        <Line current={step === STEP_AUDIO} tag={tag(STEP_AUDIO)}>
           <span className="text-cyan-400/60">{t.calibration.audio}</span>
           {/* effet immédiat : [ACTIVÉ] lance la musique (geste utilisateur) → mire du volume */}
-          <Opt active={optIn} onClick={() => { setOptIn(true); setEnabled(true); advance(STEP_AUDIO); }}>{t.calibration.audioOn}</Opt>
-          <Opt active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); setVolumeSkipped(true); advance(STEP_AUDIO, true); }}>{t.calibration.audioOff}</Opt>
+          {/* se raviser après [COUPÉ] doit RAMENER la question du volume (et donc la
+              renumérotation) — sinon le réglage restait inaccessible jusqu'au boot */}
+          <Opt pending={step === STEP_AUDIO} active={optIn} onClick={() => { setOptIn(true); setEnabled(true); setVolumeSkipped(false); advance(STEP_AUDIO); }}>{t.calibration.audioOn}</Opt>
+          <Opt pending={step === STEP_AUDIO} active={!optIn} onClick={() => { setOptIn(false); setEnabled(false); setVolumeSkipped(true); advance(STEP_AUDIO, true); }}>{t.calibration.audioOff}</Opt>
         </Line>
       )}
 
       {step >= STEP_VOLUME && !volumeSkipped && (
-        <Line>
+        <Line current={step === STEP_VOLUME} tag={tag(STEP_VOLUME)}>
           <span className="text-cyan-400/60">{t.calibration.volume}</span>
-          <span role="group" aria-label={t.hud.volume} className="flex items-end gap-[3px] h-4">
+          <span role="group" aria-label={t.hud.volume} className={`flex items-end gap-[3px] h-4 ${step === STEP_VOLUME ? 'animate-pulse' : ''}`}>
             {[1, 2, 3, 4, 5].map((n) => {
               const lit = enabled && volume >= n / 5 - 0.001;
               return (
@@ -127,26 +161,26 @@ export default function CalibrationConsole({ onConfirm }: { onConfirm: () => voi
       )}
 
       {step >= STEP_MOTION && (
-        <Line>
+        <Line current={step === STEP_MOTION} tag={tag(STEP_MOTION)}>
           <span className="text-cyan-400/60">{t.calibration.motion}</span>
-          <Opt active={!reduced} onClick={() => { setMotion('full'); advance(STEP_MOTION); }}>{t.calibration.motionFull}</Opt>
-          <Opt active={reduced} onClick={() => { setMotion('reduced'); advance(STEP_MOTION); }}>{t.calibration.motionReduced}</Opt>
+          <Opt pending={step === STEP_MOTION} active={!reduced} onClick={() => { setMotion('full'); advance(STEP_MOTION); }}>{t.calibration.motionFull}</Opt>
+          <Opt pending={step === STEP_MOTION} active={reduced} onClick={() => { setMotion('reduced'); advance(STEP_MOTION); }}>{t.calibration.motionReduced}</Opt>
         </Line>
       )}
 
       {step >= STEP_QUALITY && (
-        <Line>
+        <Line current={step === STEP_QUALITY} tag={tag(STEP_QUALITY)}>
           <span className="text-cyan-400/60">{t.calibration.quality}</span>
-          <Opt active={quality === 'high'} onClick={() => { setQuality('high'); advance(STEP_QUALITY); }}>{t.calibration.qHigh}</Opt>
-          <Opt active={quality === 'eco'} title={t.calibration.qEcoTip} onClick={() => { setQuality('eco'); advance(STEP_QUALITY); }}>{t.calibration.qEco}</Opt>
+          <Opt pending={step === STEP_QUALITY} active={quality === 'high'} onClick={() => { setQuality('high'); advance(STEP_QUALITY); }}>{t.calibration.qHigh}</Opt>
+          <Opt pending={step === STEP_QUALITY} active={quality === 'eco'} title={t.calibration.qEcoTip} onClick={() => { setQuality('eco'); advance(STEP_QUALITY); }}>{t.calibration.qEco}</Opt>
         </Line>
       )}
 
       {step >= STEP_LANG && (
-        <Line>
+        <Line current={step === STEP_LANG} tag={tag(STEP_LANG)}>
           <span className="text-cyan-400/60">{t.calibration.lang}</span>
-          <Opt active={lang === 'fr'} onClick={() => { setLang('fr'); advance(STEP_LANG); }}>[FR]</Opt>
-          <Opt active={lang === 'en'} onClick={() => { setLang('en'); advance(STEP_LANG); }}>[EN]</Opt>
+          <Opt pending={step === STEP_LANG} active={lang === 'fr'} onClick={() => { setLang('fr'); advance(STEP_LANG); }}>[FR]</Opt>
+          <Opt pending={step === STEP_LANG} active={lang === 'en'} onClick={() => { setLang('en'); advance(STEP_LANG); }}>[EN]</Opt>
         </Line>
       )}
 

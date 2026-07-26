@@ -7,6 +7,7 @@ import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
 import { useAudioStore } from "../store/audioStore"
 import { useDragRotate } from "../hooks/useDragRotate"
+import { PROFILE } from "../utils/constants"
 import { useT } from "../i18n"
 
 // Canvas 3D (Three.js) chargé côté client après le 1er paint : le shell du Hero
@@ -64,6 +65,23 @@ export default function HeroSection({
       />
 
       <div className="container w-full mx-auto px-4 flex flex-col gap-4 items-center z-10">
+        {/* Identité EN CLAIR tant que l'accès n'est pas ouvert : sans elle, un visiteur
+            qui débarque n'a sous les yeux qu'une carte 3D et un message d'erreur rouge.
+            aria-hidden : le résumé sr-only de page.tsx porte déjà cette info aux lecteurs
+            d'écran — inutile de la leur annoncer deux fois. */}
+        {!unlocked && (
+          <div className="text-center hud-reveal" aria-hidden="true">
+            <div
+              className="text-2xl md:text-4xl font-bold text-cyan-300 font-display tracking-wide"
+              style={{ textShadow: "0 0 18px rgba(34,211,238,0.45)" }}
+            >
+              {PROFILE.name.toUpperCase()}
+            </div>
+            <p className="mt-1.5 text-cyan-100/80 font-mono text-xs md:text-sm tracking-wider">{t.hero.role}</p>
+            <p className="mt-1 text-green-400 font-mono text-xs tracking-wider">{t.hero.availability}</p>
+          </div>
+        )}
+
         {/* Carte biométrique 3D = clé d'entrée du site. Une fois scannée (UNLOCKED) :
             elle s'estompe pour laisser place à l'hologramme (canvas permanent, mobile inclus).
             Mobile : identité compacte superposée — l'hologramme reste la star. */}
@@ -119,11 +137,16 @@ export default function HeroSection({
                 {t.hero.scan}
               </button>
             )}
+            {/* Sortie de secours : c'est le chemin d'un visiteur pressé (recruteur), il
+                doit donc SE VOIR. En gray-500 il tombait sous le seuil de contraste AA
+                et se lisait comme une note de bas de page. */}
             <button
               type="button"
               onClick={() => enterWith(() => setIntroPhase("UNLOCKED"))}
-              className="text-gray-500 hover:text-cyan-300 font-mono text-xs underline underline-offset-4
-                         cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400"
+              className="px-5 py-2 rounded-lg border border-cyan-400/25 text-cyan-200/90
+                         font-mono text-xs tracking-wider cursor-pointer transition-all
+                         hover:border-cyan-400/50 hover:text-cyan-100 hover:bg-cyan-400/5
+                         focus-visible:outline-2 focus-visible:outline-cyan-400"
             >
               {t.hero.skip}
             </button>
