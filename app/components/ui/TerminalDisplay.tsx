@@ -87,12 +87,23 @@ export default function TerminalDisplay() {
 
   // Séquences animées + enchaînement des phases.
   useEffect(() => {
+    // Une séquence est une boucle async qui survit au changement de phase. Sans
+    // annulation, reverrouiller pendant le scan/boot (bouton power du HUD) la laissait
+    // tourner en fond : elle réimprimait ses lignes SUR l'écran verrouillé, puis
+    // concluait en rebasculant le site en UNLOCKED tout seul. Les ids de lignes étant
+    // réutilisés d'une séquence à l'autre (`terminal-line-0`…), un tween resté vivant
+    // effaçait en plus la ligne de la séquence suivante.
+    let cancelled = false;
+    const timers: number[] = [];
+    const tweens: gsap.core.Tween[] = [];
+
     // Fonction RÉUTILISABLE : `sequence` est un PARAMÈTRE,
     // donc la même fonction sert pour SCANNING, BOOTING, etc.
     const playSequence = async (sequence: string[]) => {
       setLines([]); // on repart d'un terminal vide
 
       for (let i = 0; i < sequence.length; i++) {
+        if (cancelled) return;
         const id = `terminal-line-${i}`;
         const text = sequence[i];
 
@@ -103,26 +114,27 @@ export default function TerminalDisplay() {
         await new Promise<void>((resolve) => {
           requestAnimationFrame(() => {
             const el = document.getElementById(id);
-            if (!el) { resolve(); return; }
+            if (cancelled || !el) { resolve(); return; }
 
-            gsap.fromTo(
+            tweens.push(gsap.fromTo(
               el,
               { opacity: 0, y: 20 },
               {
                 opacity: 1, y: 0, duration: LINE_IN, ease: 'power2.out',
                 onComplete: () => {
-                  setTimeout(() => {
-                    gsap.to(el, {
+                  timers.push(window.setTimeout(() => {
+                    if (cancelled) { resolve(); return; }
+                    tweens.push(gsap.to(el, {
                       opacity: 0, y: -20, duration: LINE_OUT, ease: 'power2.in',
                       onComplete: () => {
                         setLines((prev) => prev.filter((l) => l.id !== id));
                         resolve(); // ← débloque le `await` : on passe à la ligne suivante
                       },
-                    });
-                  }, LINE_HOLD);
+                    }));
+                  }, LINE_HOLD));
                 },
               }
-            );
+            ));
           });
         });
       }
@@ -132,10 +144,16 @@ export default function TerminalDisplay() {
     // Après le scan : étape CALIBRAGE (les réglages s'impriment un à un,
     // l'utilisateur répond, puis le boot s'enchaîne — cf. CalibrationConsole).
     if (introPhase === 'SCANNING') {
-      playSequence(SCAN_SEQUENCE).then(() => setCalibrating(true));
+      playSequence(SCAN_SEQUENCE).then(() => { if (!cancelled) setCalibrating(true); });
     } else if (introPhase === 'BOOTING') {
-      playSequence(BOOT_SEQUENCE).then(() => setIntroPhase('UNLOCKED'));
+      playSequence(BOOT_SEQUENCE).then(() => { if (!cancelled) setIntroPhase('UNLOCKED'); });
     }
+
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => window.clearTimeout(t));
+      tweens.forEach((tw) => tw.kill());
+    };
   }, [introPhase, setIntroPhase]);
 
   // déverrouillé : plus de terminal dans le flux — juste l'invite en bas d'écran

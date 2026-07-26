@@ -29,10 +29,15 @@ export function CalendlyViewer({ src }: { src: string }) {
   const embed = `${src}?hide_gdpr_banner=1&background_color=0a0a0a&text_color=aef6ff&primary_color=22d3ee`
   return (
     <div className="flex flex-col gap-3 h-[70svh]">
+      {/* data-keep-focus : on y REMPLIT un formulaire (nom, email). La modale ne doit
+          pas reprendre le focus clavier ici, sinon les frappes partiraient dans le vide.
+          Contrepartie assumée : Échap ne ferme pas tant qu'on est dans le formulaire —
+          ce qui évite aussi de perdre une saisie sur une touche malheureuse. */}
       <iframe
         src={embed}
         title={t.contact.calendlyModal}
         loading="lazy"
+        data-keep-focus
         className="w-full grow rounded border border-cyan-400/20 bg-[#0a0a0a]"
       />
       <a

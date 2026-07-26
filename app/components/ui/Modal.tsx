@@ -51,8 +51,42 @@ export default function Modal({
     }
   }, [])
 
-  const onKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+  // Cliquer dans une iframe y emmène le focus clavier, et Échap devient sourd : les
+  // touches frappées dans ce document-là ne franchissent jamais la frontière (le PDF
+  // est rendu par le lecteur interne du navigateur, Calendly est sur un autre domaine).
+  // Parade : on REPREND le focus dès que l'iframe s'en empare. Le clic a déjà atteint
+  // le contenu et la molette continue de faire défiler l'iframe sans focus — pour un
+  // contenu qu'on ne fait que lire, rien n'est perdu et Échap reste vivant.
+  // EXCEPTION : une iframe où l'on doit TAPER (Calendly, marquée data-keep-focus) le
+  // garde tant que l'utilisateur y travaille — lui voler le focus escamoterait ses
+  // frappes. `force` passe outre : réservé à un geste qui prouve qu'il ne tape plus
+  // (pointeur amené sur l'en-tête de la modale, là où vit la croix).
+  const reclaimFocus = useCallback((force = false) => {
+    const panel = panelRef.current
+    const active = document.activeElement
+    if (!panel || !(active instanceof HTMLIFrameElement)) return
+    if (!panel.contains(active)) return
+    if (!force && active.dataset.keepFocus !== undefined) return
+    panel.focus({ preventScroll: true })
+  }, [])
+
+  useEffect(() => {
+    // Le focus qui part dans une iframe fait perdre le focus à la fenêtre : on le
+    // reprend au tick suivant, une fois que le clic a produit son effet.
+    const onBlur = () => window.setTimeout(reclaimFocus, 0)
+    window.addEventListener("blur", onBlur)
+    return () => window.removeEventListener("blur", onBlur)
+  }, [reclaimFocus])
+
+  // Écoute au niveau DOCUMENT (phase de capture) et non sur le panneau : posé sur le
+  // panneau, le handler exigeait que le focus soit resté dans l'arbre React — après un
+  // clic sur le fond (le focus part sur <body>), Échap et le piège à focus ne
+  // répondaient plus.
+  // LIMITE assumée : les touches frappées DANS une iframe (CV, démos, Calendly) ne
+  // traversent jamais la frontière de document — aucun code de la page parente ne peut
+  // les voir. Dans ce cas seuls la croix et le clic sur le fond ferment la modale.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation()
         onClose()
@@ -65,16 +99,24 @@ export default function Modal({
       if (items.length === 0) return
       const first = items[0]
       const last = items[items.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
+      const active = document.activeElement
+      // focus échappé du panneau (clic sur le fond) → on le ramène dedans
+      if (!active || !panel.contains(active)) {
+        e.preventDefault()
+        first.focus()
+        return
+      }
+      if (e.shiftKey && active === first) {
         e.preventDefault()
         last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
+      } else if (!e.shiftKey && active === last) {
         e.preventDefault()
         first.focus()
       }
-    },
-    [onClose]
-  )
+    }
+    document.addEventListener("keydown", onKeyDown, true)
+    return () => document.removeEventListener("keydown", onKeyDown, true)
+  }, [onClose])
 
   if (typeof document === "undefined") return null
 
@@ -84,7 +126,6 @@ export default function Modal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      onKeyDown={onKeyDown}
     >
       {/* fond assombri (matche le voile du canvas) — clic pour fermer */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
@@ -96,7 +137,14 @@ export default function Modal({
                     border border-cyan-400/30 bg-[#04070c]/95 outline-none
                     shadow-[0_0_40px_rgba(34,211,238,0.15)]`}
       >
-        <header className="flex items-center justify-between gap-4 px-5 py-3 border-b border-cyan-400/20 shrink-0">
+        {/* Amener le pointeur sur l'en-tête = viser la croix, donc ne plus taper : on en
+            profite pour rapatrier le focus même depuis une iframe data-keep-focus, et
+            Échap redevient disponible. Les événements souris d'une iframe ne traversent
+            pas sa frontière — recevoir ce mouseenter prouve qu'on en est sorti. */}
+        <header
+          onMouseEnter={() => reclaimFocus(true)}
+          className="flex items-center justify-between gap-4 px-5 py-3 border-b border-cyan-400/20 shrink-0"
+        >
           <h2 className="text-cyan-300 font-mono text-sm tracking-widest uppercase">{title}</h2>
           <button
             type="button"
