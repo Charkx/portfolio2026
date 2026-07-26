@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfolio 3D — Charly Menthiller
 
-## Getting Started
+Portfolio interactif au parti pris cyberpunk : un hologramme humain en WebGL sert de fil conducteur, et chaque section du CV (parcours, compétences, projets, contact) est un module 3D qu'on manipule directement — cortex scannable, hélice d'ADN des langages, data-cubes de projets. Le tout en Next.js 15 / React 19 / Three.js, avec un HUD bilingue FR/EN, un moteur audio entièrement synthétisé (aucun fichier son), et un contenu HTML indexable rendu côté serveur pour ne rien sacrifier au SEO ni aux lecteurs d'écran.
 
-First, run the development server:
+🔗 **Démo en ligne : [charlymenthiller.com](https://charlymenthiller.com)**
+
+---
+
+## ✨ Fonctionnalités principales
+
+**Expérience 3D**
+- **Canvas partagé unique** (`AugmentedHumanLayer`) : un seul contexte WebGL traverse tout le site ; les sections HTML pilotent les modules 3D qui s'y nichent via un store dédié (`sceneStore`) — le HTML écrit, la 3D lit.
+- **Matériau holographique custom** : shader injecté par `onBeforeCompile` (matérialisation progressive, edge glow, onde de choc à l'origine du clic), avec repli émissif si la compilation du shader échoue.
+- **Modules interactifs** : cerveau holographique lié aux blocs du parcours, hélice d'ADN filtrable par niveau de maîtrise, data-cubes de projets qui explosent en étude de cas, carte biométrique de contact, logo 3D.
+- **Mini-jeu caché** (`/transmission`) : 5 signaux disséminés dans le site (persistés en `localStorage`) déverrouillent une session de défense de 45 s — la page reste verrouillée tant que la découverte n'est pas complète.
+
+**Performance**
+- **Garde-fou FPS au runtime** : sous 40 fps pendant 3 s consécutives, la scène bascule automatiquement en mode éco (bloom coupé, DPR plafonné), une seule fois par session.
+- **Éco par défaut sur tactile** (`pointer: coarse`) pour garantir la fluidité au premier contact, surchargeable depuis la console de calibrage.
+- **Code-splitting agressif** : toutes les sections Three.js sont en `dynamic(..., { ssr: false })` — hors du bundle initial, aucune exécution WebGL au prerender/build.
+- **`LazyMount`** : réserve l'espace en permanence (zéro saut de layout) mais ne monte les canvas qu'à l'approche du scroll, et les démonte en s'éloignant.
+- **Préchargement à progression réelle** : les `.glb` sont streamés via `ReadableStream` avec suivi des octets — la barre de chargement reflète le téléchargement réel, avec plafond de sécurité à 6 s et échec réseau non bloquant.
+
+**Accessibilité & SEO**
+- **Résumé serveur `sr-only`** dans `page.tsx` : identité, projets et contacts présents dans le HTML initial, lisibles par les crawlers et les lecteurs d'écran, indépendamment de la couche 3D.
+- **`prefers-reduced-motion` respecté et surchargeable** : le réglage manuel de la console prime, se reflète sur `<html data-motion>` (les animations CSS suivent) et désactive le scroll détourné au profit du scroll natif.
+- **JSON-LD `Person` + `WebSite`**, canonical vers le domaine custom, `sitemap.xml` et `robots.txt` générés, manifest PWA, image OpenGraph générée à la volée par `next/og` (aucun asset à maintenir).
+- **404 diégétique volontairement statique** : aucun JS, aucune 3D — instantanée et robuste.
+
+**Détails d'implémentation**
+- **i18n maison** : dictionnaire FR/EN typé (`Dict`), langue persistée via `zustand/persist`, `<html lang>` synchronisé dès le boot — sans dépendance externe.
+- **Moteur audio 100 % synthétisé** (Web Audio) : réverbe algorithmique sur impulse response générée, FM métallique, balayages filtrés — une vingtaine de cues, zéro fichier audio. Coupé par défaut, le contexte n'est créé qu'au geste utilisateur.
+- **Scroll piloté par Lenis** + snap de section maison : amorcer le scroll suffit à être posé sur la section suivante ; neutralisé en mouvement réduit.
+- **`ErrorBoundary` par section** : un module 3D qui échoue n'emporte pas le reste de la page.
+- **Machine d'état explicite** pour le parcours de sélection des projets (`useProjectManager`) : transitions valides uniquement.
+- **Aucune donnée personnelle sensible dans le bundle client** : le numéro de téléphone est volontairement absent de `constants.ts`, qui part côté client.
+
+---
+
+## 🧰 Stack technique
+
+| Domaine | Technologie |
+|---|---|
+| Framework | Next.js 15 (App Router, Turbopack en dev) |
+| Langage | TypeScript 5 (`strict: true`) |
+| UI | React 19 |
+| 3D | Three.js 0.178 · React Three Fiber 9 · Drei 10 · Postprocessing 3 |
+| Styles | Tailwind CSS 4 (via `@tailwindcss/postcss`) |
+| Animation | GSAP 3 · Lenis 1.3 (smooth scroll) |
+| État | Zustand 5 (+ middleware `persist`) |
+| Icônes | lucide-react · devicon (CDN jsDelivr) |
+| Audio | Web Audio API (synthèse maison, sans dépendance) |
+| Typographie | Orbitron + IBM Plex Mono (`next/font`) |
+| Qualité | ESLint 9 (`eslint-config-next`) |
+| Déploiement | Vercel |
+
+---
+
+## 🚀 Lancer en local
+
+**Prérequis** : Node.js ≥ 20 (requis par Next.js 15) et npm.
 
 ```bash
+git clone https://github.com/Charkx/portfolio2026.git
+cd portfolio2026
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Le site est disponible sur [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build   # build de production
+npm run start   # sert le build de production
+npm run lint    # ESLint (non bloquant au build, cf. next.config.ts)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Aucune variable d'environnement n'est nécessaire.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📁 Structure des fichiers
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+├─ layout.tsx                 # metadata, JSON-LD, polices (Orbitron + IBM Plex Mono)
+├─ page.tsx                   # page serveur : résumé sr-only indexable + montage du client
+├─ ClientApp.tsx              # orchestration : préchargement, loader, sections dynamiques
+├─ sections/                  # Hero · About · Skills · Projects · Contact
+├─ components/
+│  ├─ 3d/                     # canvas partagé, scène, cerveau, ADN, data-cubes, carte, shader holo
+│  ├─ ui/                     # HUD AR, console de calibrage, curseur custom, modales, terminal
+│  ├─ SmoothScroll.tsx        # intégration Lenis + cibles de scroll par section
+│  ├─ SectionSnap.tsx         # snap de section (desktop, hors reduced-motion)
+│  └─ LazyMount.tsx           # montage des canvas à l'approche du scroll
+├─ store/                     # zustand : portfolio, scene, settings, audio, lang, modal, discovery
+├─ hooks/                     # useInView, useDragRotate, useTypewriter, useReducedMotion, ErrorBoundary…
+├─ lib/
+│  ├─ audioEngine.ts          # moteur Web Audio (singleton, synthèse pure)
+│  └─ preloadAssets.ts        # préchargement des .glb avec progression réelle
+├─ i18n/                      # dictionnaire FR/EN typé + hook useT
+├─ utils/                     # constants (profil, stack), projectsData, types
+├─ transmission/              # mini-jeu déverrouillable (page + canvas dédié)
+├─ mentions-legales/          # page légale (repli sans JS de la modale)
+├─ sitemap.ts · robots.ts · manifest.ts · opengraph-image.tsx   # SEO / PWA générés
+└─ globals.css                # design system cyberpunk (variables, animations, [data-motion])
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+public/
+├─ 3d/                        # modèles GLB (humain holographique, cerveau)
+├─ projects/                  # visuels des projets (WebP)
+└─ CV_Charly_Menthiller.pdf
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 👤 Auteur
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Charly Menthiller** — Ingénieur informatique, développeur Full Stack.
+
+- 🌐 [charlymenthiller.com](https://charlymenthiller.com)
+- 💼 [linkedin.com/in/charly-menthiller](https://www.linkedin.com/in/charly-menthiller/)
+- 💻 [github.com/Charkx](https://github.com/Charkx)
