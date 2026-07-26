@@ -113,7 +113,9 @@ export default function AboutSection() {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
+          {/* consigne d'usage : c'est le texte qui APPREND le site à un visiteur,
+              il ne peut pas être le moins lisible de la page (cf. /50 → 3,3:1) */}
+          <p className="mt-3 text-cyan-400/70 font-mono text-[11px] tracking-wider text-center">
             {t.about.tapHint}
           </p>
         </div>

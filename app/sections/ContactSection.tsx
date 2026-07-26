@@ -16,6 +16,15 @@ gsap.registerPlugin(ScrollTrigger);
 
 const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
 
+// Révélation à CLIQUET des coordonnées. L'opacité était une fonction pure de la
+// progression, donc réversible : un coup de molette vers le haut escamotait l'email
+// qu'on venait de lire — le pire moment pour faire disparaître une adresse.
+// Hystérésis : ça se révèle à 90 % et ça ne se referme qu'en dessous de 78 %, c'est-à-
+// dire quand on quitte vraiment la station (sinon l'overlay resterait plaqué à l'écran
+// par-dessus la section Projets).
+const REVEAL_IN = 0.90;
+const REVEAL_OUT = 0.78;
+
 // Repli image (WebGL indisponible / reduced-motion)
 function CardImage() {
   // eslint-disable-next-line @next/next/no-img-element
@@ -25,7 +34,6 @@ function CardImage() {
 export default function ContactSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);       // étage collant (budget de scroll)
-  const termRef = useRef<HTMLDivElement>(null);        // terminal "fin de session"
   const cardStageRef = useRef<HTMLDivElement>(null);   // overlay carte (canvas dédié)
   const infoRef = useRef<HTMLDivElement>(null);        // coordonnées terminal sous la carte
   const reducedMotion = useReducedMotion();
@@ -34,10 +42,9 @@ export default function ContactSection() {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [cardPhase, setCardPhase] = useState(false);
   const t = useT();
-  const [endLine, setEndLine] = useState('');
   const cardPhaseRef = useRef(false);
   const cardActiveRef = useRef(false);
-  const lineRef = useRef('');
+  const revealedRef = useRef(false);   // cliquet de révélation des coordonnées
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -49,6 +56,7 @@ export default function ContactSection() {
   // Cinématique fin de session — desktop, mouvement autorisé uniquement
   useEffect(() => {
     if (isMobile !== false || reducedMotion) return;
+
     const st = ScrollTrigger.create({
       trigger: stageRef.current,
       start: 'top top',
@@ -58,33 +66,33 @@ export default function ContactSection() {
         const p = self.progress;
         setEndSession(p);
 
-        const d = getDict().contact;
-        const line = p < 0.1 ? ''
-          : p < 0.8 ? d.endLine1
-          : p < 0.92 ? d.endLine2
-          : d.endLine3;
-        if (line !== lineRef.current) { lineRef.current = line; setEndLine(line); }
-        if (termRef.current) termRef.current.style.opacity = String(clamp((p - 0.1) / 0.12, 0, 1));
+        // cliquet : une fois les coordonnées atteintes, elles restent jusqu'à ce qu'on
+        // quitte la station pour de bon
+        if (p >= REVEAL_IN) revealedRef.current = true;
+        else if (p < REVEAL_OUT) revealedRef.current = false;
+        const revealed = revealedRef.current;
 
-        const mounted = p > 0.78;
+        const mounted = revealed || p > 0.78;
         if (mounted !== cardPhaseRef.current) { cardPhaseRef.current = mounted; setCardPhase(mounted); }
-        const frozen = p > 0.82;
+        const frozen = revealed || p > 0.82;
         if (frozen !== cardActiveRef.current) { cardActiveRef.current = frozen; setCardActive(frozen); }
-        if (cardStageRef.current) cardStageRef.current.style.opacity = String(clamp((p - 0.80) / 0.05, 0, 1));
+        if (cardStageRef.current) cardStageRef.current.style.opacity = revealed ? '1' : String(clamp((p - 0.80) / 0.05, 0, 1));
 
         // coordonnées terminal : apparition juste après que la carte se pose
         if (infoRef.current) {
-          infoRef.current.style.opacity = String(clamp((p - 0.90) / 0.06, 0, 1));
-          infoRef.current.style.pointerEvents = p > 0.94 ? 'auto' : 'none';
+          infoRef.current.style.opacity = revealed ? '1' : String(clamp((p - 0.90) / 0.06, 0, 1));
+          infoRef.current.style.pointerEvents = revealed || p > 0.94 ? 'auto' : 'none';
         }
       },
     });
+
     return () => {
       st.kill();
       setEndSession(0);
       setCardActive(false);
       cardActiveRef.current = false;
       cardPhaseRef.current = false;
+      revealedRef.current = false;
     };
   }, [isMobile, reducedMotion, setEndSession, setCardActive]);
 
@@ -123,7 +131,7 @@ export default function ContactSection() {
             title={t.contact.title}
           />
           {/* fonctionnement de la section */}
-          <p className="-mt-1 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
+          <p className="-mt-1 text-cyan-400/70 font-mono text-[11px] tracking-wider text-center">
             {t.contact.howto}
           </p>
           {/* LA carte 3D, seule (le même artefact que l'entrée — orbit coupé au tactile) */}
@@ -158,11 +166,16 @@ export default function ContactSection() {
           Fond semi-transparent : l'environnement (voûte + poussière cyan) reste visible derrière */}
       {isMobile === false && cardPhase && (
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 py-8">
-            {/* titre unifié (même hiérarchie que les autres sections) */}
-            <SectionTitle kicker={t.contact.kicker} title={t.contact.title} />
+          {/* py-16 = la hauteur exacte des deux barres du HUD (h-16) : le contenu se
+              centre ENTRE elles au lieu de passer dessous. La carte perd 6vh pour que
+              l'ensemble tienne encore sur un écran d'ordinateur portable. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 py-16">
+            {/* titre unifié (même hiérarchie que les autres sections) : le hint sous le
+                titre remplace l'ancienne ligne de terminal flottante en bas d'écran —
+                elle était le seul élément de ce type du site et se superposait au HUD. */}
+            <SectionTitle kicker={t.contact.kicker} title={t.contact.title} hint={t.contact.hint} />
             {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
-            <div className="relative w-full max-w-3xl h-[48vh] pointer-events-auto">
+            <div className="relative w-full max-w-3xl h-[42vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
                 <BiometricCard />
               </ErrorBoundary>
@@ -174,15 +187,6 @@ export default function ContactSection() {
         </div>
       )}
 
-      {/* terminal "fin de session" — au-dessus du canvas et de la carte */}
-      <div
-        ref={termRef}
-        aria-hidden="true"
-        className="pointer-events-none fixed bottom-16 inset-x-0 z-[60] text-center font-mono text-cyan-300 text-sm tracking-[0.3em]"
-        style={{ opacity: 0 }}
-      >
-        {endLine}
-      </div>
     </section>
   );
 }

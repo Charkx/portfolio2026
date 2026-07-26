@@ -37,10 +37,43 @@ function HudTooltip({
   )
 }
 
+// Confirmation de déconnexion. L'action destructrice est en rouge et à droite,
+// l'échappatoire à gauche — et la croix de la modale, premier élément focalisable,
+// équivaut à « annuler » : aucun chemin rapide ne mène à la fermeture du site.
+function DisconnectPrompt({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  const t = useT();
+  return (
+    <div className="font-mono">
+      <p className="text-cyan-100/90 text-sm leading-relaxed">{t.hud.disconnectBody}</p>
+      <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 py-2.5 rounded border border-cyan-400/40 text-cyan-200 text-sm tracking-wider
+                     cursor-pointer transition-colors hover:bg-cyan-400/10
+                     focus-visible:outline-2 focus-visible:outline-cyan-400"
+        >
+          {t.hud.disconnectCancel}
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="px-5 py-2.5 rounded border border-red-400/60 bg-red-500/10 text-red-300 text-sm tracking-wider
+                     cursor-pointer transition-colors hover:bg-red-500/20 hover:text-red-200
+                     focus-visible:outline-2 focus-visible:outline-red-400"
+        >
+          {t.hud.disconnectConfirm}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
   const { introPhase, currentSection, scrollProgress, setIntroPhase } = usePortfolioStore();
   const openModal = useModalStore((s) => s.open);
+  const closeModal = useModalStore((s) => s.close);
   const soundEnabled = useAudioStore((s) => s.enabled);
   const toggleSound = useAudioStore((s) => s.toggle);
   const volume = useAudioStore((s) => s.volume);
@@ -58,6 +91,21 @@ export default function ARInterface() {
       content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" />,
     });
   };
+  // Reverrouiller DÉMONTE tout le site et renvoie à la séquence d'entrée : on demande
+  // confirmation dans une modale plutôt que de laisser un clic isolé tout fermer.
+  const confirmDisconnect = () => {
+    openModal({
+      title: t.hud.disconnectTitle,
+      size: "md",
+      content: (
+        <DisconnectPrompt
+          onConfirm={() => { closeModal(); setIntroPhase("LOCKED"); }}
+          onCancel={closeModal}
+        />
+      ),
+    });
+  };
+
   const booted = introPhase === "BOOTING" || introPhase === "UNLOCKED";
   const batteryLevel = Math.max(1, Math.round(scrollProgress * 100));
 
@@ -111,8 +159,11 @@ export default function ARInterface() {
             aria-label={t.hud.tipCv}
             className="flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
           >
+            {/* « CV » en clair : c'est LE lien qu'un recruteur cherche, et il était
+                étiqueté MEMORY_DUMP… puis masqué sous 640 px (donc icône muette sur
+                mobile). Le nom de code survit dans l'infobulle, où il ne coûte rien. */}
             <FileDown size={14}/>
-            <span className="hidden sm:inline">MEMORY_DUMP</span>
+            <span>CV</span>
           </a>
         </HudTooltip>
         <div className="flex items-center gap-2">
@@ -167,11 +218,19 @@ export default function ARInterface() {
             EN
           </button>
         </div>
+        {/* Le survol vire au ROUGE quand le clic est destructeur (session ouverte) :
+            l'icône annonce sa nature avant qu'on la touche, et la modale confirme.
+            Déverrouiller ne détruit rien → reste en cyan, sans confirmation. */}
         <HudTooltip label={introPhase === "LOCKED" ? t.hud.tipUnlock : t.hud.tipLock}>
           <button
             aria-label={introPhase === "LOCKED" ? t.hud.tipUnlock : t.hud.tipLock}
-            className="text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
-            onClick={() => setIntroPhase(introPhase === "LOCKED" ? "UNLOCKED" : "LOCKED")}
+            className={`transition-colors cursor-pointer ${
+              introPhase === "LOCKED" ? "text-cyan-400 hover:text-cyan-200" : "text-cyan-400 hover:text-red-400"
+            }`}
+            onClick={() => {
+              if (introPhase === "LOCKED") { setIntroPhase("UNLOCKED"); return }
+              confirmDisconnect()
+            }}
             onMouseEnter={() => audioEngine.play('hover')}
           >
             {introPhase === "LOCKED" ? <Power size={18}/> : <PowerOff size={18}/>}
@@ -233,9 +292,13 @@ export default function ARInterface() {
                       aria-label={`${t.hud.navGoTo} ${item.label}`}
                       onClick={() => { audioEngine.play('nav'); scrollToId(item.section); }}
                       onMouseEnter={() => audioEngine.play('hover')}
+                      // /40 = 2,5:1 sur fond noir : c'est la navigation PRINCIPALE du
+                      // site, elle ne peut pas être à la limite du lisible. La section
+                      // active reste distinguée par la couleur (vert), plus par le seul
+                      // écart de luminosité.
                       className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
                         booted
-                        ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/40"}`
+                        ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/70"}`
                         : "opacity-0"
                       }`}
                       style={{ '--i': idx + 4 } as React.CSSProperties}

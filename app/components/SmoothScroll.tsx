@@ -17,7 +17,11 @@ export const isProgrammaticScroll = () => programmatic
 /**
  * Cible de scroll d'une section. Normalement le HAUT de l'élément — SAUF « contact »
  * dont le contenu (carte + formulaire) se trouve à la FIN de l'étage 260vh (la
- * désintégration joue avant) : on vise ~97 % de l'étage pour atterrir sur le contenu.
+ * désintégration joue avant) : on vise le BAS DE PAGE pour atterrir sur le contenu.
+ * Le bas de page plutôt que 97 % de l'étage, parce que le pied de page (mentions
+ * légales, obligatoires) vit encore en dessous : viser l'étage seul le laissait sous
+ * la ligne de flottaison et obligeait à scroller après avoir cliqué CONTACT. La carte
+ * reste affichée à cette position (elle est en overlay `fixed`), donc on ne perd rien.
  * Heuristique desktop : uniquement quand l'étage est bien plus haut que l'écran.
  */
 export function sectionTargetY(id: string): number {
@@ -25,7 +29,10 @@ export function sectionTargetY(id: string): number {
   if (!el) return 0
   const top = el.getBoundingClientRect().top + window.scrollY
   const range = el.offsetHeight - window.innerHeight
-  if (id === "contact" && range > window.innerHeight * 0.8) return top + range * 0.97
+  if (id === "contact" && range > window.innerHeight * 0.8) {
+    const maxY = document.documentElement.scrollHeight - window.innerHeight
+    return Math.max(top, maxY)
+  }
   return Math.max(0, top)
 }
 

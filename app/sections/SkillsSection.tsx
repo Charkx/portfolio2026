@@ -218,7 +218,7 @@ export default function SkillsSection() {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-cyan-400/50 font-mono text-[11px] tracking-wider text-center">
+          <p className="mt-3 text-cyan-400/70 font-mono text-[11px] tracking-wider text-center">
             {t.skills.tapHint}
           </p>
         </div>
@@ -270,7 +270,7 @@ export default function SkillsSection() {
 
           {/* Affordance : on peut décoder un module */}
           {!decoded && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-mono text-cyan-400/50 pointer-events-none select-none">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-mono text-cyan-400/70 pointer-events-none select-none">
               {t.skills.clickHint}
             </div>
           )}

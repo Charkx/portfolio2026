@@ -101,7 +101,7 @@ export function ContactChannels() {
         >
           {t.contact.calendlyBtn}
         </button>
-        <div className="mt-1 text-[10px] text-cyan-400/40 tracking-wider">{t.contact.calendlySub}</div>
+        <div className="mt-1 text-[10px] text-cyan-400/70 tracking-wider">{t.contact.calendlySub}</div>
       </div>
     </div>
   );

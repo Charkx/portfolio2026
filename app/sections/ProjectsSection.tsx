@@ -351,7 +351,7 @@ export function ProjectsSection() {
             {/* Mobile : les cubes de la scène 3D (POV paume) SONT le visuel — plus de
                 carrousel CSS en doublon. Un tap sur un fragment ci-dessus déploie l'étude de cas. */}
             {isMobile && (
-              <p className="pt-1 text-center text-[11px] text-cyan-400/50 font-mono tracking-wider">
+              <p className="pt-1 text-center text-[11px] text-cyan-400/70 font-mono tracking-wider">
                 {t.projects.tapHint}
               </p>
             )}

@@ -76,7 +76,7 @@ export function SignalMeter({ booted }: { booted: boolean }) {
           {complete ? (
             <span className="text-green-400">{t.signals.unlocked}</span>
           ) : (
-            <span className="text-cyan-400/50">{t.signals.hint}</span>
+            <span className="text-cyan-400/70">{t.signals.hint}</span>
           )}
         </div>
       </div>

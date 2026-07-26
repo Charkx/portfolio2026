@@ -15,7 +15,7 @@ import { useT } from "../i18n"
 const BiometricCard = dynamic(() => import("../components/3d/BiometricCard"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center text-cyan-400/50 font-mono text-sm">
+    <div className="w-full h-full flex items-center justify-center text-cyan-400/70 font-mono text-sm">
       <span className="animate-pulse">{"// initializing biometric scan..."}</span>
     </div>
   ),
@@ -107,7 +107,7 @@ export default function HeroSection({
             <LazyMount className="w-full h-full relative">
               <ErrorBoundary
                 fallback={
-                  <div className="w-full h-full flex items-center justify-center text-cyan-400/50 font-mono text-sm">
+                  <div className="w-full h-full flex items-center justify-center text-cyan-400/70 font-mono text-sm">
                     <span>{t.hero.module3dKo}</span>
                   </div>
                 }
