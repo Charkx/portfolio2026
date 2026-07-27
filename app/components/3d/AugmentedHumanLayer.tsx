@@ -6,6 +6,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { SceneContents, Loader } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Garde-fou perfs : < 40 fps pendant 3 s consécutives → bascule qualité "éco"
 // (bloom coupé + DPR 1). Une seule fois par session (on ne lutte pas contre
@@ -74,8 +75,10 @@ export default function AugmentedHumanLayer() {
   // l'identité du site) — la qualité éco y est le défaut (cf. settingsStore)
   const [ready, setReady] = useState(false);
   const quality = useSettingsStore((s) => s.quality); // éco : bloom coupé + DPR plafonné
+  const reduced = useReducedMotion();                 // coupe le VOYAGE, pas la scène
   const wrapperRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0); // station hero au départ (écran verrouillé : environnement seul)
+  const fadeRef = useRef(0);     // progression des FONDUS — continue même quand la caméra coupe
   const coverRef = useRef(1); // canvas permanent → l'environnement (voûte/poussière) est toujours visible
 
   useEffect(() => { setReady(true); }, []);
@@ -110,17 +113,32 @@ export default function AugmentedHumanLayer() {
             fLin = (mid - centers[k]) / (centers[k + 1] - centers[k]);
           }
 
-          const fe = plateau(clamp01(fLin));
-          // caméra (SceneContents en mode linear → suit exactement progressRef)
-          progressRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, fe);
+          // fondus : TOUJOURS continus (opacité et échelle des modules), même quand la
+          // caméra, elle, coupe. C'est ce qui évite que les modules surgissent d'un bloc.
+          fadeRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, plateau(clamp01(fLin)));
 
-          // voile : le contenu HTML s'efface pendant TOUT le voyage (fenêtre large :
-          // le texte de la section suivante n'apparaît qu'à l'arrivée de la caméra,
-          // jamais en cours de route). sin(πfe) = 0 aux paliers.
-          const travel = Math.sin(Math.PI * fe);
-          const vT = clamp01((travel - 0.12) / 0.28);
-          const veil = vT * vT * (3 - 2 * vT); // smoothstep
-          document.documentElement.style.setProperty('--holo-veil', veil.toFixed(3));
+          if (reduced) {
+            // MOUVEMENT RÉDUIT : la caméra ne voyage plus, elle COUPE d'une station à
+            // l'autre à mi-chemin. C'est le travelling qui peut donner la nausée — pas
+            // la vie de l'hologramme, ni le récit. On retire donc le déplacement, et
+            // rien d'autre (cf. AugmentedHumanScene, qui garde le shader et la
+            // matérialisation en mouvement réduit).
+            progressRef.current = clamp01(fLin) < 0.5 ? ANCHORS[k].prog : ANCHORS[k + 1].prog;
+            // plus de voyage à masquer → le texte reste lisible en permanence
+            document.documentElement.style.setProperty('--holo-veil', '0');
+          } else {
+            const fe = plateau(clamp01(fLin));
+            // caméra (SceneContents en mode linear → suit exactement progressRef)
+            progressRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, fe);
+
+            // voile : le contenu HTML s'efface pendant TOUT le voyage (fenêtre large :
+            // le texte de la section suivante n'apparaît qu'à l'arrivée de la caméra,
+            // jamais en cours de route). sin(πfe) = 0 aux paliers.
+            const travel = Math.sin(Math.PI * fe);
+            const vT = clamp01((travel - 0.12) / 0.28);
+            const veil = vT * vT * (3 - 2 * vT); // smoothstep
+            document.documentElement.style.setProperty('--holo-veil', veil.toFixed(3));
+          }
         }
 
         // GATE nav : pendant un saut, on n'affiche QUE la section source et la
@@ -141,7 +159,7 @@ export default function AugmentedHumanLayer() {
       document.documentElement.style.setProperty('--holo-veil', '0'); // contenu rendu visible
       GATED_SECTIONS.forEach((id) => { const s = document.getElementById(id); if (s) s.style.opacity = ''; });
     };
-  }, [ready]);
+  }, [ready, reduced]);
 
   if (!ready) return null;
 
@@ -154,7 +172,7 @@ export default function AugmentedHumanLayer() {
         <ResponsiveFov />
         <ambientLight intensity={1} />
         <Suspense fallback={<Loader />}>
-          <SceneContents progressRef={progressRef} coverRef={coverRef} linear />
+          <SceneContents progressRef={progressRef} fadeProgressRef={fadeRef} coverRef={coverRef} linear />
         </Suspense>
         {quality !== 'eco' && (
           <>

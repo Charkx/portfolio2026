@@ -29,6 +29,23 @@ const HEAVY_ASSETS = [
   "/3d/brain_hologram.glb",
 ]
 
+// Repli d'une section dont le module 3D a planté. `fallback={null}` la faisait
+// DISPARAÎTRE en silence : le visiteur parcourait un portfolio amputé sans jamais
+// savoir qu'il manquait quelque chose, et la nav du HUD pointait vers une ancre
+// inexistante. On conserve donc l'id (nav et snap continuent de fonctionner) et on
+// dit ce qui s'est passé, sans jargon d'erreur.
+function SectionCrashed({ id, title, message }: { id: string; title: string; message: string }) {
+  return (
+    <section
+      id={id}
+      className="relative z-20 min-h-[60vh] flex flex-col items-center justify-center gap-3 px-4 text-center"
+    >
+      <h2 className="font-display text-cyan-400 text-lg sm:text-xl">{title}</h2>
+      <p className="font-mono text-cyan-400/70 text-xs max-w-md leading-relaxed">{message}</p>
+    </section>
+  )
+}
+
 // Petit fallback pendant le chargement client des sections 3D
 function SectionFallback() {
   return (
@@ -128,16 +145,16 @@ export default function ClientApp() {
           <>
               {/* amorcer le scroll suffit : le site pose l'utilisateur sur la section suivante */}
               <SectionSnap />
-              <ErrorBoundary fallback={null}>
+              <ErrorBoundary fallback={<SectionCrashed id="about" title={t.about.title} message={t.misc.sectionKo} />}>
                 <AboutSection />
               </ErrorBoundary>
-              <ErrorBoundary fallback={null}>
+              <ErrorBoundary fallback={<SectionCrashed id="skills" title={t.skills.title} message={t.misc.sectionKo} />}>
                 <SkillsSection />
               </ErrorBoundary>
-              <ErrorBoundary fallback={null}>
+              <ErrorBoundary fallback={<SectionCrashed id="projects" title={t.projects.title} message={t.misc.sectionKo} />}>
                 <ProjectsSection />
               </ErrorBoundary>
-              <ErrorBoundary fallback={null}>
+              <ErrorBoundary fallback={<SectionCrashed id="contact" title={t.contact.title} message={t.misc.sectionKo} />}>
                 <ContactSection />
               </ErrorBoundary>
           </>

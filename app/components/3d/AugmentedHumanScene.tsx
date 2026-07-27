@@ -405,7 +405,12 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
   }, []);
 
   useFrame((_, dt) => {
-    const active = (heroWRef.current ?? 0) > 0.5 && !reduced;
+    // Les lucioles vivent AUSSI en mouvement réduit. Les couper supprimait la seule
+    // chose qui explique le premier hologramme (des données qu'il absorbe), et surtout
+    // l'un des 5 signaux SIG — le mini-jeu devenait alors impossible à déverrouiller
+    // pour qui a choisi ce mode. Ce n'est pas un effet décoratif, c'est du contenu.
+    // C'est leur DÉRIVE qu'on retire plus bas, pas leur existence.
+    const active = (heroWRef.current ?? 0) > 0.5;
     clock.current += dt;
 
     // position monde du curseur : projeté sur le plan du corps (z=0)
@@ -444,16 +449,26 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
       // en attente de réapparition (invisible un court instant)
       if (clock.current < m.respawnAt) { mesh.visible = false; return; }
 
-      // flottement lent autour du point de base (dérive + bob → attire l'œil)
       const t = clock.current + m.phase;
-      m.pos.set(
-        m.base.x + Math.sin(t * 0.5) * 0.18,
-        m.base.y + Math.sin(t * 0.8 + 1.3) * 0.14,
-        m.base.z + Math.cos(t * 0.4) * 0.12,
-      );
-      mesh.position.copy(m.pos);
-      mesh.scale.setScalar(MOTE_SIZE * (0.85 + 0.15 * Math.sin(t * 3)));
-      mat.opacity = 0.9;
+      if (reduced) {
+        // Mouvement réduit : la luciole ne dérive plus (zéro déplacement), elle
+        // respire en opacité — assez pour qu'on la repère et qu'on comprenne qu'elle
+        // se récolte, sans rien faire bouger dans l'espace.
+        m.pos.copy(m.base);
+        mesh.position.copy(m.pos);
+        mesh.scale.setScalar(MOTE_SIZE);
+        mat.opacity = 0.7 + 0.25 * Math.sin(t * 1.6);
+      } else {
+        // flottement lent autour du point de base (dérive + bob → attire l'œil)
+        m.pos.set(
+          m.base.x + Math.sin(t * 0.5) * 0.18,
+          m.base.y + Math.sin(t * 0.8 + 1.3) * 0.14,
+          m.base.z + Math.cos(t * 0.4) * 0.12,
+        );
+        mesh.position.copy(m.pos);
+        mesh.scale.setScalar(MOTE_SIZE * (0.85 + 0.15 * Math.sin(t * 3)));
+        mat.opacity = 0.9;
+      }
 
       // récolte : souris à proximité (monde) · tactile : tap proche À L'ÉCRAN (NDC)
       const hit = coarse.current
@@ -487,7 +502,7 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
 }
 
 // --- Contenu du Canvas ---
-export function SceneContents({ progressRef, coverRef, debug = false, linear = false }: { progressRef: RefObject<number>; coverRef?: RefObject<number>; debug?: boolean; linear?: boolean }) {
+export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = false, linear = false }: { progressRef: RefObject<number>; fadeProgressRef?: RefObject<number>; coverRef?: RefObject<number>; debug?: boolean; linear?: boolean }) {
   const { scene } = useGLTF(HUMAN_URL, true); // true = décodeur Draco (GLB compressés)
   // cfgKey en dépendance → toute modif de CFG reconstruit la scène (sinon useMemo reste figé
   // car les modèles chargés ne changent pas de référence au Fast Refresh).
@@ -495,7 +510,10 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cfgKey est volontairement en trop (rebuild au Fast Refresh)
   const built = useMemo(() => buildScene(scene), [scene, cfgKey]);
   const camera = useThree((s) => s.camera);
-  const reduced = useReducedMotion(); // mouvement réduit : pas d'idle, matérialisation instantanée
+  // Mouvement réduit = on coupe ce qui DÉPLACE le point de vue (respiration de la
+  // caméra, suivi du regard, dérive du décor, et le voyage entre stations côté
+  // AugmentedHumanLayer). Ce qui vit sur place — shader, matérialisation — est conservé.
+  const reduced = useReducedMotion();
 
   const _t = useRef(new THREE.Vector3());
   const _base = useRef(new THREE.Vector3());     // position caméra de station (avant override finale)
@@ -570,23 +588,41 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
   }, [built]);
 
   useFrame((_, dt) => {
-    // reduced-motion : bandes du shader figées
-    if (!reduced) built.timeUniform.value += dt;
+    // Les bandes du shader défilent MÊME en mouvement réduit : une texture qui ondule
+    // sur place n'est pas un déplacement dans l'espace, elle ne déclenche pas de trouble
+    // vestibulaire. Figée, elle donnait juste un hologramme éteint — on punissait le
+    // récit au lieu de protéger l'utilisateur. Ce qu'on coupe, c'est le VOYAGE de caméra
+    // (cf. AugmentedHumanLayer) et la respiration, qui eux déplacent le point de vue.
+    built.timeUniform.value += dt;
     built.pulse.t.value += dt; // l'onde glitch se propage puis s'éteint (inactive à t≥~1.2)
 
-    // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage/reduced-motion).
+    // matérialisation : monte de 0 à 1 en ~1.6s (instantanée en calibrage seulement —
+    // en mouvement réduit elle joue aussi : c'est un fondu de dissolution sur place,
+    // pas un déplacement, et c'est le moment où l'hologramme prend corps).
     // Tant que l'accès est verrouillé, le corps reste invisible : le canvas permanent
     // ne montre que l'environnement (voûte + poussière) derrière la carte biométrique.
     const unlocked = usePortfolioStore.getState().introPhase === 'UNLOCKED';
-    if (reduced) mzRef.current = unlocked ? 1 : 0;
     if (!debug && unlocked && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
     // re-verrouillage (power-down) : le corps se dé-matérialise → il ne reste plus
     // derrière la carte biométrique (bug : l'avatar restait visible après lock)
     if (!debug && !unlocked && mzRef.current > 0) mzRef.current = Math.max(mzRef.current - dt / 1.0, 0);
     const mz = debug ? 1 : mzRef.current;
-    // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection
-    const es = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);
-    const esAppear = THREE.MathUtils.clamp(es / 0.15, 0, 1);        // 0→1 : le corps se cadre/apparaît
+    // Progression des FONDUS — distincte de celle de la caméra (cf. plus bas).
+    const fadeProg = fadeProgressRef?.current ?? progressRef.current;
+
+    // Fin de session : le corps se désintègre (le front uMz redescend) — piloté par ContactSection.
+    // MOUVEMENT RÉDUIT : cette section-là n'a pas de ScrollTrigger, donc rien ne pilotait
+    // la désintégration et le corps restait planté derrière la carte de contact — alors que
+    // tout le récit dit qu'il ne doit rester QUE la carte. On rejoue donc la même
+    // dissolution, cadencée par la progression des fondus : c'est une dissolution sur
+    // place, pas un déplacement, elle a sa place dans ce mode.
+    const esStore = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);
+    const es = reduced && !debug
+      ? 0.15 + THREE.MathUtils.clamp((fadeProg - 0.78) / 0.22, 0, 1) * 0.7 // 0.15→0.85 : dissous en arrivant
+      : esStore;
+    // esAppear recule la caméra vers le plan large : c'est un TRAVELLING, donc neutralisé
+    // en mouvement réduit (seule la dissolution est conservée).
+    const esAppear = reduced ? 0 : THREE.MathUtils.clamp(es / 0.15, 0, 1);
     const esDissolve = THREE.MathUtils.clamp((es - 0.15) / 0.7, 0, 1); // puis se dissout de haut en bas
     built.bodyMats.forEach((m) => {
       if (m.userData.uMz) m.userData.uMz.value = mz * (1 - esDissolve);
@@ -612,6 +648,15 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     const { stations, bodyMats } = built;
     const { i, f } = (linear ? linearStation : easedStation)(progressRef.current, stations.length);
     const A = stations[i], B = stations[i + 1];
+
+    // FONDUS (modules + opacité du corps) : progression SÉPARÉE de celle de la caméra
+    // (calculée plus haut). En mouvement réduit la caméra coupe d'une station à l'autre,
+    // mais les modules doivent continuer d'apparaître PROGRESSIVEMENT au scroll : un
+    // fondu d'opacité n'est pas un déplacement, il n'a aucune raison d'être sacrifié.
+    // Sans ce dédoublement, figer la caméra figeait aussi les fondus et les modules
+    // surgissaient d'un coup. Hors mouvement réduit, les deux valeurs sont égales.
+    const { i: fi, f: ff } = (linear ? linearStation : easedStation)(fadeProg, stations.length);
+    const FA = stations[fi], FB = stations[fi + 1];
 
     _base.current.lerpVectors(A.camPos, B.camPos, f);
     _baseTgt.current.lerpVectors(A.target, B.target, f);
@@ -701,7 +746,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
     // corps : visible pendant le voyage (bulge au milieu), ~0 une fois arrivé sur un module,
     // ré-affiché pour la fin de session (avant de se désintégrer)
     const TRAVEL = 0.45;
-    let bodyOp = Math.max(THREE.MathUtils.lerp(A.body, B.body, f), TRAVEL * Math.sin(Math.PI * f), 0.6 * esAppear);
+    let bodyOp = Math.max(THREE.MathUtils.lerp(FA.body, FB.body, ff), TRAVEL * Math.sin(Math.PI * ff), 0.6 * esAppear);
     // SAUT DE NAV : l'hologramme reste VISIBLE (on dézoome dessus, on zoome sur un membre)
     // et se re-matérialise si on vient de Contact (corps désintégré). Il ne se dissout au
     // 2e temps QUE si la cible est Contact (→ carte).
@@ -730,7 +775,7 @@ export function SceneContents({ progressRef, coverRef, debug = false, linear = f
       });
     } else {
       FOCI.forEach((key) => {
-        let w = 0; if (A.focus === key) w += 1 - f; if (B.focus === key) w += f;
+        let w = 0; if (FA.focus === key) w += 1 - ff; if (FB.focus === key) w += ff;
         weightsRef.current[key] = THREE.MathUtils.clamp(w, 0, 1);
       });
     }

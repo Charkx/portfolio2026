@@ -193,6 +193,7 @@ export const fr = {
     demoOpen: "Ouvrir en plein écran ↗",
     demoTitle: "Démo du projet",
     dragTitle: "Glisse pour faire pivoter",
+    sectionKo: "Ce module n'a pas pu s'afficher sur ton appareil. Les autres sections restent accessibles, et mon CV est téléchargeable depuis l'en-tête.",
     volumeOf: (n: number) => `Volume ${n} sur 5`,
   },
 }
@@ -443,6 +444,7 @@ export const en: Dict = {
     demoOpen: "Open fullscreen ↗",
     demoTitle: "Project demo",
     dragTitle: "Drag to rotate",
+    sectionKo: "This module could not be displayed on your device. The other sections remain available, and my CV can be downloaded from the header.",
     volumeOf: (n: number) => `Volume ${n} of 5`,
   },
 }

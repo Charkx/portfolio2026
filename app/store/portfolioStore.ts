@@ -22,18 +22,6 @@ interface PortfolioState {
   currentSection: string
   setCurrentSection: (section: string) => void
 
-  // Scroll
-  scrollY: number
-  setScrollY: (y: number) => void
-
-  // Skills
-  skillsProgress: number
-  setSkillsProgress: (progress: number) => void
-
-  // Interference
-  interferenceLevel: number
-  setInterferenceLevel: (level: number) => void
-
   // Debug
   debugMode: boolean
   toggleDebugMode: () => void
@@ -46,9 +34,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       isLoading: true,
       introPhase: "LOCKED",
       currentSection: "hero",
-      scrollY: 0,
-      skillsProgress: 0,
-      interferenceLevel: 0.3,
       debugMode: process.env.NODE_ENV === "development",
 
       // Actions (pas de console.log ici : la console prod doit rester muette)
@@ -60,16 +45,6 @@ export const usePortfolioStore = create<PortfolioState>()(
 
       setCurrentSection: (section) => {
         if (get().currentSection !== section) set({ currentSection: section })
-      },
-
-      setScrollY: (y) => set({ scrollY: y }),
-
-      setSkillsProgress: (progress) => {
-        if (get().skillsProgress !== progress) set({ skillsProgress: progress })
-      },
-
-      setInterferenceLevel: (level) => {
-        if (get().interferenceLevel !== level) set({ interferenceLevel: level })
       },
 
       toggleDebugMode: () => set((state) => ({ debugMode: !state.debugMode })),

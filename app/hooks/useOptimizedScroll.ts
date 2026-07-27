@@ -3,6 +3,8 @@
 import { useEffect, useMemo } from "react"
 import { usePortfolioStore} from "../store/portfolioStore"
 
+// Ordre du document : la section active se déduit d'une MESURE, pas d'un index.
+const SECTIONS = ["hero", "about", "skills", "projects", "contact"]
 
 // Fonction de throttle personnalisée
 function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T {
@@ -17,7 +19,7 @@ function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T 
 }
 
 export function useOptimizedScroll() {
-  const { setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel, setScrollProgress} = usePortfolioStore()
+  const { setCurrentSection, setScrollProgress } = usePortfolioStore()
 
   // useMemo (pas useCallback) : la fonction throttlée n'est créée qu'une fois,
   // sinon throttle() serait ré-exécuté à chaque render
@@ -25,36 +27,28 @@ export function useOptimizedScroll() {
     () => throttle(() => {
       const scrollY = window.scrollY
       const windowHeight = window.innerHeight
-      const documentHeight = document.documentElement.scrollHeight
 
-      // Mise à jour de la position de scroll
-      setScrollY(scrollY)
-
-      // Calcul de la section actuelle
-      const sections = ["hero", "about", "skills", "projects", "contact"]
-      const sectionHeight = windowHeight
-      const currentSectionIndex = Math.floor(scrollY / sectionHeight)
-      const currentSection = sections[Math.min(currentSectionIndex, sections.length - 1)]
-
-      setCurrentSection(currentSection)
-
-      // Calcul du progrès des compétences (section skills)
-      const skillsStart = sectionHeight * 2 // Section skills est la 3ème
-      const skillsEnd = sectionHeight * 3
-
-      if (scrollY >= skillsStart && scrollY <= skillsEnd) {
-        const skillsProgress = Math.min(6, Math.floor(((scrollY - skillsStart) / (skillsEnd - skillsStart)) * 6))
-        setSkillsProgress(skillsProgress)
+      // Section active = celle qui occupe le MILIEU de l'écran, mesurée sur le DOM.
+      // L'ancien calcul — floor(scrollY / innerHeight) — supposait que chaque section
+      // fait exactement un écran. C'est faux dès qu'un contenu déborde, et franchement
+      // faux pour l'étage contact qui fait 260vh : le HUD pouvait donc annoncer une
+      // section pendant qu'on en regardait une autre. Il divergeait surtout de
+      // sectionTargetY(), qui mesure réellement le DOM et pilote la nav ET le snap :
+      // deux sources de vérité pour une même question.
+      const mid = scrollY + windowHeight / 2
+      let current = SECTIONS[0]
+      for (const id of SECTIONS) {
+        const el = document.getElementById(id)
+        if (!el) continue // les sections lourdes ne sont montées qu'après le boot
+        if (mid >= el.getBoundingClientRect().top + scrollY) current = id
       }
+      setCurrentSection(current)
 
-      // Calcul du niveau d'interférence basé sur le scroll
-      const scrollProgress = scrollY / (documentHeight - windowHeight)
-      const safeProgress = Math.min(1, Math.max(0, scrollProgress || 0))
-      setScrollProgress(safeProgress)
-      const interferenceLevel = 0.3 + scrollProgress * 0.4 // Entre 0.3 et 0.7
-      setInterferenceLevel(interferenceLevel)
+      // Progression globale — alimente la jauge BAT du HUD
+      const range = document.documentElement.scrollHeight - windowHeight
+      setScrollProgress(range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0)
     }, 16), // ~60fps
-    [setCurrentSection, setScrollY, setSkillsProgress, setInterferenceLevel, setScrollProgress],
+    [setCurrentSection, setScrollProgress],
   )
 
 

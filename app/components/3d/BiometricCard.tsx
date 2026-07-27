@@ -6,6 +6,7 @@ import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment } from '
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { useSceneStore } from '../../store/sceneStore';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 const glitchChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 const BASE_TEXT = "ID: CHARLY MENTHILLER";
@@ -149,6 +150,7 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger?: () => void }> = ({ onScanTrigg
   const [hovered, setHovered] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const sentAt = useRef<number | null>(null); // instant de la célébration (mode contact)
+  const reduced = useReducedMotion();
 
   useCursor(hovered && !!onScanTrigger);
 
@@ -168,8 +170,11 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger?: () => void }> = ({ onScanTrigg
       }
     }
 
-    cardRef.current.rotation.y = Math.sin(t * 0.5) * 0.1 + flip;
-    cardRef.current.rotation.x = Math.cos(t * 0.3) * 0.05;
+    // Mouvement réduit : le flottement au repos s'arrête (la carte reste posée, face
+    // HUD vers l'objectif). On garde la célébration Calendly et le scan, qui sont
+    // déclenchés par l'utilisateur et portent une information.
+    cardRef.current.rotation.y = (reduced ? 0 : Math.sin(t * 0.5) * 0.1) + flip;
+    cardRef.current.rotation.x = reduced ? 0 : Math.cos(t * 0.3) * 0.05;
     cardRef.current.scale.setScalar(1 + pulse);
   });
 

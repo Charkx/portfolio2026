@@ -99,19 +99,30 @@ export default function ContactSection() {
   // --- REDUCED-MOTION : version statique (pas de désintégration ni de séquence caméra) ---
   if (reducedMotion) {
     return (
-      <section id="contact" ref={sectionRef} className="relative bg-black min-h-screen flex items-center py-20 scroll-mt-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20" />
+      // z-20 : le canvas permanent est un calque `fixed` en z-index 5. Les autres
+      // sections passent devant grâce à .holo-veil-fade (qui pose z-20) — celle-ci ne
+      // porte pas cette classe, elle restait donc DERRIÈRE l'hologramme, invisible.
+      // C'est la même valeur que partout ailleurs, pas un cas particulier.
+      <section id="contact" ref={sectionRef} className="relative z-20 min-h-screen flex items-center py-20 scroll-mt-20">
+        {/* AUCUN fond : comme toutes les autres sections, le monde 3D reste visible
+            derrière. Un fond opaque ici faisait de contact la seule section à masquer
+            le site. La lisibilité passe par le glass-panel des coordonnées, exactement
+            comme About et Skills le font pour leurs blocs de texte. */}
+        {/* ancre de station : mappe le scroll pour la caméra */}
+        <div data-holo="contact" aria-hidden className="absolute inset-0 pointer-events-none" />
         <div className="container mx-auto px-4 flex flex-col items-center gap-10 relative">
           <SectionTitle
             kicker={t.contact.kicker}
             title={t.contact.title}
             hint={t.contact.hint}
           />
-          {isMobile === false ? (
-            <div data-holo="contact" className="h-72 w-full max-w-lg" />
-          ) : (
-            <div className="flex justify-center"><CardImage /></div>
-          )}
+          {/* LA carte, la même qu'à l'entrée (face HUD) — pas la texture de dos.
+              Son flottement est figé en mouvement réduit, cf. BiometricCard. */}
+          <div className="relative w-full max-w-md h-[40svh]">
+            <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
+              <BiometricCard />
+            </ErrorBoundary>
+          </div>
           <div className="w-full max-w-xl"><ContactChannels /></div>
         </div>
       </section>
