@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Gamepad2 } from "lucide-react"
 import {
   useDiscoveryStore,
   SIGNALS,
@@ -14,7 +15,9 @@ import { useT } from "../../i18n"
 /**
  * Jauge SIG du HUD — reflète les 5 signaux cachés captés (0 → 100 %).
  * À 100 %, la jauge se change en bouton lumineux ouvrant la transmission secrète.
- * Au survol : panneau détaillant les signaux captés / encore masqués.
+ * Le panneau de détail s'ouvre au survol ET au clic : c'est la RÈGLE du mini-jeu,
+ * pas une infobulle d'appoint. Au survol seul, elle n'existait pas au doigt — un
+ * visiteur mobile voyait un pourcentage monter sans jamais savoir de quoi.
  */
 export function SignalMeter({ booted }: { booted: boolean }) {
   const router = useRouter()
@@ -22,11 +25,28 @@ export function SignalMeter({ booted }: { booted: boolean }) {
   const found = useDiscoveryStore((s) => s.found)
   const pct = Math.round(discoveryProgress(found) * 100)
   const complete = isDiscoveryComplete(found)
+  const [pinned, setPinned] = useState(false)
+  const panelId = useId()
 
   const open = () => {
     audioEngine.play("success")
     router.push("/transmission")
   }
+
+  // Ouvert au clic → se referme au premier geste ailleurs, ou à Échap. Le panneau
+  // reste en pointer-events-none : il n'a rien de cliquable, et ça garantit qu'un
+  // appui dessus ne bloque jamais la fermeture.
+  useEffect(() => {
+    if (!pinned) return
+    const away = () => setPinned(false)
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPinned(false) }
+    document.addEventListener("pointerdown", away)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("pointerdown", away)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [pinned])
 
   return (
     <div className="group relative pointer-events-auto">
@@ -35,28 +55,56 @@ export function SignalMeter({ booted }: { booted: boolean }) {
           onClick={open}
           onMouseEnter={() => audioEngine.play("hover")}
           aria-label={t.signals.accessAria}
-          className="font-mono text-green-300 hover:text-green-100 animate-pulse cursor-pointer transition-colors"
-          style={{ textShadow: "0 0 8px rgba(74,222,128,0.8)" }}
+          className="group/sig inline-flex items-center min-h-11 font-mono text-cyan-400 cursor-pointer"
         >
-          SIG: <span className="tracking-wider">{t.signals.access}</span>
+          {/* « SIG: » reste cyan quel que soit l'état : c'est l'étiquette de la jauge,
+              elle ne change pas de nature quand le jeu se débloque. Seule la RÉCOMPENSE
+              passe au vert et pulse — le contraste entre les deux est justement ce qui
+              signale qu'il s'est passé quelque chose.
+              (espacement par ml-1 et non par une espace typographique : dans un
+              conteneur flex, l'espace de fin est un nœud à part et peut se voir
+              supprimé — « SIG:[PLAY] » collé.) */}
+          SIG:
+          <span
+            className="ml-1 inline-flex items-center animate-pulse text-green-300 transition-colors group-hover/sig:text-green-100"
+            style={{ textShadow: "0 0 8px rgba(74,222,128,0.8)" }}
+          >
+            <span className="tracking-wider">{t.signals.access}</span>
+            <Gamepad2 size={14} className="ml-1.5" aria-hidden="true" />
+          </span>
         </button>
       ) : (
-        <span>
-          SIG:{" "}
+        // Tant que le mini-jeu est en cours, la jauge est un BOUTON : son seul rôle
+        // est d'ouvrir la checklist. (Une fois complète, elle sert à entrer dans la
+        // transmission — l'action prend alors le pas sur l'explication.)
+        <button
+          type="button"
+          aria-expanded={pinned}
+          aria-controls={panelId}
+          // pas d'aria-label : le nom accessible doit rester « SIG: 42% », c'est-à-dire
+          // le texte visible. `panelHeader` est un fragment ponctué (« > SIGNAUX CAPTÉS · »),
+          // il ferait un nom illisible et décorrélé de ce qu'on voit à l'écran.
+          onPointerDown={(e) => e.stopPropagation()} // sinon l'écouteur global referme aussitôt
+          onClick={() => setPinned((v) => !v)}
+          className="inline-flex items-center min-h-11 cursor-pointer"
+        >
+          SIG:
           <span
-            className={booted ? "hud-reveal text-cyan-400" : "opacity-0"}
+            className={booted ? "hud-reveal text-cyan-400 ml-1" : "opacity-0 ml-1"}
             style={{ "--i": 4 } as React.CSSProperties}
           >
             {booted ? pct : 0}%
           </span>
-        </span>
+        </button>
       )}
 
       {/* Panneau de détail — checklist des signaux (captés en clair, masqués sinon) */}
       <div
-        className="pointer-events-none absolute right-0 top-full mt-3 w-60 rounded border border-cyan-400/40
+        id={panelId}
+        className={`pointer-events-none absolute right-0 top-full w-60 rounded border border-cyan-400/40
                    bg-black/90 backdrop-blur-sm p-3 font-mono text-[10px] leading-relaxed
-                   opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50"
+                   transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50
+                   ${pinned ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
       >
         <div className="mb-1.5 tracking-widest text-cyan-300/90">
           {t.signals.panelHeader} {found.length}/{SIGNALS.length}

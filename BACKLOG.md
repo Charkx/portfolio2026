@@ -22,7 +22,7 @@ perdre le fil entre les échanges.
 ## 🐛 Bugs
 
 - **B8 — 22 warnings ESLint dans `/transmission`.** Mutation de valeurs passées à des hooks, ref lue pendant le rendu, une dépendance `useCallback` manquante. Le fichier le plus exposé à des bugs de rendu du projet.
-- **Panneau SIG inatteignable au doigt.** La checklist des signaux ne s'ouvre qu'au **survol** ([SignalMeter.tsx:56](app/components/ui/SignalMeter.tsx#L56)) : sur mobile, la règle du mini-jeu n'existe tout simplement pas. Trouvé en traitant B5, laissé de côté parce que c'est un autre sujet. À distinguer des infobulles du HUD, elles aussi au survol mais seulement *supplémentaires* (l'`aria-label` porte le sens) — ici c'est du contenu unique.
+- **Infobulles du HUD au survol uniquement.** `HudTooltip` ([ARInterface.tsx:17](app/components/ui/ARInterface.tsx#L17)) n'existe pas au doigt. Contrairement au panneau SIG (corrigé), ces infobulles sont *supplémentaires* : l'`aria-label` porte déjà le sens, et l'icône reste identifiable. Priorité basse, mais c'est le même angle mort.
 
 ---
 
@@ -50,6 +50,7 @@ perdre le fil entre les échanges.
 - **Environnement de la carte : une NUIT, pas un studio.** Le corps est en `metalness: 0.9` — un métal ne montre que ce qu'il réfléchit. Un environnement clair le délave et, mélangé au `pointLight` magenta, le fait virer au violet. D'où la règle : presque tout sombre, **un seul** éclat vif, et un remplissage frontal sous `0.4` (au-delà, le blanc réfléchi couvre le bleu). Symptôme à reconnaître : la carte est violette de face et redevient bleue quand on la pivote — c'est toujours la nappe frontale.
 - **Aucun asset servi par un tiers.** Ni CDN d'icônes, ni HDR distant. Un portfolio que consulte un recruteur ne doit pas dépendre de la disponibilité de `jsdelivr` ou de `raw.githack.com`.
 - **Cibles du HUD : l'icône garde sa taille, la zone cliquable grandit autour.** 44 px de haut (la barre en fait 64, c'est gratuit) + marge latérale, et les `gap` réduits d'autant pour compenser. Le dessin ne bouge pas, la cible triple.
+- **Le mini-jeu ne suit PAS le mouvement réduit, et c'est délibéré.** Inventaire fait : la caméra y est fixe, donc la doctrine (« couper ce qui déplace le point de vue ») ne retirerait presque rien. Le seul écart est la rotation sans fin des éclats — mais **ce sont les cibles du jeu** : les figer changerait la difficulté, pas l'apparence. Et on ne tombe pas sur `/transmission` par accident, il faut avoir capté cinq signaux cachés : c'est un opt-in. La **qualité éco**, elle, s'y applique bien (DPR), parce que c'est un réglage explicite et non un parti pris de mise en scène.
 - **Volume masqué sur mobile, assumé.** Cinq cibles à 24 px font 120 px : impossible dans une barre de 360 px qui porte déjà six commandes. Un téléphone a des boutons de volume matériels — la commande y est redondante. La coupure du son reste, elle, à portée. *Écart connu et accepté : sur desktop les barres font 12 × 24 px, pas 24 × 24. Les 24 px imposeraient un rang de 120 px qui changerait le glyphe « signal » en égaliseur.*
 
 ---
@@ -66,3 +67,4 @@ perdre le fil entre les échanges.
 | `1827430` | Éco : bloom conservé mais rendu bon marché. Ouverture de ce backlog. |
 | `9001ca0` | Plus aucun téléchargement distant : 16 icônes devicon servies en local (76 Ko), HDR de 1,7 Mo remplacé par un environnement procédural |
 | `6eda9e4` | B5 — cibles tactiles du HUD portées à 44 px de haut, volume retiré du mobile, navigation du bas visable au doigt |
+| *(en cours)* | Panneau SIG ouvrable au clic (la règle du mini-jeu existait pas au doigt), jauge renommée `SIG: [PLAY]` + manette, qualité éco enfin appliquée au mini-jeu |

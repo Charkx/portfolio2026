@@ -154,8 +154,10 @@ export const fr = {
       firefly: "LUCIOLE CAPTÉE", brain: "CORTEX SCANNÉ", adn: "ADN RÉAGENCÉ",
       cube: "CUBE DÉCRYPTÉ", card: "CANAL OUVERT",
     } as Record<string, string>,
-    access: "[ACCÈS] ▸",
-    accessAria: "Signal complet — ouvrir la transmission secrète",
+    // « [ACCÈS] » disait qu'une porte s'ouvrait, pas qu'un JEU attendait derrière.
+    // Le chevron ▸ est remplacé par une manette : c'est l'icône qui porte la promesse.
+    access: "[PLAY]",
+    accessAria: "Signal complet — lancer le mini-jeu",
     panelHeader: "> SIGNAUX CAPTÉS ·",
     unlocked: "▸ TRANSMISSION DÉVERROUILLÉE",
     hint: "Capte tous les signaux pour déverrouiller",
@@ -407,8 +409,8 @@ export const en: Dict = {
       firefly: "FIREFLY CAUGHT", brain: "CORTEX SCANNED", adn: "DNA REARRANGED",
       cube: "CUBE DECRYPTED", card: "CHANNEL OPENED",
     },
-    access: "[ACCESS] ▸",
-    accessAria: "Signal complete — open the secret transmission",
+    access: "[PLAY]",
+    accessAria: "Signal complete — start the mini-game",
     panelHeader: "> SIGNALS CAUGHT ·",
     unlocked: "▸ TRANSMISSION UNLOCKED",
     hint: "Catch every signal to unlock",

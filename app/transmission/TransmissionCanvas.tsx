@@ -7,6 +7,7 @@ import { clone as skeletonClone } from "three/examples/jsm/utils/SkeletonUtils.j
 import * as THREE from "three"
 import { makeHolo, HUMAN_URL, type Pulse } from "../components/3d/holoMaterial"
 import { audioEngine } from "../lib/audioEngine"
+import { useSettingsStore } from "../store/settingsStore"
 
 // --- réglages jeu (côté canvas) ---
 const CUBE_POOL = 12          // meshes menaces réutilisés (pool)
@@ -264,8 +265,13 @@ export default function TransmissionCanvas({
   onCombo: (mult: number) => void
   onFloat: (f: Omit<Float, "id">) => void
 }) {
+  const quality = useSettingsStore((s) => s.quality)
   return (
-    <Canvas camera={{ position: [0, 0.4, 9], fov: 55 }} dpr={[1, 2]}>
+    // Le mini-jeu ignorait la qualité choisie au calibrage : un visiteur en ÉCO
+    // (le défaut de tout appareil tactile) recevait ici jusqu'à 2x plus de pixels
+    // que ce qu'il avait demandé — et c'est justement l'écran où la fluidité compte
+    // le plus, puisqu'on y vise des cibles au doigt contre la montre.
+    <Canvas camera={{ position: [0, 0.4, 9], fov: 55 }} dpr={quality === "eco" ? 1 : [1, 2]}>
       <color attach="background" args={["#02040a"]} />
       <ambientLight intensity={0.7} />
       <pointLight position={[0, 2, 6]} intensity={1.3} color="#67e8f9" />
