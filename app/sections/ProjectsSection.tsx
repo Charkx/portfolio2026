@@ -47,6 +47,7 @@ const CONTEXT_HEX: Record<ProjectContext, string> = {
 function DecodeProgress({ duration, color, runKey }: { duration: number; color: string; runKey: number }) {
   const [pct, setPct] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pilote d'animation : setPct EST le travail de l'effet
     setPct(0);
     let raf = 0;
     const start = performance.now();
@@ -164,6 +165,7 @@ export function ProjectsSection() {
   // l'écran (~650 ms), PUIS l'étude de cas se matérialise — le lien 3D → DOM se lit.
   const [panelVisible, setPanelVisible] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- remise à zéro quand le projet déployé change
     if (projectDeployed === null) { setPanelVisible(false); return; }
     // mobile : pas de canvas DataCubes → le cue 'derez' est joué ici
     if (isMobile) audioEngine.play('derez');

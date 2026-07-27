@@ -61,6 +61,10 @@ export default function TechList({
                     }
                   }}
                 >
+                  {/* <img> et non next/image : ce sont des SVG locaux de 1 à 9 Ko.
+                      L'optimiseur d'images ne traite pas le SVG — il n'apporterait
+                      rien ici, et facturerait des transformations pour rien. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={techIcon(tech.icon)}
                     alt={`${tech.name} logo`}

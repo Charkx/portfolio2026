@@ -27,6 +27,13 @@ export function IDCardVisual({ onClick, onPointerOver, onPointerOut, hideBarcode
   const [glitchActive, setGlitchActive] = useState(false);
   const backgroundTexture = useLoader(THREE.TextureLoader, '/images/id_card.jpg');
 
+  // Hauteurs du code-barres tirées UNE seule fois. Elles étaient calculées en plein
+  // rendu : le glitch du nom déclenche deux setState par cycle, donc les 20 barres
+  // se retiraient au sort à chaque fois. Le code-barres frétillait en permanence
+  // sans que ce soit voulu — un code-barres, par définition, ne change pas.
+  // eslint-disable-next-line react-hooks/purity -- hasard VOULU, tiré une fois au montage
+  const barScales = useMemo(() => Array.from({ length: 20 }, () => (Math.random() > 0.5 ? 1 : 0.6)), []);
+
   // Glitch périodique du nom
   useEffect(() => {
     const interval = setInterval(() => {
@@ -92,7 +99,7 @@ export function IDCardVisual({ onClick, onPointerOver, onPointerOut, hideBarcode
         <mesh
           key={i}
           position={[-0.6 + i * 0.06, -0.05, 0.0215]}
-          scale={[1, Math.random() > 0.5 ? 1 : 0.6, 1]}
+          scale={[1, barScales[i], 1]}
         >
           <boxGeometry args={[0.02, 0.15, 0.002]} />
           <meshBasicMaterial color={glitchActive ? "#00ffff" : "#ffffff"} />
@@ -284,11 +291,17 @@ const NBARS = 30;
 // Lit le store : survol coordonnée > formulaire envoyé > progression > repos.
 function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
   const bars = useRef<(THREE.Mesh | null)[]>([]);
+  /* eslint-disable react-hooks/purity --
+   * Hasard VOULU et figé au montage : des barres de hauteurs inégales (sinon ce
+   * n'est pas un code-barres) et un premier délai de repos non synchronisé d'une
+   * carte à l'autre. Tiré une seule fois, jamais rejoué au rendu. Le canvas est
+   * client-only, donc aucun risque de divergence avec le rendu serveur. */
   const baseH = useMemo(() => Array.from({ length: NBARS }, () => 0.06 + Math.random() * 0.1), []);
   const [txt, setTxt] = useState('');
   const [txtCol, setTxtCol] = useState('#7dffff');
   const [txtOp, setTxtOp] = useState(0);
   const s = useRef({ target: '', col: '#7dffff', p: 0, clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0], autoIdx: 0 });
+  /* eslint-enable react-hooks/purity */
   const last = useRef({ txt: '', op: -1, col: '' });
   const reduced = useReducedMotion();
   const baseCol = useMemo(() => new THREE.Color('#aef6ff'), []);

@@ -67,6 +67,7 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
   // directions/rotations aléatoires des éclats (fixées une fois → pool réutilisé)
   const shardData = useMemo(() => Array.from({ length: SHARDS }, () => {
     const dir = new THREE.Vector3().randomDirection();
+    // eslint-disable-next-line react-hooks/purity -- éclats d'explosion : le hasard est l'effet, figé une fois
     return { dir, dist: 0.18 + Math.random() * 0.28, rot: new THREE.Vector3().randomDirection() };
   }), []);
 

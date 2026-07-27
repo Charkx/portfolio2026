@@ -25,6 +25,8 @@ export default function CustomCursor() {
 
   useEffect(() => {
     if (!window.matchMedia("(pointer: fine)").matches) return
+    // le type de pointeur n'existe pas au rendu serveur : on ne peut le savoir qu'ici
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- une seule fois, au montage
     setEnabled(true)
     document.body.classList.add("custom-cursor")
 

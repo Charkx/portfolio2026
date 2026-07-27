@@ -34,9 +34,17 @@ export default function TransmissionPage() {
   const [floats, setFloats] = useState<Float[]>([])
   const hpRef = useRef(HOST_HP)
   const floatId = useRef(0)
-  const pulse = useRef<Pulse>({ t: { value: 99 }, o: { value: new THREE.Vector3() } }).current
+  // Boîte à uniformes partagée avec le canvas : une identité STABLE qu'on mute au
+  // lieu de la remplacer (c'est l'idiome R3F — re-rendre React à 60 images/s est
+  // précisément ce qu'on veut éviter). Elle était créée par `useRef(...).current`,
+  // donc lue en plein rendu ; l'initialiseur paresseux de useState donne la même
+  // stabilité sans toucher à une ref pendant le rendu.
+  const [pulse] = useState<Pulse>(() => ({ t: { value: 99 }, o: { value: new THREE.Vector3() } }))
 
+  // localStorage et le store de découverte n'existent pas au rendu serveur :
+  // on ne peut savoir qu'ici si l'accès est acquis.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- une seule fois, au montage
     setAllowed(isDiscoveryComplete(useDiscoveryStore.getState().found))
     setBest(Number(localStorage.getItem("cm-transmission-best") || 0))
   }, [])
@@ -62,6 +70,7 @@ export default function TransmissionPage() {
   // compte à rebours → victoire si on tient jusqu'à 0
   useEffect(() => {
     if (phase !== "playing") return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fin du compte à rebours : la transition d'état EST l'effet
     if (timeLeft <= 0) { endGame("win"); return }
     const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000)
     return () => clearTimeout(t)

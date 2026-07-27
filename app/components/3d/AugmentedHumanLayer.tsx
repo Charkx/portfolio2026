@@ -64,6 +64,9 @@ function ResponsiveFov() {
   const { camera, size } = useThree();
   useEffect(() => {
     const c = camera as import('three').PerspectiveCamera;
+    // muter la caméra est l'API three.js : elle n'a pas de version immuable, et
+    // updateProjectionMatrix() n'existe que pour acter cette mutation.
+    // eslint-disable-next-line react-hooks/immutability
     c.fov = size.width < size.height ? 52 : 40;
     c.updateProjectionMatrix();
   }, [camera, size]);
@@ -81,6 +84,8 @@ export default function AugmentedHumanLayer() {
   const fadeRef = useRef(0);     // progression des FONDUS — continue même quand la caméra coupe
   const coverRef = useRef(1); // canvas permanent → l'environnement (voûte/poussière) est toujours visible
 
+  // drapeau « monté » : le canvas WebGL ne doit pas exister au rendu serveur.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- une seule fois, au montage
   useEffect(() => { setReady(true); }, []);
 
   useEffect(() => {

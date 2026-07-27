@@ -74,6 +74,7 @@ export default function TerminalDisplay() {
   // réinitialise aussi le calibrage (re-verrouillage → séquence complète rejouée)
   useEffect(() => {
     if (introPhase === 'LOCKED') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- remise à zéro sur changement de phase, pas une cascade
       setLines([]);
       setCalibrating(false);
     }

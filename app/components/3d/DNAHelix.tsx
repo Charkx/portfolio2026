@@ -95,6 +95,9 @@ export default function DNAHelix({
     const N = 260;
     const h = totalPairs * spacing;
     const arr = new Float32Array(N * 3);
+    /* eslint-disable react-hooks/purity --
+     * Nuage de 260 particules dispersées autour de l'hélice : le hasard EST le
+     * rendu voulu. Tiré une fois dans ce useMemo, jamais rejoué. */
     for (let i = 0; i < N; i++) {
       const a = Math.random() * Math.PI * 2;
       const r = radius * (0.6 + Math.random() * 1.2);
@@ -102,6 +105,7 @@ export default function DNAHelix({
       arr[i * 3 + 1] = (Math.random() - 0.5) * h * 1.1;
       arr[i * 3 + 2] = Math.sin(a) * r;
     }
+    /* eslint-enable react-hooks/purity */
     const particles = new THREE.BufferGeometry();
     particles.setAttribute('position', new THREE.BufferAttribute(arr, 3));
     return { tubeA, tubeB, particles };

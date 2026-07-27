@@ -21,7 +21,6 @@ perdre le fil entre les échanges.
 
 ## 🐛 Bugs
 
-- **B8 — 22 warnings ESLint dans `/transmission`.** Mutation de valeurs passées à des hooks, ref lue pendant le rendu, une dépendance `useCallback` manquante. Le fichier le plus exposé à des bugs de rendu du projet.
 - **Infobulles du HUD au survol uniquement.** `HudTooltip` ([ARInterface.tsx:17](app/components/ui/ARInterface.tsx#L17)) n'existe pas au doigt. Contrairement au panneau SIG (corrigé), ces infobulles sont *supplémentaires* : l'`aria-label` porte déjà le sens, et l'icône reste identifiable. Priorité basse, mais c'est le même angle mort.
 
 ---
@@ -51,6 +50,7 @@ perdre le fil entre les échanges.
 - **Aucun asset servi par un tiers.** Ni CDN d'icônes, ni HDR distant. Un portfolio que consulte un recruteur ne doit pas dépendre de la disponibilité de `jsdelivr` ou de `raw.githack.com`.
 - **Cibles du HUD : l'icône garde sa taille, la zone cliquable grandit autour.** 44 px de haut (la barre en fait 64, c'est gratuit) + marge latérale, et les `gap` réduits d'autant pour compenser. Le dessin ne bouge pas, la cible triple.
 - **Le mini-jeu ne suit PAS le mouvement réduit, et c'est délibéré.** Inventaire fait : la caméra y est fixe, donc la doctrine (« couper ce qui déplace le point de vue ») ne retirerait presque rien. Le seul écart est la rotation sans fin des éclats — mais **ce sont les cibles du jeu** : les figer changerait la difficulté, pas l'apparence. Et on ne tombe pas sur `/transmission` par accident, il faut avoir capté cinq signaux cachés : c'est un opt-in. La **qualité éco**, elle, s'y applique bien (DPR), parce que c'est un réglage explicite et non un parti pris de mise en scène.
+- **Le lint est à zéro : toute suppression doit être JUSTIFIÉE sur place.** Chaque `eslint-disable` du projet porte sa raison après `--`. Une suppression sans raison est un bug qu'on a décidé de ne pas voir. Trois familles seulement sont désactivées, et toujours au plus près : `immutability` (muter des objets three.js dans `useFrame` **est** l'idiome R3F — passer par un état React à 60 images/s est exactement ce qu'il faut éviter), `purity` (`Math.random()` figé au montage dans un `useMemo` : le hasard est le rendu voulu, et ces canvas sont client-only donc sans divergence d'hydratation), `set-state-in-effect` (détection d'environnement au montage : `matchMedia`, `localStorage`, taille d'écran — rien de tout ça n'existe au rendu serveur).
 - **Volume masqué sur mobile, assumé.** Cinq cibles à 24 px font 120 px : impossible dans une barre de 360 px qui porte déjà six commandes. Un téléphone a des boutons de volume matériels — la commande y est redondante. La coupure du son reste, elle, à portée. *Écart connu et accepté : sur desktop les barres font 12 × 24 px, pas 24 × 24. Les 24 px imposeraient un rang de 120 px qui changerait le glyphe « signal » en égaliseur.*
 
 ---
@@ -68,3 +68,4 @@ perdre le fil entre les échanges.
 | `9001ca0` | Plus aucun téléchargement distant : 16 icônes devicon servies en local (76 Ko), HDR de 1,7 Mo remplacé par un environnement procédural |
 | `6eda9e4` | B5 — cibles tactiles du HUD portées à 44 px de haut, volume retiré du mobile, navigation du bas visable au doigt |
 | `1164108` | Panneau SIG ouvrable au clic (la règle du mini-jeu existait pas au doigt), jauge renommée `SIG: [PLAY]` + manette, qualité éco enfin appliquée au mini-jeu |
+| *(en cours)* | B8 — lint à zéro. Trois vrais défauts corrigés (code-barres retiré au sort à chaque rendu, `k` manquant en dépendance, ref lue pendant le rendu), `useReducedMotion` réécrit en `useSyncExternalStore`, le reste supprimé avec sa raison. |

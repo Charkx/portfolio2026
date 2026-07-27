@@ -1,5 +1,16 @@
 "use client"
 
+/* eslint-disable react-hooks/immutability --
+ * Tout ce fichier tourne dans une boucle `useFrame` à 60 images/s : on y MUTE des
+ * objets three.js (positions, rotations, uniformes) au lieu de les remplacer. C'est
+ * l'idiome de React Three Fiber, pas un raccourci — passer par un état React à cette
+ * fréquence déclencherait 60 rendus par seconde, exactement ce qu'il faut éviter.
+ * L'objet `pulse` est de la même famille : une boîte à uniformes partagée,
+ * délibérément mutable, dont l'identité doit rester stable d'un bout à l'autre.
+ * Cette règle ne modélise pas ce cas ; la désactiver ici est plus honnête que de
+ * réécrire la boucle de rendu pour la satisfaire.
+ */
+
 import { Suspense, useCallback, useEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
@@ -142,7 +153,10 @@ function GameField({
       s.life = 1; s.active = true
       if (++spawned >= SHARDS_PER) break
     }
-  }, [shards])
+    // `k` manquait : c'est le facteur d'échelle portrait/paysage (0,55 ou 1). Sans lui,
+    // faire pivoter le téléphone en cours de partie laissait `burst` sur l'ancienne
+    // valeur — les éclats continuaient de naître à 55 % de leur taille en paysage.
+  }, [shards, k])
 
   const hit = useCallback((i: number) => (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()

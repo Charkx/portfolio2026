@@ -283,6 +283,7 @@ export default function SkillsSection() {
                          bg-black/85 backdrop-blur-sm p-4 font-mono"
             >
               <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element -- SVG local, cf. TechList */}
                 <img
                   src={techIcon(decoded.tech.icon)}
                   alt=""
