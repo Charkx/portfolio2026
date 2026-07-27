@@ -119,6 +119,7 @@ export default function TransmissionPage() {
       <CustomCursor />
       <TransmissionCanvas
         running={phase === "playing"} pulse={pulse} defeated={phase === "over" && outcome === "lose"}
+        integrity={integrity / HOST_HP}
         onHit={onHit} onBreach={onBreach} onCombo={setCombo} onFloat={onFloat}
       />
 

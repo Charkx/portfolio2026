@@ -25,8 +25,24 @@ const SNAP_DURATION = 5; // s
 // envoie des crans espacés de plusieurs centaines de ms, qu'un critère temporel
 // prendrait pour « un nouveau geste » et qui couperaient le voyage sans arrêt.
 // Il faut donc pousser franchement pour reprendre la main — un cran perdu ne suffit pas.
-const GRACE = 500;        // ms — laisse mourir l'élan du geste déclencheur
-const ESCAPE_DELTA = 240; // px cumulés au-delà de la grâce → l'utilisateur veut sortir
+const GRACE = 500;       // ms — laisse mourir l'élan du geste déclencheur
+// La porte de sortie regarde le SENS du geste, pas seulement sa quantité.
+// Pousser DANS le sens du voyage n'est pas une demande de sortie : on emmène déjà
+// l'utilisateur là où il va, il est juste impatient. Le laisser couper l'animation
+// revenait à sauter le dézoom/zoom de l'hologramme — le cœur du site — précisément
+// quand personne ne l'avait demandé. Seul un geste à CONTRE-SENS est sans ambiguïté :
+// celui-là veut repartir ailleurs, et on lui rend la main.
+const ESCAPE_BACK = 200; // px cumulés à contre-sens au-delà de la grâce
+
+// Après une sortie forcée, le site NE REPREND PAS la main tant que l'utilisateur
+// scrolle encore. Sans ce délai, il re-snappait à l'événement `scroll` suivant :
+// on reprenait le volant à quelqu'un qui venait tout juste de nous l'arracher, et
+// comme `nearest()` peut désigner la section qu'on APPROCHE (et non celle qu'on a
+// quittée), la règle « va à la voisine » lisait la descente en cours comme une
+// demande de remontée. Résultat : bloqué sur place, en va-et-vient.
+// Le réarmement se mesure sur les gestes RÉELS (molette, doigt) et non sur l'événement
+// `scroll`, que le lissage de Lenis continue d'émettre bien après le dernier geste.
+const REARM_IDLE = 420; // ms sans geste → le site peut de nouveau proposer un snap
 
 /**
  * Snap de section : amorcer le scroll suffit, le site place l'utilisateur
@@ -40,6 +56,9 @@ export default function SectionSnap() {
     let release = 0;      // filet : rend la main même si le voyage n'aboutit pas
     let snapStart = 0;    // horodatage du départ (fenêtre de grâce)
     let escapeAcc = 0;    // scroll cumulé pendant le voyage (porte de sortie)
+    let adrift = false;   // l'utilisateur a repris la main → aucun snap tant qu'il scrolle
+    let rearm = 0;        // timer de réarmement après une sortie forcée
+    let travelDir = 0;    // sens du voyage en cours : +1 descend, -1 remonte
 
     // cible de chaque section (contact = fin de l'étage, là où la carte + le
     // formulaire s'affichent) — même calcul que la nav HUD
@@ -54,29 +73,15 @@ export default function SectionSnap() {
     };
     settled = nearest(window.scrollY, tops());
 
-    const onScroll = () => {
+    // Départ d'un voyage — un seul endroit, partagé par le déclenchement normal et
+    // par le réarmement après une sortie forcée.
+    const startSnap = (to: number, T: number[]) => {
       const lenis = getLenis();
-      // saut de nav en cours → on laisse la nav faire, sans re-snapper par-dessus
-      if (snapping || isProgrammaticScroll() || !lenis || window.innerWidth < 768) return;
-      const y = window.scrollY;
-      const T = tops();
-
-      // resynchronise : posé pile sur une section (nav HUD, arrivée de snap…)
-      T.forEach((t, k) => { if (Math.abs(y - t) < 6) settled = k; });
-
-      const delta = y - T[settled];
-      // très loin de l'ancre (scrub interne de l'étage contact, saut nav) → on ré-ancre sans snapper
-      if (Math.abs(delta) > window.innerHeight * 1.2) { settled = nearest(y, T); return; }
-
-      let target = -1;
-      if (delta > TRIGGER && settled < T.length - 1 && y < T[settled + 1] - 10) target = settled + 1;
-      else if (delta < -TRIGGER && settled > 0) target = settled - 1;
-      if (target === -1 || !Number.isFinite(T[target])) return;
-
+      if (!lenis || !Number.isFinite(T[to])) return;
       snapping = true;
       snapStart = performance.now();
       escapeAcc = 0;
-      const to = target;
+      travelDir = Math.sign(T[to] - window.scrollY) || 1;
       lenis.scrollTo(T[to], {
         duration: SNAP_DURATION,
         lock: true, // sinon le geste déclencheur écrase l'animation (cf. plus haut)
@@ -95,6 +100,48 @@ export default function SectionSnap() {
       }, SNAP_DURATION * 1000 + 150);
     };
 
+    // Réarmement après une sortie forcée : quand les gestes cessent, on rejoint
+    // l'ancre la PLUS PROCHE — jamais une voisine. C'est la seconde moitié du
+    // correctif : `settled` désigne ici une section où l'on n'est jamais arrivé, et
+    // lui appliquer la règle « va à la voisine » renvoyait l'utilisateur en arrière.
+    const scheduleRearm = () => {
+      window.clearTimeout(rearm);
+      rearm = window.setTimeout(() => {
+        adrift = false;
+        if (snapping || isProgrammaticScroll() || window.innerWidth < 768) return;
+        const T = tops();
+        const k = nearest(window.scrollY, T);
+        settled = k;
+        const d = Math.abs(window.scrollY - T[k]);
+        // au-delà d'un écran et demi, on est dans le scrub interne de l'étage contact
+        // (ou juste après un saut de nav) : on se ré-ancre sans rien imposer
+        if (d > TRIGGER && d <= window.innerHeight * 1.2) startSnap(k, T);
+      }, REARM_IDLE);
+    };
+
+    const onScroll = () => {
+      const lenis = getLenis();
+      // saut de nav en cours → on laisse la nav faire, sans re-snapper par-dessus
+      // `adrift` : il vient de reprendre la main, on ne la lui redemande pas tout de suite
+      if (snapping || adrift || isProgrammaticScroll() || !lenis || window.innerWidth < 768) return;
+      const y = window.scrollY;
+      const T = tops();
+
+      // resynchronise : posé pile sur une section (nav HUD, arrivée de snap…)
+      T.forEach((t, k) => { if (Math.abs(y - t) < 6) settled = k; });
+
+      const delta = y - T[settled];
+      // très loin de l'ancre (scrub interne de l'étage contact, saut nav) → on ré-ancre sans snapper
+      if (Math.abs(delta) > window.innerHeight * 1.2) { settled = nearest(y, T); return; }
+
+      let target = -1;
+      if (delta > TRIGGER && settled < T.length - 1 && y < T[settled + 1] - 10) target = settled + 1;
+      else if (delta < -TRIGGER && settled > 0) target = settled - 1;
+      if (target === -1 || !Number.isFinite(T[target])) return;
+
+      startSnap(target, T);
+    };
+
     // Porte de sortie : coupe le voyage et rend le scroll immédiatement.
     // stop() annule l'animation ET libère le verrou, start() réactive le scroll —
     // les deux sont l'API publique de Lenis (elles passent toutes deux par reset()).
@@ -105,20 +152,30 @@ export default function SectionSnap() {
       lenis.start();
       window.clearTimeout(release);
       snapping = false;
+      adrift = true; // il a le volant, il le garde tant qu'il pousse
       settled = nearest(window.scrollY, tops());
+      scheduleRearm();
     };
 
     const onWheel = (e: WheelEvent) => {
+      // tant qu'il pousse encore, le réarmement est repoussé d'autant
+      if (adrift) { scheduleRearm(); return; }
       if (!snapping) return;
       if (performance.now() - snapStart < GRACE) return; // encore l'élan du départ
       // deltaY n'est pas toujours en pixels (Firefox molette = lignes, deltaMode 1)
       const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
+      // dans le sens du voyage → on ne sort pas : c'est de l'impatience, pas un refus.
+      // L'animation va au bout, et l'utilisateur arrive là où il voulait aller.
+      if (Math.sign(px) === travelDir) return;
       escapeAcc += Math.abs(px);
-      if (escapeAcc >= ESCAPE_DELTA) releaseControl();
+      if (escapeAcc >= ESCAPE_BACK) releaseControl();
     };
 
     // un doigt qui se pose pendant le voyage est toujours une intention délibérée
-    const onTouch = () => { if (snapping) releaseControl(); };
+    const onTouch = () => {
+      if (adrift) { scheduleRearm(); return; }
+      if (snapping) releaseControl();
+    };
 
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('wheel', onWheel, { passive: true });
@@ -128,6 +185,7 @@ export default function SectionSnap() {
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('touchstart', onTouch);
       window.clearTimeout(release);
+      window.clearTimeout(rearm);
     };
   }, []);
 

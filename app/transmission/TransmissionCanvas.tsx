@@ -14,6 +14,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
+import { EffectComposer, Bloom } from "@react-three/postprocessing"
 import { clone as skeletonClone } from "three/examples/jsm/utils/SkeletonUtils.js"
 import * as THREE from "three"
 import { makeHolo, HUMAN_URL, type Pulse } from "../components/3d/holoMaterial"
@@ -40,12 +41,34 @@ type Shard = {
   life: number; size: number; active: boolean
 }
 
+// L'hôte PÂLIT à mesure qu'il encaisse. `uOp` (opacité globale du shader holo)
+// n'était pas piloté ici et restait à sa valeur par défaut de 0,5 — d'où un
+// hologramme un peu éteint. On s'en sert pour deux choses d'un coup : le rendre
+// franchement plus présent à pleine intégrité, et faire de sa luminosité la lecture
+// DIRECTE des dégâts. Le joueur voit l'hôte s'effacer sans quitter l'action des yeux
+// pour aller lire la jauge du HUD.
+const OP_FULL = 0.75 // intégrité intacte
+// abaissé en même temps que OP_FULL : c'est l'ÉCART entre les deux qui rend chaque
+// brèche lisible, pas la valeur haute. Baisser le départ sans baisser le plancher
+// aurait rendu les impacts moins nets — exactement ce qu'on venait de corriger.
+const OP_DIM = 0.08  // au bord de la rupture
+// L'œil ne perçoit pas un NIVEAU, il perçoit un CHANGEMENT. Une descente lissée,
+// même réelle, passe inaperçue au milieu de l'action. À chaque brèche l'hôte
+// ENCAISSE donc visiblement : chute brutale, puis remontée vers son nouveau palier —
+// plus bas que le précédent. C'est le sursaut qu'on remarque ; le palier, lui,
+// fait le cumul. On réutilise `pulse.t`, remis à zéro à chaque brèche par GameField :
+// c'est déjà un « temps écoulé depuis le dernier impact », inutile d'en câbler un autre.
+const FLINCH = 0.4   // s — durée du sursaut
+const FLINCH_DEPTH = 0.85 // part de luminosité perdue au pic du sursaut
+
 // --- Hologramme humanoïde (l'hôte à défendre) : même modèle + shader holo que le site ---
-function Hologram({ pulse, defeated }: { pulse: Pulse; defeated: boolean }) {
+function Hologram({ pulse, defeated, integrity }: { pulse: Pulse; defeated: boolean; integrity: number }) {
   const { scene } = useGLTF(HUMAN_URL, true)
   const time = useRef({ value: 0 })
   const mzUniforms = useRef<{ value: number }[]>([])
   const edgeUniforms = useRef<{ value: number }[]>([])
+  const opUniforms = useRef<{ value: number }[]>([])
+  const opBase = useRef(OP_FULL) // palier courant, hors sursaut
   const human = useMemo(() => {
     const h = skeletonClone(scene)
     h.traverse((o) => {
@@ -71,15 +94,36 @@ function Hologram({ pulse, defeated }: { pulse: Pulse; defeated: boolean }) {
     if (mzUniforms.current.length === 0) {
       human.traverse((o) => {
         const mat = (o as THREE.Mesh).material as THREE.Material | undefined
-        const uMz = mat?.userData?.uMz, uEdge = mat?.userData?.uEdge
+        const uMz = mat?.userData?.uMz, uEdge = mat?.userData?.uEdge, uOp = mat?.userData?.uOp
         if (uMz) mzUniforms.current.push(uMz)
         if (uEdge) edgeUniforms.current.push(uEdge)
+        if (uOp) opUniforms.current.push(uOp)
       })
     }
     const targetMz = defeated ? 0 : 1
     const k = 1 - Math.pow(defeated ? 0.2 : 0.001, dt)
     mzUniforms.current.forEach((u) => { u.value += (targetMz - u.value) * k })
-    edgeUniforms.current.forEach((u) => { u.value += ((defeated ? 3 : 1) - u.value) * k })
+
+    const hp = THREE.MathUtils.clamp(integrity, 0, 1)
+    // le liseré de contour s'éteint lui aussi : c'est ce qui donne sa silhouette
+    // nette à l'hologramme, et le perdre le fait paraître délavé, pas juste sombre
+    edgeUniforms.current.forEach((u) => { u.value += ((defeated ? 3 : 0.3 + 0.7 * hp) - u.value) * k })
+
+    // PALIER : luminosité de fond, lissée, qui ne remonte jamais.
+    // Décroissance GÉOMÉTRIQUE et non linéaire. L'œil juge les écarts de luminosité en
+    // relatif (Weber-Fechner) : avec un pas linéaire, retirer 0,10 à un hologramme à
+    // 0,75 se voit à peine, alors que le même 0,10 à 0,20 est brutal — les premières
+    // brèches passaient donc inaperçues. Ici chaque brèche retire le MÊME POURCENTAGE
+    // (~28 %), donc chaque impact se remarque autant, et l'écart absolu des premiers
+    // coups est deux fois plus large qu'avant (0,21 contre 0,10).
+    const targetBase = OP_FULL * Math.pow(OP_DIM / OP_FULL, 1 - hp)
+    opBase.current += (targetBase - opBase.current) * k
+    // SURSAUT : appliqué sans lissage, sinon il serait mangé par le lissage lui-même
+    const f = THREE.MathUtils.clamp(1 - pulse.t.value / FLINCH, 0, 1)
+    const op = opBase.current * (1 - FLINCH_DEPTH * f * f)
+    opUniforms.current.forEach((u) => { u.value = op })
+    // (le bloom suit tout seul : moins l'hôte est lumineux, moins il dépasse le seuil
+    //  de luminance — en éco où le seuil est à 0,3, la chute s'accélère même)
   })
 
   // portrait (mobile) : tout le plateau à ~moitié d'échelle — le groupe wrapper
@@ -269,11 +313,12 @@ function GameField({
 }
 
 export default function TransmissionCanvas({
-  running, pulse, defeated, onHit, onBreach, onCombo, onFloat,
+  running, pulse, defeated, integrity, onHit, onBreach, onCombo, onFloat,
 }: {
   running: boolean
   pulse: Pulse
   defeated: boolean
+  integrity: number // 0 → 1 : pilote la luminosité de l'hôte
   onHit: (points: number) => void
   onBreach: () => void
   onCombo: (mult: number) => void
@@ -290,9 +335,18 @@ export default function TransmissionCanvas({
       <ambientLight intensity={0.7} />
       <pointLight position={[0, 2, 6]} intensity={1.3} color="#67e8f9" />
       <Suspense fallback={null}>
-        <Hologram pulse={pulse} defeated={defeated} />
+        <Hologram pulse={pulse} defeated={defeated} integrity={integrity} />
       </Suspense>
       <GameField running={running} pulse={pulse} onHit={onHit} onBreach={onBreach} onCombo={onCombo} onFloat={onFloat} />
+      {/* Le mini-jeu n'avait AUCUN bloom, alors que c'est lui qui fait qu'un hologramme
+          ressemble à un hologramme — d'où un hôte terne comparé au site. Mêmes réglages
+          que le canvas principal, éco compris : un seuil de luminance haut réduit
+          fortement le nombre de pixels qui y contribuent. */}
+      <EffectComposer>
+        {quality === "eco"
+          ? <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.3} radius={0.5} />
+          : <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />}
+      </EffectComposer>
     </Canvas>
   )
 }

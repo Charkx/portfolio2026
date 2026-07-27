@@ -265,7 +265,7 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
           {/* remplissage frontal TRÈS discret : juste assez pour que la face
               tournée vers la caméra ne soit pas noire. Au-delà de ~0.4, le blanc
               réfléchi couvre le bleu et la carte repart vers le violet. */}
-          <Lightformer intensity={0.35} color="#7fd8ea" position={[0, 0, 6]} scale={[10, 10, 1]} />
+          <Lightformer intensity={0.15} color="#7fd8ea" position={[0, 0, 6]} scale={[10, 10, 1]} />
         </Environment>
         <CyberpunkIDCard onScanTrigger={onScan} />
       </Suspense>

@@ -235,7 +235,6 @@ export default function SkillsSection() {
         className="mb-4"
         kicker={t.skills.kicker}
         title={t.skills.title}
-        hint={t.skills.hint}
       />
 
       {/* Filtre par niveau de maîtrise */}
@@ -266,13 +265,6 @@ export default function SkillsSection() {
             <div data-holo="skills" className="w-full cursor-grab touch-none" style={{ height: 'clamp(360px, 44vh, 520px)' }} title={t.misc.dragTitle} {...dragDNA} />
           ) : (
             <div className="w-full" style={{ height: 'clamp(360px, 44vh, 520px)' }} />
-          )}
-
-          {/* Affordance : on peut décoder un module */}
-          {!decoded && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-mono text-cyan-400/70 pointer-events-none select-none">
-              {t.skills.clickHint}
-            </div>
           )}
 
           {/* Panneau de décodage de la techno sélectionnée */}
