@@ -69,6 +69,13 @@ function DisconnectPrompt({ onConfirm, onCancel }: { onConfirm: () => void; onCa
   );
 }
 
+// Zone cliquable des commandes du HUD. Les icônes font 14 à 18 px : c'est la taille
+// du DESSIN, pas celle de la cible. WCAG 2.5.8 (AA) demande 24 px minimum, les
+// recommandations tactiles d'Apple et Google montent à 44/48. On garde donc le dessin
+// tel quel et on élargit la zone autour : 44 px de haut (la barre en fait 64, c'est
+// gratuit) et 8 px de marge de chaque côté. Rien ne change à l'œil, tout change au doigt.
+const HIT = "inline-flex items-center justify-center min-h-11 px-2";
+
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
   const { introPhase, currentSection, scrollProgress, setIntroPhase } = usePortfolioStore();
@@ -144,10 +151,13 @@ export default function ARInterface() {
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {/* Cluster haut-droit TOUJOURS visible : MEMORY_DUMP (CV) + Power */}
-      <div className="pointer-events-auto absolute top-0 right-6 h-16 z-20 flex items-center gap-4">
+      {/* `right-4` (et non 6) : les commandes gagnent 8 px de marge interne à droite,
+          donc l'icône reste visuellement à la même distance du bord qu'avant.
+          `gap-1` : c'est désormais la marge interne des boutons qui les espace. */}
+      <div className="pointer-events-auto absolute top-0 right-4 h-16 z-20 flex items-center gap-1 sm:gap-2">
         {/* mobile : la barre d'état étant masquée, la jauge SIG (easter egg) vit ici */}
         {booted && (
-          <div className="sm:hidden font-mono text-xs text-cyan-400">
+          <div className="sm:hidden flex items-center min-h-11 font-mono text-xs text-cyan-400">
             <SignalMeter booted={booted} />
           </div>
         )}
@@ -157,7 +167,7 @@ export default function ARInterface() {
             onClick={openCv}
             onMouseEnter={() => audioEngine.play('hover')}
             aria-label={t.hud.tipCv}
-            className="flex items-center gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
+            className={`${HIT} gap-1.5 font-mono text-xs text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer`}
           >
             {/* « CV » en clair : c'est LE lien qu'un recruteur cherche, et il était
                 étiqueté MEMORY_DUMP… puis masqué sous 640 px (donc icône muette sur
@@ -166,21 +176,27 @@ export default function ARInterface() {
             <span>CV</span>
           </a>
         </HudTooltip>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <HudTooltip label={soundEnabled ? t.hud.tipSoundOff : t.hud.tipSoundOn}>
             <button
               aria-label={soundEnabled ? t.hud.tipSoundOff : t.hud.tipSoundOn}
               aria-pressed={soundEnabled}
-              className={`transition-colors cursor-pointer ${soundEnabled ? "text-cyan-300 hover:text-cyan-100" : "text-cyan-400/50 hover:text-cyan-200"}`}
+              className={`${HIT} transition-colors cursor-pointer ${soundEnabled ? "text-cyan-300 hover:text-cyan-100" : "text-cyan-400/50 hover:text-cyan-200"}`}
               onClick={toggleSound}
               onMouseEnter={() => audioEngine.play('hover')}
             >
               {soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
             </button>
           </HudTooltip>
-          {/* volume en barres de signal (langage HUD) : cliquer une barre = niveau n/5,
-              cliquer alors que le son est coupé = le réactiver à ce niveau */}
-          <div role="group" aria-label={t.hud.volume} className="flex items-end gap-[3px] h-4">
+          {/* Volume en barres de signal (langage HUD) : cliquer une barre = niveau n/5,
+              cliquer alors que le son est coupé = le réactiver à ce niveau.
+              MASQUÉ SUR MOBILE, et c'est un choix, pas un oubli : cinq cibles distinctes
+              ne peuvent pas faire 24 px chacune dans cette barre (120 px à elles seules,
+              sur un écran de 360 qui porte déjà six commandes). Un téléphone a des
+              boutons de volume matériels ; la coupure du son, elle, reste accessible
+              juste à côté. On retire donc la commande redondante plutôt que de laisser
+              cinq cibles intouchables. */}
+          <div role="group" aria-label={t.hud.volume} className="hidden sm:flex items-center h-6 ml-1">
             {[1, 2, 3, 4, 5].map((n) => {
               const lit = soundEnabled && volume >= n / 5 - 0.001;
               return (
@@ -190,21 +206,30 @@ export default function ARInterface() {
                   aria-pressed={lit}
                   onClick={() => setVolume(n / 5)}
                   onMouseEnter={() => audioEngine.play('hover')}
-                  className={`w-[4px] rounded-[1px] cursor-pointer transition-colors
-                              ${lit ? "bg-cyan-300 hover:bg-cyan-100" : "bg-cyan-400/25 hover:bg-cyan-400/60"}`}
-                  style={{ height: `${5 + n * 2.2}px` }}
-                />
+                  // la CIBLE fait 12 × 24 px, la BARRE dessinée en fait toujours 4 :
+                  // le glyphe est intact, la zone cliquable est triplée.
+                  className="group/vol flex h-6 w-3 items-end justify-center cursor-pointer"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`w-[4px] rounded-[1px] transition-colors
+                                ${lit ? "bg-cyan-300 group-hover/vol:bg-cyan-100" : "bg-cyan-400/25 group-hover/vol:bg-cyan-400/60"}`}
+                    style={{ height: `${5 + n * 2.2}px` }}
+                  />
+                </button>
               );
             })}
           </div>
         </div>
         {/* langue : bascule FR/EN à chaud (choix persisté) */}
-        <div className="flex items-center gap-1 font-mono text-xs" role="group" aria-label={t.hud.language}>
+        {/* px-1.5 au lieu de px-2 : deux libellés côte à côte, on économise la largeur
+            là où on peut — la cible reste à 44 px de haut, très au-delà des 24 exigés. */}
+        <div className="flex items-center font-mono text-xs" role="group" aria-label={t.hud.language}>
           <button
             aria-pressed={lang === 'fr'}
             onClick={() => { setLang('fr'); audioEngine.play('nav'); }}
             onMouseEnter={() => audioEngine.play('hover')}
-            className={`cursor-pointer transition-colors ${lang === 'fr' ? 'text-cyan-300' : 'text-gray-600 hover:text-cyan-400/80'}`}
+            className={`inline-flex items-center justify-center min-h-11 px-1.5 cursor-pointer transition-colors ${lang === 'fr' ? 'text-cyan-300' : 'text-gray-600 hover:text-cyan-400/80'}`}
           >
             FR
           </button>
@@ -213,7 +238,7 @@ export default function ARInterface() {
             aria-pressed={lang === 'en'}
             onClick={() => { setLang('en'); audioEngine.play('nav'); }}
             onMouseEnter={() => audioEngine.play('hover')}
-            className={`cursor-pointer transition-colors ${lang === 'en' ? 'text-cyan-300' : 'text-gray-600 hover:text-cyan-400/80'}`}
+            className={`inline-flex items-center justify-center min-h-11 px-1.5 cursor-pointer transition-colors ${lang === 'en' ? 'text-cyan-300' : 'text-gray-600 hover:text-cyan-400/80'}`}
           >
             EN
           </button>
@@ -224,7 +249,7 @@ export default function ARInterface() {
         <HudTooltip label={introPhase === "LOCKED" ? t.hud.tipUnlock : t.hud.tipLock}>
           <button
             aria-label={introPhase === "LOCKED" ? t.hud.tipUnlock : t.hud.tipLock}
-            className={`transition-colors cursor-pointer ${
+            className={`${HIT} transition-colors cursor-pointer ${
               introPhase === "LOCKED" ? "text-cyan-400 hover:text-cyan-200" : "text-cyan-400 hover:text-red-400"
             }`}
             onClick={() => {
@@ -283,7 +308,10 @@ export default function ARInterface() {
       <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent">
         <div className="flex justify-center sm:justify-between items-center h-full px-6 text-cyan-400 font-mono text-sm">
           <div className="flex items-center space-x-6">
-            <div className="flex items-center gap-4">
+            {/* gap-1 sur mobile : les quatre libellés (27 caractères en tout) plus leur
+                marge interne doivent tenir dans 360 px. C'est la marge des boutons qui
+                les espace maintenant, pas le gap. */}
+            <div className="flex items-center gap-1 sm:gap-4">
               {NAV.map((item, idx) => (        // ← idx = la position
                 <div key={item.section} className="flex items-center">
                   <div aria-hidden="true" className="hidden sm:flex text-cyan-400/40">{item.prefix}:</div>
@@ -296,7 +324,10 @@ export default function ARInterface() {
                       // site, elle ne peut pas être à la limite du lisible. La section
                       // active reste distinguée par la couleur (vert), plus par le seul
                       // écart de luminosité.
-                      className={`pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
+                      // 44 px de haut : c'est la navigation principale, et sur mobile
+                      // c'est la SEULE chose qui reste dans la barre du bas. Un libellé
+                      // de 20 px de haut se rate au doigt.
+                      className={`inline-flex items-center min-h-11 px-1.5 pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
                         booted
                         ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/70"}`
                         : "opacity-0"
