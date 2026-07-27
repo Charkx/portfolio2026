@@ -271,6 +271,7 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
   const [txtOp, setTxtOp] = useState(0);
   const s = useRef({ target: '', col: '#7dffff', p: 0, clock: 0, idleNext: 7 + Math.random() * 8, idleUntil: 0, idleMsg: IDLE_MSGS[0], autoIdx: 0 });
   const last = useRef({ txt: '', op: -1, col: '' });
+  const reduced = useReducedMotion();
   const baseCol = useMemo(() => new THREE.Color('#aef6ff'), []);
   const msgCol = useRef(new THREE.Color('#7dffff'));
 
@@ -285,8 +286,11 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
     // message cible + couleur. Mode AUTO (hero avant scan) : cycle imposé.
     let msg = '', c = '#7dffff';
     if (autoMessages) {
-      // hero avant le scan : la carte "parle" ponctuellement (10-18 s), pas en boucle
-      if (st.clock >= st.idleNext && st.clock >= st.idleUntil) {
+      // hero avant le scan : la carte "parle" ponctuellement (10-18 s), pas en boucle.
+      // Mouvement réduit : elle ne prend plus la parole d'elle-même — c'est une
+      // animation qui se déclenche seule, en boucle, sans que l'utilisateur l'ait
+      // demandée. Elle continue de répondre au survol et à l'envoi du formulaire.
+      if (!reduced && st.clock >= st.idleNext && st.clock >= st.idleUntil) {
         st.idleUntil = st.clock + 1.8;
         st.idleNext = st.clock + 10 + Math.random() * 8;
         st.autoIdx = (st.autoIdx + 1) % autoMessages.length;
@@ -298,7 +302,7 @@ function AnimatedBarcode({ autoMessages }: { autoMessages?: string[] }) {
     else if (hovered && CH_MSG[hovered]) { msg = CH_MSG[hovered]; c = CH_COL[hovered]; }
     else if (fill > 0) { msg = `LINK ${Math.round(fill * 100)}%`; c = '#7dffff'; }
     else if (IDLE_SPEAK) {
-      if (st.clock >= st.idleNext && st.clock >= st.idleUntil) {
+      if (!reduced && st.clock >= st.idleNext && st.clock >= st.idleUntil) {
         st.idleUntil = st.clock + 1.8;
         st.idleNext = st.clock + 9 + Math.random() * 9;
         st.idleMsg = IDLE_MSGS[(Math.random() * IDLE_MSGS.length) | 0];

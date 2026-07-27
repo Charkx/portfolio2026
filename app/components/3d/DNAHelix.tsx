@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Logo3D from './Logo3D';
+import { useReducedMotion } from '@/app/hooks/useReducedMotion';
 import { TECH_STACK, HELIX_STRANDS } from '@/app/utils/constants';
 
 // --- Constantes ---
@@ -112,7 +113,10 @@ export default function DNAHelix({
   }, [scaffold]);
 
   // --- Rotation de l'hélice ---
+  // Elle s'ajoute au turntable du HoloModule : en mouvement réduit, les deux se taisent.
+  const reduced = useReducedMotion();
   useFrame(() => {
+    if (reduced) return;
     if (groupRef.current) groupRef.current.rotation.y += 0.00025;
   });
 

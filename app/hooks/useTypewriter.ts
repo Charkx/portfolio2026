@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useReducedMotion } from './useReducedMotion';
 
 /**
  * Révèle un tableau de lignes ligne par ligne, lettre par lettre (effet terminal).
@@ -18,10 +19,15 @@ export function useTypewriter(
   speed = 16,
   step = 2,
 ) {
+  const reduced = useReducedMotion();
   // position courante : quelle ligne, et combien de ses caractères sont tapés
   const [pos, setPos] = useState({ line: 0, char: 0 });
 
   useEffect(() => {
+    // Mouvement réduit : le texte est déjà là. Faire attendre quelqu'un lettre après
+    // lettre pour lire un parcours professionnel n'a rien d'un confort — et ce mode
+    // est justement celui des gens qu'un texte en mouvement gêne.
+    if (reduced) return;
     setPos({ line: 0, char: 0 }); // reset à chaque changement de catégorie
     const id = setInterval(() => {
       setPos((p) => {
@@ -35,7 +41,10 @@ export function useTypewriter(
     return () => clearInterval(id); // nettoyage : évite les timers qui s'empilent
     // restartKey suffit à relancer ; lines change en même temps que lui.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restartKey, speed, step]);
+  }, [restartKey, speed, step, reduced]);
+
+  // tout est affiché d'emblée, sans curseur de frappe
+  if (reduced) return { shown: [...lines], typingLine: -1, done: true };
 
   const done = pos.line >= lines.length;
   const shown = lines.map((line, i) =>

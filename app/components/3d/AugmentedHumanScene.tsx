@@ -249,6 +249,7 @@ function HoloModule({ focus, position, baseScale, weightsRef, spin = 0, children
   const pointSizes = useRef(new Map<THREE.PointsMaterial, number>());
   const meshCount = useRef(-1);
   const spinAccum = useRef(0); // angle d'auto-rotation accumulé (en pause pendant un drag)
+  const reducedSpin = useReducedMotion();
 
   useFrame((_, dt) => {
     const grp = g.current; if (!grp) return;
@@ -271,9 +272,14 @@ function HoloModule({ focus, position, baseScale, weightsRef, spin = 0, children
     const s = baseScale * (0.92 + w * 0.3);
     grp.visible = w > 0.004;
     grp.scale.setScalar(s);
-    // turntable : auto-rotation (en pause si l'utilisateur drague ce module) + rotation manuelle
+    // turntable : auto-rotation (en pause si l'utilisateur drague ce module) + rotation manuelle.
+    // MOUVEMENT RÉDUIT : pas de turntable. Une rotation continue et sans fin est
+    // exactement ce que ce mode doit supprimer — et il aurait été incohérent de couper
+    // le voyage de caméra pour laisser une hélice tourner sans fin devant l'utilisateur.
+    // (WCAG 2.2.2, niveau A : tout contenu animé au-delà de 5 s doit pouvoir s'arrêter.)
+    // La rotation MANUELLE reste : elle est déclenchée par l'utilisateur.
     const st = useSceneStore.getState();
-    if (spin && st.dragFocus !== focus) spinAccum.current += spin * dt * w;
+    if (spin && !reducedSpin && st.dragFocus !== focus) spinAccum.current += spin * dt * w;
     const mr = st.manualRot[focus];
     grp.rotation.y = spinAccum.current + (mr?.y ?? 0);
     grp.rotation.x = mr?.x ?? 0;

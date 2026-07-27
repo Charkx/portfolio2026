@@ -1,14 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // --- GlitchText : décodage scramble → résolution gauche→droite (thème "extraction").
 // Déplacé ici depuis ProjectsSection pour servir tous les kickers de section.
 const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/01';
 
 export function GlitchText({ text, duration = 600, className }: { text: string; duration?: number; className?: string }) {
+  const reduced = useReducedMotion();
   const [display, setDisplay] = useState(text);
   useEffect(() => {
+    // Mouvement réduit : aucun brouillage. Brouiller les caractères d'un titre de
+    // section n'est pas seulement une animation — c'est du texte rendu temporairement
+    // illisible, ce qui gêne bien au-delà des seuls troubles vestibulaires.
+    // (le texte final est rendu directement, cf. plus bas : pas de setState ici)
+    if (reduced) return;
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
@@ -24,8 +31,8 @@ export function GlitchText({ text, duration = 600, className }: { text: string; 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [text, duration]);
-  return <span className={className}>{display}</span>;
+  }, [text, duration, reduced]);
+  return <span className={className}>{reduced ? text : display}</span>;
 }
 
 // Titre de section UNIFIÉ (même hiérarchie partout — cohérence Awwwards) :
