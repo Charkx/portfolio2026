@@ -68,4 +68,4 @@ perdre le fil entre les échanges.
 | `9001ca0` | Plus aucun téléchargement distant : 16 icônes devicon servies en local (76 Ko), HDR de 1,7 Mo remplacé par un environnement procédural |
 | `6eda9e4` | B5 — cibles tactiles du HUD portées à 44 px de haut, volume retiré du mobile, navigation du bas visable au doigt |
 | `1164108` | Panneau SIG ouvrable au clic (la règle du mini-jeu existait pas au doigt), jauge renommée `SIG: [PLAY]` + manette, qualité éco enfin appliquée au mini-jeu |
-| *(en cours)* | B8 — lint à zéro. Trois vrais défauts corrigés (code-barres retiré au sort à chaque rendu, `k` manquant en dépendance, ref lue pendant le rendu), `useReducedMotion` réécrit en `useSyncExternalStore`, le reste supprimé avec sa raison. |
+| `cb89b15` | B8 — lint à zéro. Trois vrais défauts corrigés (code-barres retiré au sort à chaque rendu, `k` manquant en dépendance, ref lue pendant le rendu), `useReducedMotion` réécrit en `useSyncExternalStore`, le reste supprimé avec sa raison. |
