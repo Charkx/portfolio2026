@@ -28,11 +28,8 @@ perdre le fil entre les échanges.
 
 ## ⚡ Performance & mobile
 
-- **Téléchargements distants au moment de l'affichage.** Deux causes identifiées pour les lenteurs constatées sur téléphone :
-  - `<Environment preset="night" />` ([BiometricCard.tsx:243](app/components/3d/BiometricCard.tsx#L243)) télécharge un HDR de plusieurs Mo sur un CDN externe, à chaque affichage de la carte. Piste : environnement procédural via `<Lightformer>`, sans téléchargement. ⚠️ Le corps de la carte est en `metalness: 0.9` — un métal sans reflet rend quasi noir, à vérifier à l'œil.
-  - 17 SVG devicon chargés un par un depuis `cdn.jsdelivr.net` ([Logo3D.tsx:88-91](app/components/3d/Logo3D.tsx#L88-L91)). Piste : les héberger dans `public/` (1 à 3 Ko pièce) — ça servirait aussi les listes HTML de Skills, qui tapent le même CDN, et supprimerait une dépendance à un tiers.
-  - À noter : l'écran de chargement précharge déjà les `.glb` avec une progression réelle. Ces deux-là ont simplement été oubliés du lot.
 - **DPR en mode éco.** Reste plafonné à `1` ([AugmentedHumanLayer.tsx](app/components/3d/AugmentedHumanLayer.tsx)) : sur un écran à densité 3, l'hologramme est crénelé. Passer à 1,5 multiplie par 2,25 le nombre de pixels — à tester sur appareil réel maintenant qu'on sait que le bloom passe.
+- **Préchargement des icônes : écarté volontairement.** La barre de progression de l'écran de démarrage fait une moyenne **par fichier**, pas par octet ([preloadAssets.ts](app/lib/preloadAssets.ts)). Y ajouter 16 fichiers de quelques Ko la ferait bondir à ~90 % puis ramper sur les deux `.glb` : gain nul, honnêteté de la barre perdue.
 
 ---
 
@@ -50,6 +47,8 @@ perdre le fil entre les échanges.
 - **Mouvement réduit = on coupe ce qui DÉPLACE le point de vue, on garde ce qui vit sur place.** Un fondu ou une texture qui ondule ne déclenchent pas de trouble vestibulaire ; un travelling, si.
 - **`animate-pulse` du HUD conservés** en mouvement réduit : une respiration lente en opacité reste acceptable et signale les éléments vivants de l'interface.
 - **Pas de troisième palier de dégradation FPS.** Tenté, il a cassé le rendu deux fois ; et c'est de l'optimisation pour un cas que personne n'a mesuré. Le test sur téléphone a confirmé que l'éco avec bloom est fluide.
+- **Environnement de la carte : une NUIT, pas un studio.** Le corps est en `metalness: 0.9` — un métal ne montre que ce qu'il réfléchit. Un environnement clair le délave et, mélangé au `pointLight` magenta, le fait virer au violet. D'où la règle : presque tout sombre, **un seul** éclat vif, et un remplissage frontal sous `0.4` (au-delà, le blanc réfléchi couvre le bleu). Symptôme à reconnaître : la carte est violette de face et redevient bleue quand on la pivote — c'est toujours la nappe frontale.
+- **Aucun asset servi par un tiers.** Ni CDN d'icônes, ni HDR distant. Un portfolio que consulte un recruteur ne doit pas dépendre de la disponibilité de `jsdelivr` ou de `raw.githack.com`.
 
 ---
 
@@ -62,3 +61,5 @@ perdre le fil entre les échanges.
 | `4286eab` | Contrastes (consignes, navigation, mentions légales), déconnexion avec confirmation, CV nommé « CV », section contact remaniée |
 | `28c8f96` | Mouvement réduit : caméra en coupe, hologramme vivant, lucioles récoltables (le mini-jeu était inatteignable dans ce mode), fondus découplés de la caméra, section contact réparée. Plus B6 (section active mesurée) et B7 (section qui plante). |
 | `f99bd42` | Mouvement réduit, suite : rotations sans fin coupées, texte immédiatement lisible, carte qui ne parle plus toute seule |
+| `1827430` | Éco : bloom conservé mais rendu bon marché. Ouverture de ce backlog. |
+| *(en cours)* | Plus aucun téléchargement distant : 16 icônes devicon servies en local (76 Ko), HDR de 1,7 Mo remplacé par un environnement procédural |

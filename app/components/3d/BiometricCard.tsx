@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Text, useCursor, Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { useSceneStore } from '../../store/sceneStore';
@@ -240,7 +240,26 @@ export default function BiometricCard({ onScan }: BiometricCardProps) {
       {/* Suspense interne : le chargement de texture (useLoader) est contenu
           ICI, sans faire démonter/remonter tout le Canvas. */}
       <Suspense fallback={null}>
-        <Environment preset="night" />
+        {/* Environnement PROCÉDURAL. `preset="night"` téléchargeait 1,7 Mo de HDR
+            depuis raw.githack.com (un tiers) AVANT de lever le Suspense : la carte
+            n'apparaissait pas tant que le fichier n'était pas là — le retard visible
+            sur mobile. On ne peut pas simplement le supprimer : le corps de la carte
+            est en metalness 0.9, et un métal sans rien à réfléchir rend noir. On
+            fabrique donc le reflet au lieu de le télécharger. `frames={1}` : les
+            lightformers ne bougent pas, une seule passe de rendu suffit. */}
+        <Environment resolution={64} frames={1}>
+          {/* Un environnement de NUIT, pas un studio : presque tout est sombre, un
+              seul éclat vif. C'est ce qui garde le bleu métal — un métal ne montre
+              que ce qu'il réfléchit, donc un environnement clair le délave et le
+              fait virer (avec le pointLight magenta, ça donnait du violet). */}
+          <color attach="background" args={['#03060b']} />
+          {/* la "lune" : petit et vif → une arête brillante, pas un délavage */}
+          <Lightformer form="circle" intensity={4} color="#dff6ff" position={[3, 4, 3]} scale={1.2} />
+          {/* remplissage frontal TRÈS discret : juste assez pour que la face
+              tournée vers la caméra ne soit pas noire. Au-delà de ~0.4, le blanc
+              réfléchi couvre le bleu et la carte repart vers le violet. */}
+          <Lightformer intensity={0.35} color="#7fd8ea" position={[0, 0, 6]} scale={[10, 10, 1]} />
+        </Environment>
         <CyberpunkIDCard onScanTrigger={onScan} />
       </Suspense>
     </Canvas>

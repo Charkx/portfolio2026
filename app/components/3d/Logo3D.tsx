@@ -13,6 +13,7 @@ import { Billboard, Html } from '@react-three/drei';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import gsap from 'gsap';
 import type { TechItem } from '@/app/utils/types';
+import { techIcon } from '@/app/utils/constants';
 
 // Nuances de cyan (au lieu du rainbow A/T/G/C) pour matcher la DA du cerveau.
 const BASE_COLORS = {
@@ -87,7 +88,7 @@ const Logo3D = forwardRef<THREE.Group, Props>(({
   // --- Chargement SVG ---
   useEffect(() => {
     svgLoader.load(
-      `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${tech.icon}/${tech.icon}-original.svg`,
+      techIcon(tech.icon),
       (data) => {
         const group = new THREE.Group();
         const mats: THREE.MeshStandardMaterial[] = [];

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TechList from '../components/TechList';
-import { TECH_STACK, HELIX_STRANDS } from '../utils/constants';
+import { TECH_STACK, HELIX_STRANDS, techIcon } from '../utils/constants';
 import { useSceneStore } from '../store/sceneStore';
 import { useModalStore } from '../store/modalStore';
 import { useDragRotate } from '../hooks/useDragRotate';
@@ -20,7 +20,7 @@ function TechDecodeBody({ tech, category, desc, levelOf }: { tech: { name: strin
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${tech.icon}/${tech.icon}-original.svg`}
+          src={techIcon(tech.icon)}
           alt=""
           className="w-10 h-10"
         />
@@ -284,7 +284,7 @@ export default function SkillsSection() {
             >
               <div className="flex items-center gap-3">
                 <img
-                  src={`https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${decoded.tech.icon}/${decoded.tech.icon}-original.svg`}
+                  src={techIcon(decoded.tech.icon)}
                   alt=""
                   className="w-10 h-10"
                 />

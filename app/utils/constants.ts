@@ -22,7 +22,15 @@ export const PROFILE = {
 
 // --- Stack technique (icônes devicon + DNA 3D) ---
 // Important : les "name" servent d'ID CSS (#tech-trigger-{name}). Pas d'espace
-// ni de point. Le "icon" doit correspondre à un slug devicon existant.
+// ni de point. Le "icon" doit correspondre à un fichier de public/icons/tech/.
+
+// Les icônes sont SERVIES EN LOCAL, plus depuis cdn.jsdelivr.net. Elles étaient
+// téléchargées une par une au moment de l'affichage : sur mobile, l'hélice ADN
+// restait vide le temps de 16 allers-retours réseau. 76 Ko au total, désormais
+// servis par le même domaine que la page (donc déjà connecté, et mis en cache
+// longue durée par Vercel). Supprime au passage une dépendance à un tiers.
+// Icônes issues de devicon (github.com/devicons/devicon), licence MIT.
+export const techIcon = (icon: string) => `/icons/tech/${icon}.svg`
 export const TECH_STACK = {
   "Frontend": [
     { name: "React",      icon: "react",       level: 3, desc: "Le cœur de mon front : composants, hooks, gestion d'état. Sur tous mes projets." },

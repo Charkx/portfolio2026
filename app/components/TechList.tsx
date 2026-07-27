@@ -1,6 +1,6 @@
 'use client';
 
-import { TECH_STACK } from '@/app/utils/constants';
+import { TECH_STACK, techIcon } from '@/app/utils/constants';
 import { useT } from '@/app/i18n';
 
 interface Props {
@@ -62,7 +62,7 @@ export default function TechList({
                   }}
                 >
                   <img
-                    src={`https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${tech.icon}/${tech.icon}-original.svg`}
+                    src={techIcon(tech.icon)}
                     alt={`${tech.name} logo`}
                     width={32}
                     height={32}
