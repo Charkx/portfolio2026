@@ -62,4 +62,4 @@ perdre le fil entre les échanges.
 | `28c8f96` | Mouvement réduit : caméra en coupe, hologramme vivant, lucioles récoltables (le mini-jeu était inatteignable dans ce mode), fondus découplés de la caméra, section contact réparée. Plus B6 (section active mesurée) et B7 (section qui plante). |
 | `f99bd42` | Mouvement réduit, suite : rotations sans fin coupées, texte immédiatement lisible, carte qui ne parle plus toute seule |
 | `1827430` | Éco : bloom conservé mais rendu bon marché. Ouverture de ce backlog. |
-| *(en cours)* | Plus aucun téléchargement distant : 16 icônes devicon servies en local (76 Ko), HDR de 1,7 Mo remplacé par un environnement procédural |
+| `9001ca0` | Plus aucun téléchargement distant : 16 icônes devicon servies en local (76 Ko), HDR de 1,7 Mo remplacé par un environnement procédural |
