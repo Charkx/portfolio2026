@@ -174,14 +174,18 @@ export default function AugmentedHumanLayer() {
         <Suspense fallback={<Loader />}>
           <SceneContents progressRef={progressRef} fadeProgressRef={fadeRef} coverRef={coverRef} linear />
         </Suspense>
-        {quality !== 'eco' && (
-          <>
-            <FpsGuard />
-            <EffectComposer>
-              <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
-            </EffectComposer>
-          </>
-        )}
+        {/* garde-fou perfs : inchangé pour l'instant, il ne tourne qu'en qualité haute */}
+        {quality !== 'eco' && <FpsGuard />}
+        {/* Éco : le bloom est CONSERVÉ — c'est lui qui fait qu'un hologramme ressemble
+            à un hologramme, et l'éco est le mode par défaut de tout appareil tactile.
+            Il est simplement rendu bon marché : un seuil de luminance haut réduit
+            fortement le nombre de pixels qui y contribuent (contre 0 en qualité haute,
+            où TOUT contribue), et mipmapBlur reste le flou le moins coûteux. */}
+        <EffectComposer>
+          {quality === 'eco'
+            ? <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.3} radius={0.5} />
+            : <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />}
+        </EffectComposer>
       </Canvas>
     </div>
   );
