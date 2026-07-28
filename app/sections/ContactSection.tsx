@@ -8,6 +8,7 @@ import { ErrorBoundary } from '../hooks/ErrorBoundary';
 import { useSceneStore } from '../store/sceneStore';
 import BiometricCard from '../components/3d/BiometricCard';
 import { ContactChannels } from '../components/ui/ContactChannels';
+import { SiteFooter } from '../components/ui/SiteFooter';
 import { SectionTitle } from '../components/ui/SectionTitle';
 import { useT } from '../i18n';
 import { getDict } from '../i18n';
@@ -19,11 +20,21 @@ const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
 // Révélation à CLIQUET des coordonnées. L'opacité était une fonction pure de la
 // progression, donc réversible : un coup de molette vers le haut escamotait l'email
 // qu'on venait de lire — le pire moment pour faire disparaître une adresse.
-// Hystérésis : ça se révèle à 90 % et ça ne se referme qu'en dessous de 78 %, c'est-à-
-// dire quand on quitte vraiment la station (sinon l'overlay resterait plaqué à l'écran
-// par-dessus la section Projets).
-const REVEAL_IN = 0.90;
-const REVEAL_OUT = 0.78;
+// Hystérésis : ça se fige quand le pied de page arrive, et ça ne se referme que bien
+// plus haut, quand on quitte vraiment la station (sinon l'overlay resterait plaqué à
+// l'écran par-dessus la section Projets).
+//
+// Ces seuils se mesurent en PIXELS RESTANTS jusqu'au bas du document, plus en
+// pourcentage de progression. Un pourcentage ne veut pas dire la même distance selon
+// l'écran : 10 % valaient 160 px sur un portable et 300 px sur un grand moniteur, si
+// bien que les coordonnées se figeaient loin avant la fin et qu'il restait une portion
+// de scroll où plus rien n'arrivait — le pied de page semblait « détaché » de la
+// section. Exprimés en multiples de sa propre hauteur, les paliers tombent au même
+// endroit partout : le fondu s'amorce quand il est à deux hauteurs, les coordonnées
+// sont figées quand il touche l'écran.
+const FOOT_IN = 1;    // × hauteur du pied de page : coordonnées figées
+const FOOT_START = 2; // × : début du fondu
+const FOOT_OUT = 4;   // × : au-delà, on a quitté la station
 
 // Repli image (WebGL indisponible / reduced-motion)
 function CardImage() {
@@ -57,19 +68,32 @@ export default function ContactSection() {
   useEffect(() => {
     if (isMobile !== false || reducedMotion) return;
 
+    // L'étage s'arrête au PIED DE PAGE, pas à sa propre fin : il est le dernier élément
+    // du document, donc le seul repère qui garantisse qu'on voie l'un ET l'autre. Sans
+    // ça, la cinématique se terminait une centaine de pixels avant le bas de la page, et
+    // ces derniers pixels — pendant lesquels il ne se passe plus rien — étaient à la
+    // charge du visiteur.
+    const foot = document.getElementById('page-end');
+    const footH = foot?.getBoundingClientRect().height || 120;
+
     const st = ScrollTrigger.create({
       trigger: stageRef.current,
       start: 'top top',
       end: 'bottom bottom',
+      ...(foot ? { endTrigger: foot } : {}),
       scrub: true,
       onUpdate: (self) => {
         const p = self.progress;
         setEndSession(p);
 
+        // distance restante jusqu'au bas du document, dérivée de la progression pour
+        // rester en phase avec elle (et non lue sur le scroller, que Lenis lisse).
+        const remain = (1 - p) * (self.end - self.start);
+
         // cliquet : une fois les coordonnées atteintes, elles restent jusqu'à ce qu'on
         // quitte la station pour de bon
-        if (p >= REVEAL_IN) revealedRef.current = true;
-        else if (p < REVEAL_OUT) revealedRef.current = false;
+        if (remain <= footH * FOOT_IN) revealedRef.current = true;
+        else if (remain > footH * FOOT_OUT) revealedRef.current = false;
         const revealed = revealedRef.current;
 
         const mounted = revealed || p > 0.78;
@@ -78,10 +102,12 @@ export default function ContactSection() {
         if (frozen !== cardActiveRef.current) { cardActiveRef.current = frozen; setCardActive(frozen); }
         if (cardStageRef.current) cardStageRef.current.style.opacity = revealed ? '1' : String(clamp((p - 0.80) / 0.05, 0, 1));
 
-        // coordonnées terminal : apparition juste après que la carte se pose
+        // coordonnées terminal : le fondu s'amorce à deux hauteurs de pied de page et
+        // s'achève quand il touche l'écran — les deux se lisent alors ensemble.
         if (infoRef.current) {
-          infoRef.current.style.opacity = revealed ? '1' : String(clamp((p - 0.90) / 0.06, 0, 1));
-          infoRef.current.style.pointerEvents = revealed || p > 0.94 ? 'auto' : 'none';
+          const fade = clamp((footH * FOOT_START - remain) / (footH * (FOOT_START - FOOT_IN)), 0, 1);
+          infoRef.current.style.opacity = revealed ? '1' : String(fade);
+          infoRef.current.style.pointerEvents = revealed || fade > 0.9 ? 'auto' : 'none';
         }
       },
     });
@@ -141,7 +167,7 @@ export default function ContactSection() {
           />
           {/* LA carte, la même qu'à l'entrée (face HUD) — pas la texture de dos.
               Son flottement est figé en mouvement réduit, cf. BiometricCard. */}
-          <div className="relative w-full max-w-md h-[40svh]">
+          <div className="relative w-full max-w-md h-[22svh] sm:h-[40svh]">
             <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
               <BiometricCard />
             </ErrorBoundary>
@@ -172,9 +198,11 @@ export default function ContactSection() {
             {t.contact.howto}
           </p>
           {/* LA carte 3D (le même artefact que l'entrée — orbit coupé au tactile).
-              28svh et non 40 : c'était le poste le plus lourd de la section, et c'est
-              lui qui repoussait le pied de page sous la ligne de flottaison. */}
-          <div className="relative w-full max-w-md h-[28svh]">
+              22svh : c'est la HAUTEUR qui commande sa taille à l'écran, pas la largeur.
+              Sa caméra a une ouverture verticale fixe, si bien que borner `max-w` ne
+              l'aurait pas rétrécie d'un pixel — ça n'aurait fait que rogner les marges
+              autour. 22svh au lieu de 28 la réduit d'un cinquième dans les deux sens. */}
+          <div className="relative w-full max-w-md h-[22svh]">
             <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
               <BiometricCard />
             </ErrorBoundary>
@@ -206,21 +234,21 @@ export default function ContactSection() {
           Fond semi-transparent : l'environnement (voûte + poussière cyan) reste visible derrière */}
       {isMobile === false && cardPhase && (
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
-          {/* pt-16 = la barre HAUTE du HUD (h-16). En BAS il faut réserver plus : la
-              barre (64 px) ET le pied de page, qui est en flux normal tout en bas du
+          {/* pt-16 = la barre HAUTE du HUD (h-16). En BAS il faut réserver bien plus :
+              la barre (64 px) ET le pied de page, qui est en flux normal tout en bas du
               document et se retrouve donc dans le même écran que ce calque `fixed`.
-              Sans cette réserve, les mentions légales passaient soit sous la
-              navigation, soit par-dessus le bouton Calendly — c'est ce calque qui doit
-              céder la place, pas le pied de page. La carte et l'interligne se resserrent
-              d'autant pour que l'ensemble tienne toujours sur un écran d'ordinateur
-              portable. */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 pt-16 pb-28 min-[1272px]:pb-16">
+              96 px = les 80 px de marge basse du pied de page + sa ligne de texte ;
+              pb-32 (128 px) laisse 32 px de respiration au-dessus. Sans cette réserve,
+              les coordonnées venaient s'écrire par-dessus les mentions légales — c'est
+              à ce calque de céder la place, pas au pied de page, qui n'a nulle part
+              où aller. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 pt-16 pb-32">
             {/* titre unifié (même hiérarchie que les autres sections) : le hint sous le
                 titre remplace l'ancienne ligne de terminal flottante en bas d'écran —
                 elle était le seul élément de ce type du site et se superposait au HUD. */}
             <SectionTitle kicker={t.contact.kicker} title={t.contact.title} hint={t.contact.hint} />
             {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
-            <div className="relative w-full max-w-3xl h-[38vh] min-[1272px]:h-[42vh] pointer-events-auto">
+            <div className="relative w-full max-w-3xl h-[42vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
                 <BiometricCard />
               </ErrorBoundary>
@@ -229,6 +257,14 @@ export default function ContactSection() {
               <ContactChannels />
             </div>
           </div>
+
+          {/* Le pied de page, ICI. Ce calque est `fixed` et couvre tout l'écran : celui
+              du flux, tout en bas du document, n'entrait dans le champ qu'au dernier
+              pixel de scroll — il fallait aller le chercher alors que la page était
+              finie. Il s'affiche donc avec la carte, et l'exemplaire du flux s'efface
+              pendant ce temps (cf. SiteFooter). pb-20 : la barre basse du HUD, toujours.
+              La réserve pb-32 du bloc au-dessus est ce qui lui laisse la place. */}
+          <SiteFooter className="pointer-events-auto absolute bottom-0 left-0 right-0 pb-20 text-center text-cyan-100/70 font-mono text-xs" />
         </div>
       )}
 

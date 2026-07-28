@@ -10,13 +10,13 @@ import HeroSection from "./sections/HeroSection"
 import { CyberpunkLoader } from "./components/ui/LoadingScreen"
 import { useOptimizedScroll } from "./hooks/useOptimizedScroll"
 import { usePortfolioStore } from "./store/portfolioStore"
-import { useModalStore } from "./store/modalStore"
+import { useSceneStore } from "./store/sceneStore"
 import ARInterface from "./components/ui/ARInterface"
 import CustomCursor from "./components/ui/CustomCursor"
 import SmoothScroll from "./components/SmoothScroll"
 import SectionSnap from "./components/SectionSnap"
 import ModalRoot from "./components/ui/ModalRoot"
-import LegalContent from "./components/LegalContent"
+import { SiteFooter } from "./components/ui/SiteFooter"
 import { preloadAssets } from "./lib/preloadAssets"
 import { ErrorBoundary } from "./hooks/ErrorBoundary"
 import { useReducedMotion } from "./hooks/useReducedMotion"
@@ -87,7 +87,9 @@ export default function ClientApp() {
   const introPhase = usePortfolioStore((s) => s.introPhase)
   const setIntroPhase = usePortfolioStore((s) => s.setIntroPhase)
   const t = useT()
-  const openModal = useModalStore((s) => s.open)
+  // carte de fin de session à l'écran → le pied de page du flux s'efface, celui du
+  // calque de contact prend le relais (cf. SiteFooter)
+  const endCardActive = useSceneStore((s) => s.endSessionCardActive)
   const [progress, setProgress] = useState(0)
 
   // Hook pour améliorer le scroll (expérience utilisateur)
@@ -174,26 +176,25 @@ export default function ClientApp() {
             du lisible. /70 passe le seuil AA sans casser la discrétion d'un pied de page. */}
         {/* fond retiré sur mobile aussi : il formait la même bande opaque que la section
             contact, juste en dessous. L'une sans l'autre aurait donné une arête franche. */}
-        {/* Le pied de page reste TOUT EN BAS : il se loge dans l'espace central libre
-            entre la navigation (à gauche) et MODE/DISPO (à droite). Mesuré : cet espace
-            n'existe qu'au-delà de 1272 px de large. En dessous, les trois ne tiennent
-            physiquement pas sur la même ligne — on le remonte alors au-dessus de la
-            barre, et le calque de contact lui rend la place (cf. ContactSection). */}
-        <footer className="relative z-[45] bg-transparent pt-6 pb-6 max-[1271px]:pb-20 text-center text-cyan-100/70 font-mono text-xs">
-          <span>© {new Date().getFullYear()} Charly Menthiller</span>
-          <span className="mx-2">·</span>
-          {/* href = repli sans JS (page indexable) · onClick = modale sans quitter la page */}
-          <a
-            href="/mentions-legales"
-            onClick={(e) => {
-              e.preventDefault()
-              openModal({ title: t.misc.legalModal, size: "md", content: <LegalContent /> })
-            }}
-            className="hover:text-cyan-300 transition-colors underline"
-          >
-            {t.misc.footerLegal}
-          </a>
-        </footer>
+        {/* pb-20 SANS variante : la barre BASSE du HUD fait 64 px et se pose PAR-DESSUS
+            le contenu, sur tous les écrans. Le pied de page touche le bas du document,
+            donc tout ce qui passe sous 64 px se retrouve derrière la navigation — et
+            aucun scroll ne peut l'en sortir, le document est déjà à sa fin.
+            Mesuré : pb-6 pose le texte à 24→40 px du bas, en pleine bande ; pb-20 le
+            pose à 80→96 px, au-dessus de la barre. C'est LA règle des marges basses du
+            site (cf. globals.css), et le pied de page n'y échappe pas.
+            Ce n'est donc pas la largeur de la navigation qui le gênait mais sa hauteur :
+            la place qu'il occupe, c'est au calque de contact de la lui laisser. */}
+        {/* id : la cinématique de contact s'étend JUSQU'À ce pied de page (endTrigger),
+            pour que les coordonnées se figent au moment où il entre à l'écran plutôt
+            qu'après une dernière portion de scroll où plus rien n'arrive.
+            Masqué pendant la carte de fin de session : là, c'est le calque de contact
+            qui l'affiche lui-même, à l'écran et sans scroll (cf. SiteFooter). */}
+        <SiteFooter
+          id="page-end"
+          hidden={endCardActive}
+          className="relative z-[45] bg-transparent pt-6 pb-20 text-center text-cyan-100/70 font-mono text-xs"
+        />
       </main>
 
       <ModalRoot />
