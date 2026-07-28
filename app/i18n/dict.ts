@@ -61,7 +61,7 @@ export const fr = {
 
   // --- Hero / entrée ---
   hero: {
-    availability: "⏳ Alternance · Septembre 2026",
+    availability: "Alternance · Septembre 2026",
     // identité affichée EN CLAIR sur l'écran verrouillé : un visiteur doit savoir
     // qui il regarde avant d'avoir à jouer la séquence d'entrée
     role: "Développeur Full Stack · Ingénieur informatique",
@@ -158,7 +158,7 @@ export const fr = {
     calendlySub: "via Calendly · créneau de 30 min",
     calendlyModal: "Prendre rendez-vous",
     cardAlt: "Carte d'identité — Charly Menthiller",
-    availability: "⏳ Alternance · Septembre 2026",
+    availability: "Alternance · Septembre 2026",
   },
 
   // --- Easter egg SIG ---
@@ -253,7 +253,7 @@ export const en: Dict = {
   },
 
   hero: {
-    availability: "⏳ Apprenticeship · September 2026",
+    availability: "Apprenticeship · September 2026",
     role: "Full Stack Developer · Software Engineer",
     scan: "INITIATE SCAN",
     skip: "Skip intro",
@@ -424,7 +424,7 @@ export const en: Dict = {
     calendlySub: "via Calendly · 30-min slot",
     calendlyModal: "Book a meeting",
     cardAlt: "ID card — Charly Menthiller",
-    availability: "⏳ Apprenticeship · September 2026",
+    availability: "Apprenticeship · September 2026",
   },
 
   signals: {
