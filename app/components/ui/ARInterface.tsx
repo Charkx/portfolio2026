@@ -146,10 +146,12 @@ export default function ARInterface() {
   const booted = introPhase === "BOOTING" || introPhase === "UNLOCKED";
 
   const NAV: { prefix: string; label: string; section: string }[] = [
-  { prefix: "COGNITIVE_PROFIL", label: t.hud.nav.about,    section: "about" },
-  { prefix: "SCAN_STATUS",      label: t.hud.nav.skills,   section: "skills" },
-  { prefix: "MEMORY_ACCESS",    label: t.hud.nav.projects, section: "projects" },
-  { prefix: "UPLINK",           label: t.hud.nav.contact,  section: "contact" },
+  // Préfixes courts : ils sont DÉCORATIFS, et leur longueur poussait la barre jusqu'au
+  // texte centré du pied de page. Chacun nomme le module que sa section pilote.
+  { prefix: "CORTEX", label: t.hud.nav.about,    section: "about" },
+  { prefix: "ADN",    label: t.hud.nav.skills,   section: "skills" },
+  { prefix: "MEM",    label: t.hud.nav.projects, section: "projects" },
+  { prefix: "UPLINK", label: t.hud.nav.contact,  section: "contact" },
 ];
 
   // Chapitres narratifs : le voyage se lit dans le HUD (change avec la section active)
@@ -375,7 +377,7 @@ export default function ARInterface() {
             <div className="flex items-center gap-1 sm:gap-4">
               {NAV.map((item, idx) => (        // ← idx = la position
                 <div key={item.section} className="flex items-center">
-                  <div aria-hidden="true" className="hidden sm:flex text-cyan-400/40">{item.prefix}:</div>
+                  <div aria-hidden="true" className="hidden min-[1700px]:flex text-cyan-400/40">{item.prefix}:</div>
                   <HudTooltip label={`${t.hud.navGoTo} ${item.label}`} side="top">
                     <button
                       aria-label={`${t.hud.navGoTo} ${item.label}`}

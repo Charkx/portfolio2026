@@ -206,16 +206,21 @@ export default function ContactSection() {
           Fond semi-transparent : l'environnement (voûte + poussière cyan) reste visible derrière */}
       {isMobile === false && cardPhase && (
         <div ref={cardStageRef} className="pointer-events-none fixed inset-0 z-[40] bg-black/30" style={{ opacity: 0 }}>
-          {/* py-16 = la hauteur exacte des deux barres du HUD (h-16) : le contenu se
-              centre ENTRE elles au lieu de passer dessous. La carte perd 6vh pour que
-              l'ensemble tienne encore sur un écran d'ordinateur portable. */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 py-16">
+          {/* pt-16 = la barre HAUTE du HUD (h-16). En BAS il faut réserver plus : la
+              barre (64 px) ET le pied de page, qui est en flux normal tout en bas du
+              document et se retrouve donc dans le même écran que ce calque `fixed`.
+              Sans cette réserve, les mentions légales passaient soit sous la
+              navigation, soit par-dessus le bouton Calendly — c'est ce calque qui doit
+              céder la place, pas le pied de page. La carte et l'interligne se resserrent
+              d'autant pour que l'ensemble tienne toujours sur un écran d'ordinateur
+              portable. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 pt-16 pb-28 min-[1272px]:pb-16">
             {/* titre unifié (même hiérarchie que les autres sections) : le hint sous le
                 titre remplace l'ancienne ligne de terminal flottante en bas d'écran —
                 elle était le seul élément de ce type du site et se superposait au HUD. */}
             <SectionTitle kicker={t.contact.kicker} title={t.contact.title} hint={t.contact.hint} />
             {/* pointer-events-auto : la carte se tourne à la souris (orbit), comme à l'entrée */}
-            <div className="relative w-full max-w-3xl h-[42vh] pointer-events-auto">
+            <div className="relative w-full max-w-3xl h-[38vh] min-[1272px]:h-[42vh] pointer-events-auto">
               <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
                 <BiometricCard />
               </ErrorBoundary>
