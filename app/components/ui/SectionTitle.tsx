@@ -7,7 +7,10 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 // Déplacé ici depuis ProjectsSection pour servir tous les kickers de section.
 const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/01';
 
-export function GlitchText({ text, duration = 600, className }: { text: string; duration?: number; className?: string }) {
+// `delay` : permet de décaler le DÉPART du décodage sans toucher à sa durée — c'est
+// ce qui rend une cascade lisible (plusieurs lignes qui se décodent l'une après
+// l'autre) plutôt qu'un bloc qui se résout d'un coup.
+export function GlitchText({ text, duration = 600, delay = 0, className }: { text: string; duration?: number; delay?: number; className?: string }) {
   const reduced = useReducedMotion();
   const [display, setDisplay] = useState(text);
   useEffect(() => {
@@ -17,9 +20,9 @@ export function GlitchText({ text, duration = 600, className }: { text: string; 
     // (le texte final est rendu directement, cf. plus bas : pas de setState ici)
     if (reduced) return;
     let raf = 0;
-    const start = performance.now();
+    const start = performance.now() + delay; // pendant l'attente, t reste à 0 → brouillé
     const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
+      const t = Math.min(Math.max((now - start) / duration, 0), 1);
       const revealed = Math.floor(t * text.length);
       let s = text.slice(0, revealed);
       for (let i = revealed; i < text.length; i++) {
@@ -31,7 +34,7 @@ export function GlitchText({ text, duration = 600, className }: { text: string; 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [text, duration, reduced]);
+  }, [text, duration, delay, reduced]);
   return <span className={className}>{reduced ? text : display}</span>;
 }
 

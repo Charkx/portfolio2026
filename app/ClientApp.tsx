@@ -174,7 +174,11 @@ export default function ClientApp() {
             du lisible. /70 passe le seuil AA sans casser la discrétion d'un pied de page. */}
         {/* fond retiré sur mobile aussi : il formait la même bande opaque que la section
             contact, juste en dessous. L'une sans l'autre aurait donné une arête franche. */}
-        <footer className="relative z-[45] bg-transparent pt-6 pb-20 md:pb-6 text-center text-cyan-100/70 font-mono text-xs">
+        {/* pb-20 SANS variante desktop : la barre du HUD fait 64 px sur TOUS les écrans
+            et se pose par-dessus le contenu. Le `md:pb-6` ne réservait que 24 px, si bien
+            qu'en bas de page les mentions légales passaient sous la navigation.
+            C'est la même règle que pour les sections, cf. globals.css. */}
+        <footer className="relative z-[45] bg-transparent pt-6 pb-20 text-center text-cyan-100/70 font-mono text-xs">
           <span>© {new Date().getFullYear()} Charly Menthiller</span>
           <span className="mx-2">·</span>
           {/* href = repli sans JS (page indexable) · onClick = modale sans quitter la page */}

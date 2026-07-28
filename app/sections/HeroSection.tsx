@@ -11,6 +11,7 @@ import { scrollToId } from "../components/SmoothScroll"
 import { PROFILE } from "../utils/constants"
 import { useModalStore } from "../store/modalStore"
 import { PdfViewer, CalendlyViewer } from "../components/ui/ModalViewers"
+import { GlitchText } from "../components/ui/SectionTitle"
 import { useT } from "../i18n"
 
 // Canvas 3D (Three.js) chargé côté client après le 1er paint : le shell du Hero
@@ -57,6 +58,11 @@ export default function HeroSection({
 
   // mobile : pas de canvas permanent (hologramme desktop-only) → après le boot,
   // le hero affiche une identité + la carte gyro au lieu d'un écran vide
+  // Compteur de re-décodage : changer la `key` de GlitchText le remonte, donc rejoue
+  // le scramble. Aucun ajout au composant — il sait déjà faire, et il respecte déjà
+  // le mouvement réduit (il rend le texte final sans jamais le brouiller).
+  const [decode, setDecode] = useState(0)
+  const [scan, setScan] = useState(0) // relevé de droite : re-scan en cascade
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -102,39 +108,47 @@ export default function HeroSection({
               importante de la page, elle doit peser plus que le statut et la stack,
               pas moins. Colonne plus large et typographie d'un cran au-dessus de
               tout le reste du relevé. */}
-          <div className="absolute left-4 lg:left-10 xl:left-16 top-1/2 -translate-y-1/2 w-56 lg:w-72 xl:w-96 font-mono" aria-hidden="true">
+          <div
+            className="group pointer-events-auto absolute left-4 lg:left-10 xl:left-16 top-1/2 -translate-y-1/2 w-56 lg:w-72 xl:w-96 font-mono"
+            aria-hidden="true"
+            onMouseEnter={() => setDecode((n) => n + 1)}
+          >
             <div className="flex items-center gap-2 text-cyan-400/60 text-[10px] lg:text-xs tracking-[0.3em]">
               <span>&gt; {t.hero.annot.subject}</span>
-              <span className="h-px flex-1 bg-cyan-400/30" />
+              {/* le filet s'allume vers l'hologramme au survol — un relevé qui « accroche » */}
+              <span className="h-px flex-1 bg-cyan-400/30 transition-all duration-500 group-hover:bg-cyan-300/70 group-hover:shadow-[0_0_8px_rgba(34,211,238,0.7)]" />
             </div>
             <div className="mt-3 text-cyan-200 text-2xl lg:text-4xl xl:text-5xl font-display leading-[1.05]"
                  style={{ textShadow: "0 0 20px rgba(34,211,238,0.45)" }}>
-              {PROFILE.name.toUpperCase()}
+              <GlitchText key={decode} text={PROFILE.name.toUpperCase()} duration={520} />
             </div>
             <p className="mt-3 text-cyan-100/90 text-xs lg:text-base xl:text-lg leading-snug">{t.hero.role}</p>
             <p className="mt-2 text-cyan-400/65 text-[11px] lg:text-sm leading-relaxed">{t.hero.annot.level}</p>
           </div>
 
           {/* colonne droite : quoi — la disponibilité est LA donnée qui décide */}
-          <div className="absolute right-4 lg:right-12 xl:right-20 top-1/2 -translate-y-1/2 w-48 lg:w-64 xl:w-72 font-mono text-right">
+          <div
+            className="group pointer-events-auto absolute right-4 lg:right-12 xl:right-20 top-1/2 -translate-y-1/2 w-48 lg:w-64 xl:w-72 font-mono text-right"
+            onMouseEnter={() => setScan((n) => n + 1)}
+          >
             <div className="flex items-center gap-2 text-cyan-400/50 text-[10px] lg:text-[11px] tracking-[0.3em]" aria-hidden="true">
-              <span className="h-px flex-1 bg-cyan-400/25" />
+              <span className="h-px flex-1 bg-cyan-400/25 transition-all duration-500 group-hover:bg-cyan-300/70 group-hover:shadow-[0_0_8px_rgba(34,211,238,0.7)]" />
               <span>{t.hero.annot.status} &lt;</span>
             </div>
             <div className="mt-3 text-green-400 text-xs lg:text-lg tracking-wider" aria-hidden="true"
                  style={{ textShadow: "0 0 14px rgba(74,222,128,0.4)" }}>
-              ◆ {t.hero.annot.dispo}
+              ◆ <GlitchText key={`d${scan}`} text={t.hero.annot.dispo} duration={420} />
             </div>
             <div className="mt-1 text-green-400/75 text-[10px] lg:text-xs tracking-wider" aria-hidden="true">
-              ◆ {t.hero.annot.contract}
+              ◆ <GlitchText key={`c${scan}`} text={t.hero.annot.contract} duration={420} delay={110} />
             </div>
 
             <div className="mt-6 flex items-center gap-2 text-cyan-400/50 text-[10px] lg:text-[11px] tracking-[0.3em]" aria-hidden="true">
-              <span className="h-px flex-1 bg-cyan-400/25" />
+              <span className="h-px flex-1 bg-cyan-400/25 transition-all duration-500 group-hover:bg-cyan-300/70 group-hover:shadow-[0_0_8px_rgba(34,211,238,0.7)]" />
               <span>{t.hero.annot.stack} &lt;</span>
             </div>
             <p className="mt-2 text-cyan-100/85 text-[11px] lg:text-sm leading-relaxed whitespace-pre-line" aria-hidden="true">
-              {t.hero.annot.stackValue}
+              <GlitchText key={`s${scan}`} text={t.hero.annot.stackValue} duration={520} delay={220} />
             </p>
 
             {/* ACTIONS : le premier écran n'offrait aucun moyen d'agir. Hiérarchie
@@ -142,7 +156,7 @@ export default function HeroSection({
                 donc le seul en plein ; le CV est le repli, et le lien texte renvoie
                 à la section contact pour qui veut d'abord tout voir. */}
             <div className="mt-6 flex items-center gap-2 text-cyan-400/50 text-[10px] lg:text-[11px] tracking-[0.3em]" aria-hidden="true">
-              <span className="h-px flex-1 bg-cyan-400/25" />
+              <span className="h-px flex-1 bg-cyan-400/25 transition-all duration-500 group-hover:bg-cyan-300/70 group-hover:shadow-[0_0_8px_rgba(34,211,238,0.7)]" />
               <span>{t.hero.annot.actions} &lt;</span>
             </div>
             <div className="mt-3 flex flex-col items-end gap-2">

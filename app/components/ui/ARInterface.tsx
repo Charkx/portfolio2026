@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PROFILE } from '../../utils/constants';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { useModalStore } from '../../store/modalStore';
-import { PdfViewer } from './ModalViewers';
+import { PdfViewer, CalendlyViewer } from './ModalViewers';
 import { useAudioStore } from '../../store/audioStore';
 import { audioEngine } from '../../lib/audioEngine';
 import { scrollToId } from '../SmoothScroll';
 import { SignalMeter, SignalToast } from './SignalMeter';
-import { Power, PowerOff, FileDown, Volume2, VolumeX } from 'lucide-react';
+import { Power, PowerOff, FileDown, Volume2, VolumeX, CalendarClock } from 'lucide-react';
 import { useLangStore } from '../../store/langStore';
+import { GlitchText } from './SectionTitle';
 import { useT } from '../../i18n';
 
 // Infobulle custom : instantanée et stylée (contrairement au `title` natif).
@@ -76,6 +77,27 @@ function DisconnectPrompt({ onConfirm, onCancel }: { onConfirm: () => void; onCa
 // gratuit) et 8 px de marge de chaque côté. Rien ne change à l'œil, tout change au doigt.
 const HIT = "inline-flex items-center justify-center min-h-11 px-2";
 
+// Teinte de la jauge de progression : rampe de batterie, rouge → orange → jaune → vert.
+// La « charge » monte ici de 1 à 100 % au fil du scroll, donc le rouge marque le DÉBUT
+// du parcours et non un danger — la métaphore tient parce qu'on comprend qu'on remplit.
+// Teinte HSL calculée plutôt que 4 paliers en dur : la transition reste continue.
+const batteryHue = (pct: number) => `hsl(${Math.round(pct * 1.35)} 85% 55%)`;
+
+// commande textuelle : crochets (le signe « actionnable » du site) + fond au survol
+const TEXT_BTN = "group/btn rounded transition-colors hover:bg-cyan-400/10";
+const BRACKET = "opacity-60 transition-opacity group-hover/btn:opacity-100";
+
+/** Libellé entre crochets — sans espaces sous 640 px, où chaque pixel compte. */
+function Bracketed({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <span aria-hidden="true" className={BRACKET}>[</span>
+      <span className="mx-0 sm:mx-1">{children}</span>
+      <span aria-hidden="true" className={BRACKET}>]</span>
+    </>
+  );
+}
+
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
   const introPhase = usePortfolioStore((s) => s.introPhase);
@@ -103,6 +125,9 @@ export default function ARInterface() {
       content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" />,
     });
   };
+  const openRdv = () => {
+    openModal({ title: t.contact.calendlyModal, size: "lg", content: <CalendlyViewer src={PROFILE.calendly} /> });
+  };
   // Reverrouiller DÉMONTE tout le site et renvoie à la séquence d'entrée : on demande
   // confirmation dans une modale plutôt que de laisser un clic isolé tout fermer.
   const confirmDisconnect = () => {
@@ -120,12 +145,12 @@ export default function ARInterface() {
 
   const booted = introPhase === "BOOTING" || introPhase === "UNLOCKED";
 
-  const NAV = [
+  const NAV: { prefix: string; label: string; section: string }[] = [
   { prefix: "COGNITIVE_PROFIL", label: t.hud.nav.about,    section: "about" },
   { prefix: "SCAN_STATUS",      label: t.hud.nav.skills,   section: "skills" },
   { prefix: "MEMORY_ACCESS",    label: t.hud.nav.projects, section: "projects" },
   { prefix: "UPLINK",           label: t.hud.nav.contact,  section: "contact" },
-] as const;
+];
 
   // Chapitres narratifs : le voyage se lit dans le HUD (change avec la section active)
   const CHAPTERS = t.hud.chapters;
@@ -179,6 +204,17 @@ export default function ARInterface() {
             <FileDown size={14}/>
             <span>CV</span>
           </a>
+        </HudTooltip>
+        <HudTooltip label={t.hud.tipRdv}>
+          <button
+            type="button"
+            aria-label={t.hud.tipRdv}
+            onClick={openRdv}
+            onMouseEnter={() => audioEngine.play('hover')}
+            className={`${HIT} text-cyan-300 hover:text-cyan-100 transition-colors cursor-pointer`}
+          >
+            <CalendarClock size={15} />
+          </button>
         </HudTooltip>
         <div className="flex items-center">
           <HudTooltip label={soundEnabled ? t.hud.tipSoundOff : t.hud.tipSoundOn}>
@@ -271,17 +307,38 @@ export default function ARInterface() {
 
    {introPhase !== "LOCKED" && (
       <div className="hud-boot relative w-full h-full">
-      <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent">
+      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent">
         {/* pr large (desktop) : réserve la place du cluster droit (CV + volume + langue + power).
             MOBILE : le cluster droit occupe seul la barre → tout le reste est masqué (sm:). */}
         <div className="flex justify-between items-center h-full pl-6 pr-6 sm:pr-[22rem] text-cyan-400 font-mono text-sm">
 
             <div className="hidden sm:flex items-center space-x-6">
-                ID:
-              <div className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 0 } as React.CSSProperties}>
-                <span className="animate-pulse">●</span> {PROFILE.name.toUpperCase()}
+              {/* L'IDENTITÉ EST LE RETOUR À L'ACCUEIL — la convention du logo cliquable.
+                  Aucun élément ajouté, aucun pixel pris : le HUD garde son calibrage.
+                  `pointer-events-auto` car le conteneur du HUD est en events-none. */}
+              <div className="flex items-center gap-1.5">
+                {/* « ID: » reste un relevé, comme PROFILE: ou BAT: — seul le nom se clique */}
+                <span aria-hidden="true">ID:</span>
+                <HudTooltip label={`${t.hud.navGoTo} ${t.hud.nav.hero}`}>
+                  <button
+                    type="button"
+                    aria-label={`${t.hud.navGoTo} ${t.hud.nav.hero}`}
+                    onClick={() => { audioEngine.play('nav'); scrollToId('hero'); }}
+                    onMouseEnter={() => audioEngine.play('hover')}
+                    className={`pointer-events-auto inline-flex items-center min-h-11 px-1.5 cursor-pointer ${TEXT_BTN}`}
+                  >
+                    <span
+                      className={booted ? "hud-reveal text-green-400" : "opacity-0"}
+                      style={{ '--i': 0 } as React.CSSProperties}
+                    >
+                      <Bracketed>
+                        <span className="animate-pulse" aria-hidden="true">●</span> {PROFILE.name.toUpperCase()}
+                      </Bracketed>
+                    </span>
+                  </button>
+                </HudTooltip>
               </div>
-              <div className="text-cyan-300/80 hidden sm:block ">
+              <div aria-hidden="true" className="text-cyan-300/80 hidden sm:block ">
                  PROFILE: <span className={booted ? "hud-reveal text-cyan-300/80" : "opacity-0"} style={{ '--i': 1 } as React.CSSProperties}>{PROFILE.title}</span>
               </div>
             </div>
@@ -289,16 +346,19 @@ export default function ARInterface() {
           {/* Chapitre courant — centré, re-révélé à chaque changement de section */}
           <div aria-hidden="true" className="absolute left-1/2 -translate-x-1/2 top-0 h-16 hidden md:flex items-center">
             <span key={currentSection} className="hud-reveal font-mono text-xs tracking-[0.35em] text-cyan-300/90">
-              {CHAPTERS[currentSection] ?? CHAPTERS.hero}
+              <GlitchText text={CHAPTERS[currentSection] ?? CHAPTERS.hero} duration={700} />
             </span>
           </div>
 
           <div className="flex hidden sm:flex items-center space-x-6">
-            <div>
-              BAT: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 2 } as React.CSSProperties}>{batteryLevel}%</span>
+            <div aria-hidden="true">
+              BAT: <span
+                     className={booted ? "hud-reveal transition-colors" : "opacity-0"}
+                     style={{ '--i': 2, color: booted ? batteryHue(batteryLevel) : undefined } as React.CSSProperties}
+                   >{batteryLevel}%</span>
             </div>
             <SignalMeter booted={booted} />
-            <div>
+            <div aria-hidden="true">
               {time.toLocaleTimeString()}
             </div>
           </div>
@@ -307,7 +367,7 @@ export default function ARInterface() {
 
       {/* Bottom HUD */}
       <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent">
-        <div className="flex justify-center sm:justify-between items-center h-full px-6 text-cyan-400 font-mono text-sm">
+        <div className="flex justify-center sm:justify-between items-center h-full px-3 sm:px-6 text-cyan-400 font-mono text-xs sm:text-sm">
           <div className="flex items-center space-x-6">
             {/* gap-1 sur mobile : les quatre libellés (27 caractères en tout) plus leur
                 marge interne doivent tenir dans 360 px. C'est la marge des boutons qui
@@ -328,14 +388,14 @@ export default function ARInterface() {
                       // 44 px de haut : c'est la navigation principale, et sur mobile
                       // c'est la SEULE chose qui reste dans la barre du bas. Un libellé
                       // de 20 px de haut se rate au doigt.
-                      className={`inline-flex items-center min-h-11 px-1.5 pointer-events-auto cursor-pointer hover:text-cyan-200 transition-colors ${
+                      className={`inline-flex items-center min-h-11 px-1 sm:px-1.5 pointer-events-auto cursor-pointer hover:text-cyan-200 ${TEXT_BTN} ${
                         booted
                         ? `hud-reveal ${currentSection === item.section ? "text-green-400" : "text-cyan-400/70"}`
                         : "opacity-0"
                       }`}
                       style={{ '--i': idx + 4 } as React.CSSProperties}
                     >
-                      {item.label}
+                      <Bracketed>{item.label}</Bracketed>
                     </button>
                   </HudTooltip>
                 </div>
@@ -353,6 +413,37 @@ export default function ARInterface() {
           </div>
         </div>
       </div>
+
+      {/* PASTILLE MOBILE — progression du récit + retour à l'accueil.
+          La jauge BAT du HUD est en `hidden sm:flex` : sous 640 px, le visiteur n'avait
+          aucun repère de son avancement, et aucun moyen de remonter (le bloc ID, qui
+          porte ce rôle sur desktop, y est masqué lui aussi).
+          Placée en flottant plutôt que dans une barre : les deux sont saturées sur
+          mobile (le cluster du haut occupe ~330 px sur 360, la nav du bas ~337).
+          N'apparaît qu'une fois le voyage entamé — proposer « remonter » quand on est
+          déjà en haut n'apprend rien et encombre. */}
+      {booted && batteryLevel > 3 && (
+        <button
+          type="button"
+          onClick={() => { audioEngine.play('nav'); scrollToId('hero'); }}
+          aria-label={`${t.hud.navGoTo} ${t.hud.nav.hero} — ${batteryLevel}%`}
+          className="sm:hidden pointer-events-auto absolute bottom-20 right-4 z-20
+                     grid place-items-center w-12 h-12 rounded-full cursor-pointer
+                     transition-transform active:scale-95
+                     focus-visible:outline-2 focus-visible:outline-cyan-400"
+          // l'anneau EST la jauge : un dégradé conique, sans SVG ni dépendance
+          style={{ background: `conic-gradient(${batteryHue(batteryLevel)} ${batteryLevel * 3.6}deg, rgba(255,255,255,0.14) 0deg)` }}
+        >
+          <span
+            aria-hidden="true"
+            className="grid place-items-center w-[42px] h-[42px] rounded-full
+                       bg-black/85 backdrop-blur-sm font-mono text-[10px] leading-none transition-colors"
+            style={{ color: batteryHue(batteryLevel) }}
+          >
+            {batteryLevel}%
+          </span>
+        </button>
+      )}
 
       {/* Corner Elements (décoratif) */}
       <div aria-hidden="true">

@@ -22,8 +22,9 @@ const projFr = Object.fromEntries(
 export const fr = {
   // --- ATH / HUD ---
   hud: {
-    nav: { about: "PROFIL", skills: "SKILLS", projects: "PROJECTS", contact: "CONTACT" },
+    nav: { hero: "IDENTITÉ", about: "PROFIL", skills: "SKILLS", projects: "PROJECTS", contact: "CONTACT" },
     navGoTo: "Aller à la section",
+    tipRdv: "Prendre rendez-vous (30 min)",
     chapters: {
       hero: "01 · IDENTIFICATION",
       about: "02 · MÉMOIRE.PROFIL",
@@ -215,8 +216,9 @@ export type Dict = typeof fr
 
 export const en: Dict = {
   hud: {
-    nav: { about: "PROFILE", skills: "SKILLS", projects: "PROJECTS", contact: "CONTACT" },
+    nav: { hero: "IDENTITY", about: "PROFILE", skills: "SKILLS", projects: "PROJECTS", contact: "CONTACT" },
     navGoTo: "Go to section",
+    tipRdv: "Book a 30-min call",
     chapters: {
       hero: "01 · IDENTIFICATION",
       about: "02 · MEMORY.PROFILE",

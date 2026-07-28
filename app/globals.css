@@ -55,6 +55,8 @@ body.custom-cursor * {
       dessous, le contenu passe sous la navigation et devient illisible.
       Sur mobile la barre du bas porte les 4 liens de navigation, et celle du
       haut le cluster SIG / CV / son / langue / alimentation : les deux comptent.
+      LE PIED DE PAGE COMPTE AUSSI : c'est lui qui touche le bas du document, donc
+      lui qui se retrouve sous la barre si sa marge basse est trop courte.
    ────────────────────────────────────────────────────────────────────────────── */
 
 /* Apparition "glitch" de la carte mobile (clip-path + opacité + teinte, pas de transform → compatible avec le tilt) */
