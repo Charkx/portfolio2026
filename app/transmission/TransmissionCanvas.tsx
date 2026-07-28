@@ -105,9 +105,7 @@ function Hologram({ pulse, defeated, integrity }: { pulse: Pulse; defeated: bool
     mzUniforms.current.forEach((u) => { u.value += (targetMz - u.value) * k })
 
     const hp = THREE.MathUtils.clamp(integrity, 0, 1)
-    // le liseré de contour s'éteint lui aussi : c'est ce qui donne sa silhouette
-    // nette à l'hologramme, et le perdre le fait paraître délavé, pas juste sombre
-    edgeUniforms.current.forEach((u) => { u.value += ((defeated ? 3 : 0.3 + 0.7 * hp) - u.value) * k })
+    edgeUniforms.current.forEach((u) => { u.value += ((defeated ? 3 : 1) - u.value) * k })
 
     // PALIER : luminosité de fond, lissée, qui ne remonte jamais.
     // Décroissance GÉOMÉTRIQUE et non linéaire. L'œil juge les écarts de luminosité en

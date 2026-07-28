@@ -1,9 +1,8 @@
 'use client';
 
-import { Suspense, useMemo, useRef, useEffect, useCallback, type RefObject, type ReactNode } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, Html, useProgress, OrbitControls } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { useMemo, useRef, useEffect, useCallback, type RefObject, type ReactNode } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useGLTF, Html, useProgress } from '@react-three/drei';
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import * as THREE from 'three';
 import { BrainModel } from './CognitiveProfil';
@@ -508,7 +507,7 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
 }
 
 // --- Contenu du Canvas ---
-export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = false, linear = false }: { progressRef: RefObject<number>; fadeProgressRef?: RefObject<number>; coverRef?: RefObject<number>; debug?: boolean; linear?: boolean }) {
+export function SceneContents({ progressRef, fadeProgressRef, coverRef, linear = false }: { progressRef: RefObject<number>; fadeProgressRef?: RefObject<number>; coverRef?: RefObject<number>; linear?: boolean }) {
   const { scene } = useGLTF(HUMAN_URL, true); // true = décodeur Draco (GLB compressés)
   // cfgKey en dépendance → toute modif de CFG reconstruit la scène (sinon useMemo reste figé
   // car les modèles chargés ne changent pas de référence au Fast Refresh).
@@ -608,11 +607,11 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = 
     // Tant que l'accès est verrouillé, le corps reste invisible : le canvas permanent
     // ne montre que l'environnement (voûte + poussière) derrière la carte biométrique.
     const unlocked = usePortfolioStore.getState().introPhase === 'UNLOCKED';
-    if (!debug && unlocked && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
+    if (unlocked && mzRef.current < 1) mzRef.current = Math.min(mzRef.current + dt / 1.6, 1);
     // re-verrouillage (power-down) : le corps se dé-matérialise → il ne reste plus
     // derrière la carte biométrique (bug : l'avatar restait visible après lock)
-    if (!debug && !unlocked && mzRef.current > 0) mzRef.current = Math.max(mzRef.current - dt / 1.0, 0);
-    const mz = debug ? 1 : mzRef.current;
+    if (!unlocked && mzRef.current > 0) mzRef.current = Math.max(mzRef.current - dt / 1.0, 0);
+    const mz = mzRef.current;
     // Progression des FONDUS — distincte de celle de la caméra (cf. plus bas).
     const fadeProg = fadeProgressRef?.current ?? progressRef.current;
 
@@ -622,8 +621,8 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = 
     // tout le récit dit qu'il ne doit rester QUE la carte. On rejoue donc la même
     // dissolution, cadencée par la progression des fondus : c'est une dissolution sur
     // place, pas un déplacement, elle a sa place dans ce mode.
-    const esStore = debug ? 0 : (useSceneStore.getState().endSessionProgress ?? 0);
-    const es = reduced && !debug
+    const esStore = useSceneStore.getState().endSessionProgress ?? 0;
+    const es = reduced
       ? 0.15 + THREE.MathUtils.clamp((fadeProg - 0.78) / 0.22, 0, 1) * 0.7 // 0.15→0.85 : dissous en arrivant
       : esStore;
     // esAppear recule la caméra vers le plan large : c'est un TRAVELLING, donc neutralisé
@@ -642,14 +641,6 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = 
     built.skyMat.opacity = bgEase;
     built.dustMat.opacity = bgEase * 0.8;
     if (!reduced) built.backdrop.rotation.y += dt * 0.01; // dérive lente
-
-    // Mode calibrage : corps + tous les modules visibles, caméra libre (OrbitControls)
-    if (debug) {
-      built.skyMat.opacity = 0; built.dustMat.opacity = 0;
-      built.bodyMats.forEach((m) => { if (m.userData.uOp) m.userData.uOp.value = 0.4; });
-      FOCI.forEach((k) => { weightsRef.current[k] = 1; });
-      return;
-    }
 
     const { stations, bodyMats } = built;
     const { i, f } = (linear ? linearStation : easedStation)(progressRef.current, stations.length);
@@ -820,7 +811,6 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = 
       <HoloDNA position={built.pos.adn} baseScale={CFG.adn.scale} weightsRef={weightsRef} />
       <DataCubes position={built.pos.heart} baseScale={CFG.heart.scale} weightsRef={weightsRef} palmBone={built.palmBone} />
       <HeroMotes heroWRef={heroWRef} />
-      {debug && <OrbitControls target={[0, 0.9, 0]} />}
     </>
   );
 }
@@ -828,36 +818,6 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, debug = 
 export function Loader() {
   const { progress } = useProgress();
   return <Html center><div style={{ color: '#22d3ee', fontFamily: 'monospace', fontSize: 13, letterSpacing: 2 }}>{Math.round(progress)}%</div></Html>;
-}
-
-// --- Composant exporté : canvas épinglé piloté par le scroll de la page ---
-export default function AugmentedHumanScene() {
-  const progressRef = useRef(0);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const max = document.body.scrollHeight - window.innerHeight;
-      progressRef.current = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
-  }, []);
-
-  return (
-    <div className="fixed inset-0 -z-10">
-      <Canvas camera={{ fov: 40, position: [0, 1, 5], near: 0.05, far: 100 }} gl={{ antialias: true, alpha: true }}>
-        <ambientLight intensity={1} />
-        <Suspense fallback={<Loader />}>
-          <SceneContents progressRef={progressRef} />
-        </Suspense>
-        <EffectComposer>
-          <Bloom mipmapBlur intensity={1.0} luminanceThreshold={0} radius={0.6} />
-        </EffectComposer>
-      </Canvas>
-    </div>
-  );
 }
 
 useGLTF.preload(HUMAN_URL, true);

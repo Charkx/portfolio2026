@@ -21,7 +21,11 @@ export function makeHolo(timeUniform: { value: number }, pulse: Pulse) {
     sh.uniforms.uTime = timeUniform;
     sh.uniforms.uOp = { value: 0.5 };
     sh.uniforms.uMz = { value: 1 }; // matérialisation : 0 = invisible, 1 = corps complet
-    sh.uniforms.uEdge = { value: 1 }; // multiplicateur de l'edge glow (boost à la désintégration)
+    // ATTENTION : uEdge ne multiplie que le liseré du FRONT de (dé)matérialisation,
+    // lui-même multiplié par (1 - uMz) dans le fragment. Tant que le corps est
+    // complet (uMz = 1), il n'a AUCUN effet — le régler pendant une scène normale ne
+    // produit rien. Il ne sert qu'à accentuer la matérialisation et la désintégration.
+    sh.uniforms.uEdge = { value: 1 };
     sh.uniforms.uPulseT = pulse.t;   // temps écoulé depuis le clic (99 = onde inactive)
     sh.uniforms.uPulseO = pulse.o;   // origine de l'onde (point cliqué, monde)
     m.userData.uOp = sh.uniforms.uOp;

@@ -21,10 +21,6 @@ interface PortfolioState {
   // Navigation
   currentSection: string
   setCurrentSection: (section: string) => void
-
-  // Debug
-  debugMode: boolean
-  toggleDebugMode: () => void
 }
 
 export const usePortfolioStore = create<PortfolioState>()(
@@ -34,7 +30,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       isLoading: true,
       introPhase: "LOCKED",
       currentSection: "hero",
-      debugMode: process.env.NODE_ENV === "development",
+      scrollProgress: 0, // manquait : le HUD lisait undefined tant que le 1er scroll n'avait pas eu lieu
 
       // Actions (pas de console.log ici : la console prod doit rester muette)
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -46,8 +42,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       setCurrentSection: (section) => {
         if (get().currentSection !== section) set({ currentSection: section })
       },
-
-      toggleDebugMode: () => set((state) => ({ debugMode: !state.debugMode })),
     }),
     { name: "portfolio-store" },
   ),

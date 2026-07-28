@@ -26,7 +26,8 @@ export default function HeroSection({
 }: {
   onScan: () => void
 }) {
-  const { introPhase, setIntroPhase } = usePortfolioStore()
+  const introPhase = usePortfolioStore((s) => s.introPhase)
+  const setIntroPhase = usePortfolioStore((s) => s.setIntroPhase)
   const unlocked = introPhase === "UNLOCKED"
   const dragHuman = useDragRotate("human")
   const t = useT()

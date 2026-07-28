@@ -79,7 +79,13 @@ const AugmentedHumanLayer = dynamic(() => import("./components/3d/AugmentedHuman
 })
 
 export default function ClientApp() {
-  const { isLoading, setIsLoading, introPhase, setIntroPhase } = usePortfolioStore()
+  // sélecteurs et non `usePortfolioStore()` : sans eux, cette racine se re-rendait
+  // à chaque image de scroll (scrollProgress change ~60 fois/s), entraînant tout
+  // l'arbre — HUD, canvas 3D et les quatre sections.
+  const isLoading = usePortfolioStore((s) => s.isLoading)
+  const setIsLoading = usePortfolioStore((s) => s.setIsLoading)
+  const introPhase = usePortfolioStore((s) => s.introPhase)
+  const setIntroPhase = usePortfolioStore((s) => s.setIntroPhase)
   const t = useT()
   const openModal = useModalStore((s) => s.open)
   const [progress, setProgress] = useState(0)

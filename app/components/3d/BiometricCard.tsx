@@ -16,23 +16,19 @@ const BASE_TEXT = "ID: CHARLY MENTHILLER";
  * et la fin de session (artefact retrouvé) : un seul composant 3D, pas de doublon.
  * Les interactions (scan au clic, révélation scanline) restent chez les parents.
  */
-export function IDCardVisual({ onClick, onPointerOver, onPointerOut, hideBarcode, children }: {
+// Le code-barres n'est PAS ici : les deux usages de la carte (entrée et fin de
+// session) fournissent le leur via `children`, un AnimatedBarcode qui se décode en
+// messages. Une variante statique a existé, protégée par une prop `hideBarcode`
+// toujours passée à vrai — donc jamais rendue.
+export function IDCardVisual({ onClick, onPointerOver, onPointerOut, children }: {
   onClick?: () => void;
   onPointerOver?: () => void;
   onPointerOut?: () => void;
-  hideBarcode?: boolean; // la carte de contact fournit son propre code-barres animé
   children?: React.ReactNode;
 }) {
   const [glitchText, setGlitchText] = useState(BASE_TEXT);
   const [glitchActive, setGlitchActive] = useState(false);
   const backgroundTexture = useLoader(THREE.TextureLoader, '/images/id_card.jpg');
-
-  // Hauteurs du code-barres tirées UNE seule fois. Elles étaient calculées en plein
-  // rendu : le glitch du nom déclenche deux setState par cycle, donc les 20 barres
-  // se retiraient au sort à chaque fois. Le code-barres frétillait en permanence
-  // sans que ce soit voulu — un code-barres, par définition, ne change pas.
-  // eslint-disable-next-line react-hooks/purity -- hasard VOULU, tiré une fois au montage
-  const barScales = useMemo(() => Array.from({ length: 20 }, () => (Math.random() > 0.5 ? 1 : 0.6)), []);
 
   // Glitch périodique du nom
   useEffect(() => {
@@ -93,18 +89,6 @@ export function IDCardVisual({ onClick, onPointerOver, onPointerOut, hideBarcode
           <meshBasicMaterial color="#ff00ff" transparent opacity={0.01} />
         </mesh>
       )}
-
-      {/* Code-barres (masquable : la carte de contact anime le sien) */}
-      {!hideBarcode && Array.from({ length: 20 }).map((_, i) => (
-        <mesh
-          key={i}
-          position={[-0.6 + i * 0.06, -0.05, 0.0215]}
-          scale={[1, barScales[i], 1]}
-        >
-          <boxGeometry args={[0.02, 0.15, 0.002]} />
-          <meshBasicMaterial color={glitchActive ? "#00ffff" : "#ffffff"} />
-        </mesh>
-      ))}
 
       {/* LED d'activité */}
       <mesh position={[0.68, 0.45, 0.0105]}>
@@ -211,7 +195,6 @@ const CyberpunkIDCard: React.FC<{ onScanTrigger?: () => void }> = ({ onScanTrigg
   return (
     <group ref={cardRef}>
       <IDCardVisual
-        hideBarcode
         onClick={onScanTrigger ? handleClick : undefined}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}

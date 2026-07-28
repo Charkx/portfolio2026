@@ -78,7 +78,12 @@ const HIT = "inline-flex items-center justify-center min-h-11 px-2";
 
 export default function ARInterface() {
   const [time, setTime] = useState(new Date());
-  const { introPhase, currentSection, scrollProgress, setIntroPhase } = usePortfolioStore();
+  const introPhase = usePortfolioStore((s) => s.introPhase);
+  const currentSection = usePortfolioStore((s) => s.currentSection);
+  // arrondi DANS le sélecteur : le HUD n'affiche qu'un entier, il n'a donc besoin de
+  // se re-rendre que lorsque cet entier change — pas à chaque image de scroll.
+  const batteryLevel = usePortfolioStore((s) => Math.max(1, Math.round((s.scrollProgress ?? 0) * 100)));
+  const setIntroPhase = usePortfolioStore((s) => s.setIntroPhase);
   const openModal = useModalStore((s) => s.open);
   const closeModal = useModalStore((s) => s.close);
   const soundEnabled = useAudioStore((s) => s.enabled);
@@ -114,7 +119,6 @@ export default function ARInterface() {
   };
 
   const booted = introPhase === "BOOTING" || introPhase === "UNLOCKED";
-  const batteryLevel = Math.max(1, Math.round(scrollProgress * 100));
 
   const NAV = [
   { prefix: "COGNITIVE_PROFIL", label: t.hud.nav.about,    section: "about" },

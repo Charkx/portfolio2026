@@ -31,6 +31,7 @@ export const PROFILE = {
 // longue durée par Vercel). Supprime au passage une dépendance à un tiers.
 // Icônes issues de devicon (github.com/devicons/devicon), licence MIT.
 export const techIcon = (icon: string) => `/icons/tech/${icon}.svg`
+
 export const TECH_STACK = {
   "Frontend": [
     { name: "React",      icon: "react",       level: 3, desc: "Le cœur de mon front : composants, hooks, gestion d'état. Sur tous mes projets." },
@@ -71,8 +72,6 @@ export const HELIX_STRANDS = [
     items: ["Claude Code", "Intégration de LLMs", "Développement augmenté"],
   },
 ] as const
-
-export const SCAN_COLORS = ["#ff00ff", "#9b5de5", "#00ffff"] as const
 
 // --- À propos / parcours (rendu en blocs dans AboutSection) ---
 export const ABOUT_TEXT = [

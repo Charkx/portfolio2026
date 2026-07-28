@@ -5,8 +5,6 @@ export interface TechItem {
   desc: string;     // phrase courte affichée au "décodage" (clic)
 }
 
-export type TechStack = Record<string, TechItem[]>;
-
 export interface Project {
   title:          string;
   description:    string;

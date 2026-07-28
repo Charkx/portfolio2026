@@ -19,7 +19,8 @@ function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T 
 }
 
 export function useOptimizedScroll() {
-  const { setCurrentSection, setScrollProgress } = usePortfolioStore()
+  const setCurrentSection = usePortfolioStore((s) => s.setCurrentSection)
+  const setScrollProgress = usePortfolioStore((s) => s.setScrollProgress)
 
   // useMemo (pas useCallback) : la fonction throttlée n'est créée qu'une fois,
   // sinon throttle() serait ré-exécuté à chaque render

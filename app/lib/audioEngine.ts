@@ -10,7 +10,6 @@ export type Cue =
   | 'derez'                              // Projets — le cube explose (dématérialisation + éclats)
   | 'materialize'                        // Projets — le panneau se reconstruit tuile par tuile
   | 'reflow'                             // Projets — fermeture : reflux des éclats, cube reformé
-  | 'uplink'                             // Contact — handshake de transmission
   | 'boot'                               // déverrouillage — system power-on
   | 'powerdown'                          // re-verrouillage — power-down
   | 'modalOpen' | 'modalClose'           // ouverture/fermeture de modale
@@ -214,16 +213,6 @@ const CUES: Record<Cue, () => void> = {
     noise({ type: 'highpass', f0: 2200, dur: 0.12, peak: 0.05, t: 0.3, send: 0.3 })                                 // étincelle
     fm({ f0: 320, ratio: 1.5, index: 320, dur: 0.32, peak: 0.09, t: 0.36, send: 0.5 })                              // clank métallique (FM)
     tone({ type: 'sine', f0: 880, dur: 0.22, peak: 0.08, t: 0.4, send: 0.4 })                                       // pulse d'allumage
-  },
-
-  // --- Contact : HANDSHAKE de transmission (data-blips + "connexion établie") ---
-  uplink: () => {
-    for (let i = 0; i < 6; i++) {
-      const f = 1000 + Math.random() * 1500
-      tone({ type: 'square', f0: f, dur: 0.035, peak: 0.03, t: i * 0.05, filter: { type: 'bandpass', f0: f, q: 7 }, send: 0.25 }) // data-blips
-    }
-    tone({ type: 'sine', f0: 400, f1: 1000, dur: 0.3, peak: 0.09, t: 0.34, send: 0.4 })                 // montée "connexion"
-    ;[660, 990].forEach((f) => tone({ type: 'triangle', f0: f, dur: 0.26, peak: 0.05, t: 0.52, send: 0.55 })) // confirmation
   },
 
   // --- Déverrouillage : SYSTEM POWER-ON (le grand moment) ---

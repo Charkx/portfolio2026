@@ -66,7 +66,8 @@ function AccessGrantedHint() {
 export default function TerminalDisplay() {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<{ id: string; text: string }[]>([]);
-  const { introPhase, setIntroPhase } = usePortfolioStore();
+  const introPhase = usePortfolioStore((s) => s.introPhase);
+  const setIntroPhase = usePortfolioStore((s) => s.setIntroPhase);
   // étape calibrage : après l'identification du sujet, avant le boot
   const [calibrating, setCalibrating] = useState(false);
 
