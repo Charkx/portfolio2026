@@ -76,6 +76,20 @@ const POV_ZOOM = 0.08;
 const POV_LOOK = new THREE.Vector3(0, 0.22, 0);   // vise le centre de la couronne de cubes
 const POV_EYE  = new THREE.Vector3(-0.05, 0.08, 0.1); // œil légèrement reculé → main moins envahissante
 
+// Ouverture de base de la caméra. Le portrait voit plus large verticalement pour
+// compenser sa largeur (cf. ResponsiveFov, qui l'applique au montage et au redim.).
+export const baseFov = (portrait: boolean) => (portrait ? 52 : 40);
+
+// PORTRAIT, station projets : on ÉLARGIT le champ au lieu de reculer la caméra.
+// Le champ horizontal d'un téléphone vaut ~25° d'ouverture contre 69° sur un écran
+// large : la couronne de cubes débordait du cadre. Mais reculer l'œil ne pouvait pas
+// marcher — il part de l'os de la tête, donc tout recul le place DERRIÈRE le crâne,
+// qu'on découvre alors en gros plan. Le défaut est angulaire, la correction l'est
+// aussi : à 68°, le champ latéral retrouve ~1,4× son étendue sans que la caméra bouge
+// d'un millimètre. Le léger effet grand-angle passe pour ce qu'il est — une vue à la
+// première personne.
+const POV_FOV_PORTRAIT = 68;
+
 // 👉 CHORÉGRAPHIE CAMÉRA — AJUSTE ICI :
 //   Entre deux stations, la caméra s'écarte en "plan large" (on revoit l'humain entier,
 //   la signature du site) puis replonge vers la station suivante. Nul aux extrémités.
@@ -352,7 +366,13 @@ function relaxRot(focus: string, active: boolean, dt: number) {
 const MOTE_COUNT = 10;             // lucioles simultanées
 const MOTE_TARGET = new THREE.Vector3(0, 1.0, 0); // cœur de l'hologramme (destination)
 const MOTE_COLLECT_R = 0.32;       // rayon de récolte autour du curseur (monde)
+// rayon de récolte au doigt, EN PIXELS. Au-dessus des 44 px d'une cible tactile
+// standard : rater une luciole n'est pas un désagrément neutre, c'est l'un des cinq
+// signaux SIG — donc l'accès au mini-jeu. Trop généreux se voit à peine ; trop juste
+// ferme une porte.
+const MOTE_TAP_R = 56;
 const MOTE_SIZE = 0.035;           // taille d'une luciole
+const MOTE_SPREAD_X = 1.5;         // demi-largeur du volume d'apparition (unités monde)
 
 type Mote = {
   base: THREE.Vector3;  // centre de flottement
@@ -365,8 +385,25 @@ type Mote = {
 
 function randomMoteBase(m: Mote) {
   // volume devant l'hologramme, dans le cadre caméra
-  m.base.set((Math.random() - 0.5) * 3.0, 0.3 + Math.random() * 1.7, -0.3 + Math.random() * 1.4);
+  m.base.set((Math.random() - 0.5) * 2 * MOTE_SPREAD_X, 0.3 + Math.random() * 1.7, -0.3 + Math.random() * 1.4);
   m.phase = Math.random() * Math.PI * 2;
+}
+
+// Demi-largeur RÉELLEMENT visible à la profondeur z. Le volume ci-dessus est calibré
+// pour le desktop ; en portrait, le champ horizontal tombe à ~25° (fov 52 vertical pour
+// un rapport d'écran de 0.46) et la moitié des lucioles naissaient HORS CADRE : ni
+// visibles, ni récoltables. C'est ce qui donnait, au téléphone, une poignée de lucioles
+// éparses au lieu d'un essaim.
+function visibleHalfWidth(cam: THREE.PerspectiveCamera, z: number) {
+  const d = Math.max(0.5, cam.position.z - z);
+  return d * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) * cam.aspect;
+}
+
+function harvestMote(m: Mote) {
+  m.collected = true;
+  m.ct = 0;
+  audioEngine.play('collect');
+  useDiscoveryStore.getState().discover('firefly');
 }
 
 function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
@@ -383,6 +420,8 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
   const _plane = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
   const _cursor = useRef(new THREE.Vector3());
   const _proj = useRef(new THREE.Vector3()); // projection écran d'une luciole (picking tactile)
+  const gl = useThree((s) => s.gl);
+  const rect = useRef({ left: 0, top: 0, width: 1, height: 1 }); // cadre du canvas (cf. plus bas)
   const motes = useRef<Mote[]>(
     Array.from({ length: MOTE_COUNT }, () => {
       const m: Mote = { base: new THREE.Vector3(), pos: new THREE.Vector3(), phase: 0, collected: false, ct: 0, respawnAt: 0 };
@@ -394,20 +433,39 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
   // le canvas est pointer-events:none → on suit la souris sur la fenêtre.
   // Tactile : pointermove ne vit que pendant un drag → on écoute AUSSI pointerdown
   // (le tap devient le geste de récolte, avec un rayon élargi et une courte fenêtre).
+  //
+  // Les coordonnées sont rapportées au CADRE DU CANVAS, pas à `window.innerWidth/Height`.
+  // Ce n'est pas la même chose : le canvas est `fixed inset-0`, donc dimensionné sur le
+  // viewport de MISE EN PAGE, alors que `innerHeight` suit le viewport VISUEL — sur
+  // mobile la barre d'URL les sépare de ~100 px, et clientY se mesure dans le second.
+  // Le pointeur était donc projeté à côté de là où le doigt s'était posé. L'erreur
+  // passait inaperçue tant que la tolérance verticale valait 76 px ; ramenée à un rayon
+  // rond, elle rendait la récolte impossible. getBoundingClientRect() et clientX/clientY
+  // vivent dans le même repère : la soustraction est juste quelle que soit la barre d'URL.
   useEffect(() => {
     coarse.current = window.matchMedia('(pointer: coarse)').matches;
-    const onMove = (e: PointerEvent) => {
-      pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      pointer.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
+    const el = gl.domElement;
+    // relu au tap et au redimensionnement seulement : un getBoundingClientRect() à
+    // chaque pointermove forcerait un calcul de mise en page 120 fois par seconde.
+    const sync = () => {
+      const r = el.getBoundingClientRect();
+      rect.current = { left: r.left, top: r.top, width: r.width || 1, height: r.height || 1 };
     };
-    const onDown = (e: PointerEvent) => { onMove(e); tapAt.current = performance.now(); };
-    window.addEventListener('pointermove', onMove, { passive: true });
+    const toNdc = (e: PointerEvent) => {
+      pointer.current.x = ((e.clientX - rect.current.left) / rect.current.width) * 2 - 1;
+      pointer.current.y = -(((e.clientY - rect.current.top) / rect.current.height) * 2 - 1);
+    };
+    const onDown = (e: PointerEvent) => { sync(); toNdc(e); tapAt.current = performance.now(); };
+    sync();
+    window.addEventListener('pointermove', toNdc, { passive: true });
     window.addEventListener('pointerdown', onDown, { passive: true });
+    window.addEventListener('resize', sync);
     return () => {
-      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointermove', toNdc);
       window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('resize', sync);
     };
-  }, []);
+  }, [gl]);
 
   useFrame((_, dt) => {
     // Les lucioles vivent AUSSI en mouvement réduit. Les couper supprimait la seule
@@ -426,8 +484,18 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
     }
 
     // tactile : fenêtre de 250 ms après un tap — le picking se fait EN ESPACE
-    // ÉCRAN (NDC), insensible à la profondeur (le plan z=0 ratait les lucioles)
+    // ÉCRAN, insensible à la profondeur (le plan z=0 ratait les lucioles)
     const tapFresh = coarse.current && performance.now() - tapAt.current < 250;
+    // en PIXELS et non en NDC : le NDC n'a pas la même échelle sur les deux axes, si
+    // bien qu'un rayon de 0.18 valait 35 px à l'horizontale contre 76 px à la verticale
+    // sur un téléphone. Le doigt ratait donc latéralement ce qu'il attrapait
+    // verticalement. En pixels, la tolérance est ronde et vaut une cible tactile.
+    // Mesuré sur le CADRE DU CANVAS, le même repère que le pointeur.
+    const vw = rect.current.width, vh = rect.current.height;
+    // un tap ne récolte QU'UNE luciole : la plus proche du doigt (sinon un seul geste
+    // en absorbait trois d'un coup, avec le carillon joué trois fois)
+    let bestI = -1, bestD = Infinity;
+    const cam = camera as THREE.PerspectiveCamera;
 
     motes.current.forEach((m, i) => {
       const mesh = meshes.current[i], mat = mats.current[i];
@@ -460,7 +528,6 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
         // respire en opacité — assez pour qu'on la repère et qu'on comprenne qu'elle
         // se récolte, sans rien faire bouger dans l'espace.
         m.pos.copy(m.base);
-        mesh.position.copy(m.pos);
         mesh.scale.setScalar(MOTE_SIZE);
         mat.opacity = 0.7 + 0.25 * Math.sin(t * 1.6);
       } else {
@@ -470,24 +537,38 @@ function HeroMotes({ heroWRef }: { heroWRef: RefObject<number> }) {
           m.base.y + Math.sin(t * 0.8 + 1.3) * 0.14,
           m.base.z + Math.cos(t * 0.4) * 0.12,
         );
-        mesh.position.copy(m.pos);
         mesh.scale.setScalar(MOTE_SIZE * (0.85 + 0.15 * Math.sin(t * 3)));
         mat.opacity = 0.9;
       }
 
-      // récolte : souris à proximité (monde) · tactile : tap proche À L'ÉCRAN (NDC)
-      const hit = coarse.current
-        ? tapFresh && (() => {
-            _proj.current.copy(m.pos).project(camera);
-            return Math.hypot(_proj.current.x - pointer.current.x, _proj.current.y - pointer.current.y) < 0.18;
-          })()
-        : m.pos.distanceTo(_cursor.current) < MOTE_COLLECT_R;
-      if (hit) {
-        m.collected = true; m.ct = 0;
-        audioEngine.play('collect');
-        useDiscoveryStore.getState().discover('firefly');
+      // Repli de l'essaim dans le cadre réel (cf. visibleHalfWidth). On COMPRIME plutôt
+      // qu'on ne borne : borner empilerait les lucioles sur les deux bords en portrait.
+      // Appliqué en continu et non au tirage, pour que la rotation de l'écran (ou la
+      // barre d'URL qui se replie) les resserre sans jamais les téléporter.
+      const lim = visibleHalfWidth(cam, m.pos.z) * 0.8;
+      if (lim < MOTE_SPREAD_X) m.pos.x *= lim / MOTE_SPREAD_X;
+      mesh.position.copy(m.pos);
+
+      // récolte : souris à proximité (monde) · tactile : tap proche À L'ÉCRAN
+      if (coarse.current) {
+        if (!tapFresh) return;
+        _proj.current.copy(m.pos).project(camera);
+        if (_proj.current.z > 1) return; // derrière la caméra : rien à attraper
+        const dx = (_proj.current.x - pointer.current.x) * vw * 0.5;
+        const dy = (_proj.current.y - pointer.current.y) * vh * 0.5;
+        const d = Math.hypot(dx, dy);
+        if (d < MOTE_TAP_R && d < bestD) { bestD = d; bestI = i; }
+      } else if (m.pos.distanceTo(_cursor.current) < MOTE_COLLECT_R) {
+        harvestMote(m);
       }
     });
+
+    // le tap est CONSOMMÉ : sans ça, la fenêtre de 250 ms restait ouverte et les images
+    // suivantes récoltaient la deuxième luciole la plus proche, puis la troisième.
+    if (bestI >= 0) {
+      harvestMote(motes.current[bestI]);
+      tapAt.current = -1e9;
+    }
   });
 
   return (
@@ -515,6 +596,7 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, linear =
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cfgKey est volontairement en trop (rebuild au Fast Refresh)
   const built = useMemo(() => buildScene(scene), [scene, cfgKey]);
   const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
   // Mouvement réduit = on coupe ce qui DÉPLACE le point de vue (respiration de la
   // caméra, suivi du regard, dérive du décor, et le voyage entre stations côté
   // AugmentedHumanLayer). Ce qui vit sur place — shader, matérialisation — est conservé.
@@ -563,7 +645,11 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, linear =
     const ndc = new THREE.Vector2();
     const onDown = (e: PointerEvent) => {
       if (reduced || heroWRef.current < 0.5) return;
-      ndc.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
+      // rapporté au cadre du canvas et non à la fenêtre : même raison que pour les
+      // lucioles (cf. HeroMotes) — ici l'écart faisait partir l'onde d'un point du corps
+      // qui n'est pas celui qu'on a touché, voire ratait le corps entièrement.
+      const r = gl.domElement.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
       ray.setFromCamera(ndc, camera);
       const hits = ray.intersectObject(built.human, true);
       if (!hits.length) return;
@@ -573,7 +659,7 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, linear =
     };
     window.addEventListener('pointerdown', onDown);
     return () => window.removeEventListener('pointerdown', onDown);
-  }, [built, camera, reduced]);
+  }, [built, camera, gl, reduced]);
 
   // VISION d'une section (cadrage caméra nommé), écrite dans outPos/outTgt.
   // Projets = vue subjective (POV main) ; les autres = cadrage de station.
@@ -681,6 +767,17 @@ export function SceneContents({ progressRef, fadeProgressRef, coverRef, linear =
     if (A.focus === 'heart') heartW += 1 - f;
     if (B.focus === 'heart') heartW += f;
     const head = built.headBone, palm = built.palmBone;
+
+    // Champ élargi À MESURE qu'on entre dans la vue subjective, et seulement en
+    // portrait (cf. POV_FOV_PORTRAIT). Suivre heartW plutôt que basculer d'un coup :
+    // l'ouverture s'ouvre avec le voyage, sans à-coup au moment où la station se pose.
+    const wantFov = el.aspect < 1
+      ? baseFov(true) + (POV_FOV_PORTRAIT - baseFov(true)) * (PROJECTS_POV ? heartW : 0)
+      : baseFov(false);
+    if (Math.abs(el.fov - wantFov) > 0.01) {
+      el.fov = wantFov;
+      el.updateProjectionMatrix();
+    }
     if (PROJECTS_POV && heartW > 0.001 && head && palm) {
       head.getWorldPosition(_eyes.current);
       palm.getWorldPosition(_hand.current);

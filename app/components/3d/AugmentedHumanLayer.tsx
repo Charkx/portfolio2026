@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { SceneContents, Loader } from './AugmentedHumanScene';
+import { SceneContents, Loader, baseFov } from './AugmentedHumanScene';
 import { useSceneStore } from '../../store/sceneStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -46,10 +46,17 @@ const ANCHORS = [
 
 // aligné sur la scène : paliers courts, voyages amples
 const HOLD = 0.22;
-function plateau(f: number): number {
-  if (f <= HOLD) return 0;
-  if (f >= 1 - HOLD) return 1;
-  const t = (f - HOLD) / (1 - 2 * HOLD);
+
+// Palier PAR STATION, et non une valeur unique. Chaque station est bordée par deux
+// demi-paliers : la fin du segment qui y mène et le début de celui qui en part. Les
+// projets sont le point d'orgue du récit — la vue subjective sur la main, les cubes à
+// portée — et on en repartait aussi vite que d'une étape de passage.
+const HOLD_AT = [HOLD, HOLD, HOLD, 0.36, HOLD];
+
+function plateau(f: number, hIn = HOLD, hOut = HOLD): number {
+  if (f <= hIn) return 0;
+  if (f >= 1 - hOut) return 1;
+  const t = (f - hIn) / (1 - hIn - hOut);
   return t * t * t * (t * (t * 6 - 15) + 10); // smootherstep
 }
 
@@ -66,8 +73,11 @@ function ResponsiveFov() {
     const c = camera as import('three').PerspectiveCamera;
     // muter la caméra est l'API three.js : elle n'a pas de version immuable, et
     // updateProjectionMatrix() n'existe que pour acter cette mutation.
+    // même source que la scène, qui reprend la main sur l'ouverture pendant la vue
+    // subjective des projets (cf. baseFov / POV_FOV_PORTRAIT) — deux valeurs codées
+    // en dur des deux côtés auraient fini par diverger.
     // eslint-disable-next-line react-hooks/immutability
-    c.fov = size.width < size.height ? 52 : 40;
+    c.fov = baseFov(size.width < size.height);
     c.updateProjectionMatrix();
   }, [camera, size]);
   return null;
@@ -120,7 +130,8 @@ export default function AugmentedHumanLayer() {
 
           // fondus : TOUJOURS continus (opacité et échelle des modules), même quand la
           // caméra, elle, coupe. C'est ce qui évite que les modules surgissent d'un bloc.
-          fadeRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, plateau(clamp01(fLin)));
+          const hIn = HOLD_AT[k] ?? HOLD, hOut = HOLD_AT[k + 1] ?? HOLD;
+          fadeRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, plateau(clamp01(fLin), hIn, hOut));
 
           if (reduced) {
             // MOUVEMENT RÉDUIT : la caméra ne voyage plus, elle COUPE d'une station à
@@ -132,7 +143,7 @@ export default function AugmentedHumanLayer() {
             // plus de voyage à masquer → le texte reste lisible en permanence
             document.documentElement.style.setProperty('--holo-veil', '0');
           } else {
-            const fe = plateau(clamp01(fLin));
+            const fe = plateau(clamp01(fLin), hIn, hOut);
             // caméra (SceneContents en mode linear → suit exactement progressRef)
             progressRef.current = lerp(ANCHORS[k].prog, ANCHORS[k + 1].prog, fe);
 

@@ -125,8 +125,29 @@ export default function DataCubes({ position, baseScale, weightsRef, palmBone }:
     else a.position.copy(position);
     a.position.y += LIFT;
 
-    a.visible = w > 0.004;
-    a.scale.setScalar(baseScale * (0.9 + w * 0.2));
+    // FIN DE SESSION : les cubes s'effacent avec le corps. La dissolution de la section
+    // contact ne passe PAS par les poids de station — sur mobile elle est pilotée par le
+    // scroll de la section, qui devance la station projets. Les cubes restaient donc
+    // suspendus dans le vide, au-dessus d'une main qui n'existait plus.
+    // /0.85 : la borne haute de la courbe de dissolution (cf. AugmentedHumanScene).
+    const end = THREE.MathUtils.clamp(useSceneStore.getState().endSessionProgress / 0.85, 0, 1);
+    const alive = w * (1 - end);
+
+    a.visible = alive > 0.004;
+    a.scale.setScalar(baseScale * (0.9 + w * 0.2) * (1 - end));
+
+    // Les boutons de survol/clic des cubes sont des éléments DOM, portés dans un
+    // conteneur FIXE plein écran (cf. plus haut) : ils vivent HORS de la scène et ne
+    // suivent donc pas la visibilité du groupe 3D. Invisibles mais toujours cliquables,
+    // ils traînaient sur tout le site — au hero, un tap destiné à une luciole pouvait
+    // tomber dessus et ouvrir une fiche projet avant même d'avoir vu les projets.
+    // `visibility` et non `display` : drei continue de positionner ses portails
+    // normalement, et les boutons sortent aussi de l'arbre d'accessibilité.
+    const portal = portalRef.current;
+    if (portal) {
+      const vis = a.visible ? '' : 'hidden';
+      if (portal.style.visibility !== vis) portal.style.visibility = vis;
+    }
 
     const mr = useSceneStore.getState().manualRot.heart;
     const spin = reducedMotion ? 0 : tRef.current * 0.35 + (mr?.y ?? 0);
