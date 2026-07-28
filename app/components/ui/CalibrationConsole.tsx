@@ -51,7 +51,7 @@ function Line({ current = false, tag, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="hud-reveal flex flex-wrap items-center gap-x-2" style={{ animationDelay: '0.1s' }}>
+    <div className="hud-reveal flex flex-wrap items-center gap-x-1.5 sm:gap-x-2" style={{ animationDelay: '0.1s' }}>
       {tag && (
         <>
           <span aria-hidden="true" className={current ? 'text-cyan-300 animate-pulse' : 'text-cyan-400/20'}>▸</span>
@@ -114,7 +114,7 @@ export default function CalibrationConsole({ onConfirm }: { onConfirm: () => voi
   const tag = (s: number) => `[${visible.indexOf(s) + 1}/${visible.length}]`;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1 sm:space-y-1.5">
       <Line>
         <span className="text-cyan-400/70">{t.calibration.intro}</span>
       </Line>

@@ -162,8 +162,12 @@ export default function TerminalDisplay() {
   if (introPhase === 'UNLOCKED') return <AccessGrantedHint />;
 
   return (
-    <div className="text-center mt-4">
-      <div className={`${calibrating ? 'text-cyan-400' : HEADER_COLOR[introPhase]} text-xl font-mono neon-glow animate-pulse mb-2`}>
+    // Tout d'un cran plus compact sous 640 px : le calibrage IMPRIME ses lignes au fur
+    // et à mesure, si bien que la hauteur du bloc double entre la première question et
+    // la dernière. C'est cette croissance qui débordait de l'écran sur un téléphone —
+    // il fallait donc dimensionner pour l'état final, pas pour l'état initial.
+    <div className="text-center mt-2 sm:mt-4">
+      <div className={`${calibrating ? 'text-cyan-400' : HEADER_COLOR[introPhase]} text-lg sm:text-xl font-mono neon-glow animate-pulse mb-1.5 sm:mb-2`}>
         {calibrating ? 'SESSION CALIBRATION' : HEADER[introPhase]}
       </div>
 
@@ -172,7 +176,7 @@ export default function TerminalDisplay() {
           100 px de vide poussaient le bouton d'entrée hors de l'écran sur petit mobile. */}
       <div
         ref={terminalRef}
-        className={`text-left text-cyan-300 text-sm font-mono max-h-64 overflow-y-hidden px-4 ${
+        className={`text-left text-cyan-300 text-xs sm:text-sm font-mono max-h-64 overflow-y-hidden px-2 sm:px-4 ${
           introPhase === 'LOCKED' ? '' : 'min-h-[100px]'
         }`}
       >

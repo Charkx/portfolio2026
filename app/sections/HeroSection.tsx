@@ -194,7 +194,7 @@ export default function HeroSection({
         </div>
       )}
 
-      <div className="container w-full mx-auto px-4 flex flex-col gap-4 items-center z-10">
+      <div className="container w-full mx-auto px-4 flex flex-col gap-3 sm:gap-4 items-center z-10">
         {/* Identité EN CLAIR tant que l'accès n'est pas ouvert : sans elle, un visiteur
             qui débarque n'a sous les yeux qu'une carte 3D et un message d'erreur rouge.
             aria-hidden : le résumé sr-only de page.tsx porte déjà cette info aux lecteurs
@@ -231,7 +231,11 @@ export default function HeroSection({
           </div>
         ) : (
           <div
-            className="w-full h-[38vh] md:h-[56vh] relative transition-opacity duration-700"
+            // 30svh et non 38vh : `vh` mesure l'écran barre d'URL MASQUÉE (la carte
+            // était donc plus grande que prévu tant qu'elle est visible), et c'est ce
+            // bloc qui, avec la console qui s'allonge, poussait le calibrage hors de
+            // l'écran. Le desktop garde ses 56vh.
+            className="w-full h-[30svh] md:h-[56vh] relative transition-opacity duration-700"
             style={{ opacity: unlocked ? 0 : 1, pointerEvents: unlocked ? "none" : "auto" }}
           >
             <LazyMount className="w-full h-full relative">
