@@ -5,7 +5,7 @@ import { create } from "zustand"
 // Préférences d'expérience réglées dans la console de calibrage (écran d'entrée),
 // persistées entre les visites.
 export type MotionPref = "auto" | "full" | "reduced" // auto = suit prefers-reduced-motion
-export type QualityPref = "high" | "eco"             // eco = bloom coupé + DPR plafonné
+export type QualityPref = "high" | "eco"             // eco = bloom bon marché + DPR plafonné
 
 const MOTION_KEY = "pref-motion"
 const QUALITY_KEY = "pref-quality"

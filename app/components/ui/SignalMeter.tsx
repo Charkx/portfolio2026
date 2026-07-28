@@ -91,7 +91,7 @@ export function SignalMeter({ booted }: { booted: boolean }) {
           SIG:
           <span
             className={booted ? "hud-reveal text-cyan-400 ml-1" : "opacity-0 ml-1"}
-            style={{ "--i": 4 } as React.CSSProperties}
+            style={{ "--i": 3 } as React.CSSProperties}
           >
             {booted ? pct : 0}%
           </span>

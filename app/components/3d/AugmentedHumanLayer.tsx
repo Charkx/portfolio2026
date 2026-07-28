@@ -9,7 +9,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Garde-fou perfs : < 40 fps pendant 3 s consécutives → bascule qualité "éco"
-// (bloom coupé + DPR 1). Une seule fois par session (on ne lutte pas contre
+// (bloom bon marché + DPR 1). Une seule fois par session (on ne lutte pas contre
 // l'utilisateur qui remettrait HIGH au recalibrage).
 function FpsGuard() {
   const setQuality = useSettingsStore((s) => s.setQuality);
@@ -77,7 +77,7 @@ export default function AugmentedHumanLayer() {
   // le canvas permanent tourne AUSSI sur mobile (la narration hologramme est
   // l'identité du site) — la qualité éco y est le défaut (cf. settingsStore)
   const [ready, setReady] = useState(false);
-  const quality = useSettingsStore((s) => s.quality); // éco : bloom coupé + DPR plafonné
+  const quality = useSettingsStore((s) => s.quality); // éco : bloom bon marché + DPR plafonné
   const reduced = useReducedMotion();                 // coupe le VOYAGE, pas la scène
   const wrapperRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0); // station hero au départ (écran verrouillé : environnement seul)

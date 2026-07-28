@@ -15,11 +15,12 @@ Portfolio interactif au parti pris cyberpunk : un hologramme humain en WebGL ser
 - **Mini-jeu caché** (`/transmission`) : 5 signaux disséminés dans le site (persistés en `localStorage`) déverrouillent une session de défense de 45 s — la page reste verrouillée tant que la découverte n'est pas complète.
 
 **Performance**
-- **Garde-fou FPS au runtime** : sous 40 fps pendant 3 s consécutives, la scène bascule automatiquement en mode éco (bloom coupé, DPR plafonné), une seule fois par session.
+- **Garde-fou FPS au runtime** : sous 40 fps pendant 3 s consécutives, la scène bascule automatiquement en mode éco (halo simplifié, DPR plafonné), une seule fois par session. Le bloom est *conservé* en éco — c'est lui qui fait qu'un hologramme ressemble à un hologramme — mais rendu bon marché par un seuil de luminance élevé.
 - **Éco par défaut sur tactile** (`pointer: coarse`) pour garantir la fluidité au premier contact, surchargeable depuis la console de calibrage.
 - **Code-splitting agressif** : toutes les sections Three.js sont en `dynamic(..., { ssr: false })` — hors du bundle initial, aucune exécution WebGL au prerender/build.
 - **`LazyMount`** : réserve l'espace en permanence (zéro saut de layout) mais ne monte les canvas qu'à l'approche du scroll, et les démonte en s'éloignant.
 - **Préchargement à progression réelle** : les `.glb` sont streamés via `ReadableStream` avec suivi des octets — la barre de chargement reflète le téléchargement réel, avec plafond de sécurité à 6 s et échec réseau non bloquant.
+- **Aucun asset servi par un tiers** : ni CDN d'icônes, ni HDR distant. Les 17 SVG de la stack sont locaux (76 Ko) et l'environnement de la carte biométrique est procédural (`<Lightformer>`) au lieu d'un HDR de 1,7 Mo — un portfolio que consulte un recruteur ne doit pas dépendre de la disponibilité d'un tiers.
 
 **Accessibilité & SEO**
 - **Résumé serveur `sr-only`** dans `page.tsx` : identité, projets et contacts présents dans le HTML initial, lisibles par les crawlers et les lecteurs d'écran, indépendamment de la couche 3D.
@@ -48,10 +49,10 @@ Portfolio interactif au parti pris cyberpunk : un hologramme humain en WebGL ser
 | Styles | Tailwind CSS 4 (via `@tailwindcss/postcss`) |
 | Animation | GSAP 3 · Lenis 1.3 (smooth scroll) |
 | État | Zustand 5 (+ middleware `persist`) |
-| Icônes | lucide-react · devicon (CDN jsDelivr) |
+| Icônes | lucide-react · devicon + simple-icons (SVG **servis en local**) |
 | Audio | Web Audio API (synthèse maison, sans dépendance) |
 | Typographie | Orbitron + IBM Plex Mono (`next/font`) |
-| Qualité | ESLint 9 (`eslint-config-next`) |
+| Qualité | ESLint 9 (`eslint-config-next`) · Vitest 4 |
 | Déploiement | Vercel |
 
 ---
@@ -76,7 +77,11 @@ npm run lint    # ESLint (non bloquant au build, cf. next.config.ts)
 npm test        # Vitest — logique pure et invariants d'assets/i18n
 ```
 
-### Tests
+Aucune variable d'environnement n'est nécessaire.
+
+---
+
+## 🧪 Tests
 
 27 tests, sans DOM ni WebGL. Ils couvrent délibérément ce que **ni TypeScript ni
 ESLint ne peuvent voir** :
@@ -91,7 +96,9 @@ Le rendu 3D et les composants React ne sont pas testés : il faudrait jsdom et d
 mocks WebGL pour des tests qui casseraient à chaque ajustement visuel. Trois
 fichiers de logique pure valent mieux qu'une suite qu'on finit par désactiver.
 
-Aucune variable d'environnement n'est nécessaire.
+> Au premier lancement, la suite a trouvé un vrai défaut : `vercel.svg` n'avait
+> aucune couleur de remplissage — un triangle noir, donc invisible sur le fond
+> sombre du site.
 
 ---
 
@@ -115,7 +122,8 @@ app/
 │  ├─ audioEngine.ts          # moteur Web Audio (singleton, synthèse pure)
 │  └─ preloadAssets.ts        # préchargement des .glb avec progression réelle
 ├─ i18n/                      # dictionnaire FR/EN typé + hook useT
-├─ utils/                     # constants (profil, stack), projectsData, types
+├─ utils/                     # constants (profil, stack), projectsData, types,
+│                             # scrollMath + holoDamage (fonctions pures testées)
 ├─ transmission/              # mini-jeu déverrouillable (page + canvas dédié)
 ├─ mentions-legales/          # page légale (repli sans JS de la modale)
 ├─ sitemap.ts · robots.ts · manifest.ts · opengraph-image.tsx   # SEO / PWA générés
@@ -124,8 +132,11 @@ app/
 
 public/
 ├─ 3d/                        # modèles GLB (humain holographique, cerveau)
+├─ icons/tech/                # 17 SVG de la stack, servis en local (aucun CDN)
 ├─ projects/                  # visuels des projets (WebP)
 └─ CV_Charly_Menthiller.pdf
+
+tests/                        # Vitest — assets, i18n, logique pure
 ```
 
 ---

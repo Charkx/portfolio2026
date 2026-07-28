@@ -284,9 +284,6 @@ export default function ARInterface() {
               <div className="text-cyan-300/80 hidden sm:block ">
                  PROFILE: <span className={booted ? "hud-reveal text-cyan-300/80" : "opacity-0"} style={{ '--i': 1 } as React.CSSProperties}>{PROFILE.title}</span>
               </div>
-              <div>
-              DEG LEVEL: <span className={booted ? "hud-reveal text-red-400" : "opacity-0"} style={{ '--i': 2 } as React.CSSProperties}>+5</span>
-            </div>
             </div>
 
           {/* Chapitre courant — centré, re-révélé à chaque changement de section */}
@@ -298,7 +295,7 @@ export default function ARInterface() {
 
           <div className="flex hidden sm:flex items-center space-x-6">
             <div>
-              BAT: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 3 } as React.CSSProperties}>{batteryLevel}%</span>
+              BAT: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 2 } as React.CSSProperties}>{batteryLevel}%</span>
             </div>
             <SignalMeter booted={booted} />
             <div>
@@ -348,10 +345,10 @@ export default function ARInterface() {
 
           <div aria-hidden="true" className="flex hidden sm:flex items-center space-x-6">
             <div>
-              MODE: <span className={booted ? "hud-reveal text-cyan-400" : "opacity-0"} style={{ '--i': 9 } as React.CSSProperties}>{t.hud.mode}</span>
+              MODE: <span className={booted ? "hud-reveal text-cyan-400" : "opacity-0"} style={{ '--i': 8 } as React.CSSProperties}>{t.hud.mode}</span>
             </div>
               <div className="text-cyan-300">
-                DISPO: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 10 } as React.CSSProperties}>09/2026</span>
+                DISPO: <span className={booted ? "hud-reveal text-green-400" : "opacity-0"} style={{ '--i': 9 } as React.CSSProperties}>09/2026</span>
               </div>
           </div>
         </div>
