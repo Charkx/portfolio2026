@@ -68,6 +68,21 @@ export const fr = {
     skip: "Passer l'intro",
     scroll: "SCROLL",
     grantedHint: "Scroll pour initialiser l'interface neurale…",
+    // Relevé de scan affiché DE PART ET D'AUTRE de l'hologramme une fois l'accès
+    // ouvert (desktop). Sans lui, déverrouiller effaçait le nom, l'intitulé et la
+    // date de disponibilité — soit tout ce qui décide qu'un recruteur continue.
+    annot: {
+      subject: "SUJET",
+      status: "STATUT",
+      stack: "STACK",
+      level: "Ingénieur Bac+5 · Polytech Marseille",
+      dispo: "DISPO 09/2026",
+      contract: "ALTERNANCE",
+      stackValue: "React · Next.js · TypeScript\nThree.js · GSAP · Tailwind",
+      actions: "ACTIONS",
+      cv: "VOIR LE CV",
+      contact: "Voir toutes mes coordonnées →",
+    },
     module3dKo: "// module 3D indisponible",
   },
 
@@ -242,6 +257,18 @@ export const en: Dict = {
     skip: "Skip intro",
     scroll: "SCROLL",
     grantedHint: "Scroll to initialize the neural interface…",
+    annot: {
+      subject: "SUBJECT",
+      status: "STATUS",
+      stack: "STACK",
+      level: "MSc in Computer Engineering · Polytech Marseille",
+      dispo: "AVAILABLE 09/2026",
+      contract: "APPRENTICESHIP",
+      stackValue: "React · Next.js · TypeScript\nThree.js · GSAP · Tailwind",
+      actions: "ACTIONS",
+      cv: "VIEW MY CV",
+      contact: "See all my details →",
+    },
     module3dKo: "// 3D module unavailable",
   },
 
@@ -322,6 +349,7 @@ export const en: Dict = {
       CSS3: "Layouts, animations, responsive — even without a framework.",
       Tailwind: "My day-to-day styling tool: fast and consistent.",
       ThreeJs: "Real-time 3D with React Three Fiber — this brain and this helix are mine.",
+      GSAP: "ScrollTrigger and timelines: every bit of choreography on this site runs through it.",
       NodeJs: "Servers and REST APIs on the back-end.",
       Supabase: "Routing and REST APIs on my projects.",
       PostgreSQL: "Relational modeling and SQL queries.",

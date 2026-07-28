@@ -268,7 +268,7 @@ export function ProjectsSection() {
     <section
       id="projects"
       ref={sectionRef}
-      className="holo-veil-fade min-h-screen pt-20 pb-28 lg:h-screen lg:py-0 relative overflow-hidden"
+      className="holo-veil-fade min-h-[100svh] pt-20 pb-28 lg:h-screen lg:py-0 relative overflow-hidden"
       aria-labelledby="projects-title"
     >
       {/* Fond */}

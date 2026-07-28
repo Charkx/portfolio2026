@@ -7,7 +7,10 @@ import { LazyMount } from "../components/LazyMount"
 import { usePortfolioStore } from "../store/portfolioStore"
 import { useAudioStore } from "../store/audioStore"
 import { useDragRotate } from "../hooks/useDragRotate"
+import { scrollToId } from "../components/SmoothScroll"
 import { PROFILE } from "../utils/constants"
+import { useModalStore } from "../store/modalStore"
+import { PdfViewer, CalendlyViewer } from "../components/ui/ModalViewers"
 import { useT } from "../i18n"
 
 // Canvas 3D (Three.js) chargé côté client après le 1er paint : le shell du Hero
@@ -30,7 +33,27 @@ export default function HeroSection({
   const setIntroPhase = usePortfolioStore((s) => s.setIntroPhase)
   const unlocked = introPhase === "UNLOCKED"
   const dragHuman = useDragRotate("human")
+  const openModal = useModalStore((s) => s.open)
   const t = useT()
+
+  // mêmes modales que le HUD et la section contact — un seul chemin de lecture par action
+  const openCv = useCallback(() => {
+    openModal({
+      title: t.hud.cvModalTitle,
+      size: "xl",
+      content: <PdfViewer src={PROFILE.cv} downloadName="CV_Charly_Menthiller.pdf" />,
+    })
+  }, [openModal, t])
+
+  // (pas de setEndSessionSent ici : la célébration du code-barres est un clin d'œil
+  //  propre à la section contact, il n'a pas de sens depuis l'écran d'accueil)
+  const openCalendly = useCallback(() => {
+    openModal({
+      title: t.contact.calendlyModal,
+      size: "lg",
+      content: <CalendlyViewer src={PROFILE.calendly} />,
+    })
+  }, [openModal, t])
 
   // mobile : pas de canvas permanent (hologramme desktop-only) → après le boot,
   // le hero affiche une identité + la carte gyro au lieu d'un écran vide
@@ -53,7 +76,7 @@ export default function HeroSection({
   return (
     <section
       id="hero"
-      className="holo-veil-fade relative min-h-screen flex items-center justify-center px-4 pt-16 pb-24 md:py-0"
+      className="holo-veil-fade relative min-h-[100svh] flex items-center justify-center px-4 pt-20 pb-24 md:py-0"
     >
       {/* Slot corps-entier : le canvas partagé (page) s'y matérialise une fois la carte scannée.
           Desktop déverrouillé : pivoter l'hologramme à la souris. Mobile : le slot reste
@@ -64,6 +87,98 @@ export default function HeroSection({
         className={`absolute inset-0 ${unlocked && !isMobile ? "z-20 cursor-grab touch-none" : "pointer-events-none"}`}
         {...(unlocked && !isMobile ? dragHuman : {})}
       />
+
+      {/* RELEVÉ DE SCAN (desktop, une fois l'accès ouvert). Déverrouiller effaçait
+          l'identité : le bloc nom/rôle/dispo est dans `!unlocked`, si bien qu'un
+          visiteur qui passe l'intro arrivait sur un hologramme anonyme, sans intitulé
+          de poste ni date d'alternance. Le mobile, lui, gardait une surcouche.
+          Placé SUR LES CÔTÉS et non au centre : la largeur desktop est inutilisée, et
+          surtout le corps 3D reste dégagé. `pointer-events-none` sur tout le calque —
+          il est au-dessus du slot de drag (z-20), il ne doit pas lui voler la souris ;
+          seuls les trois boutons d'action réactivent les événements. */}
+      {unlocked && !isMobile && (
+        <div className="hidden md:block absolute inset-0 z-30 pointer-events-none hud-boot">
+          {/* colonne gauche : QUI — le bloc dominant. C'est l'information la plus
+              importante de la page, elle doit peser plus que le statut et la stack,
+              pas moins. Colonne plus large et typographie d'un cran au-dessus de
+              tout le reste du relevé. */}
+          <div className="absolute left-4 lg:left-10 xl:left-16 top-1/2 -translate-y-1/2 w-56 lg:w-72 xl:w-96 font-mono" aria-hidden="true">
+            <div className="flex items-center gap-2 text-cyan-400/60 text-[10px] lg:text-xs tracking-[0.3em]">
+              <span>&gt; {t.hero.annot.subject}</span>
+              <span className="h-px flex-1 bg-cyan-400/30" />
+            </div>
+            <div className="mt-3 text-cyan-200 text-2xl lg:text-4xl xl:text-5xl font-display leading-[1.05]"
+                 style={{ textShadow: "0 0 20px rgba(34,211,238,0.45)" }}>
+              {PROFILE.name.toUpperCase()}
+            </div>
+            <p className="mt-3 text-cyan-100/90 text-xs lg:text-base xl:text-lg leading-snug">{t.hero.role}</p>
+            <p className="mt-2 text-cyan-400/65 text-[11px] lg:text-sm leading-relaxed">{t.hero.annot.level}</p>
+          </div>
+
+          {/* colonne droite : quoi — la disponibilité est LA donnée qui décide */}
+          <div className="absolute right-4 lg:right-12 xl:right-20 top-1/2 -translate-y-1/2 w-48 lg:w-64 xl:w-72 font-mono text-right">
+            <div className="flex items-center gap-2 text-cyan-400/50 text-[10px] lg:text-[11px] tracking-[0.3em]" aria-hidden="true">
+              <span className="h-px flex-1 bg-cyan-400/25" />
+              <span>{t.hero.annot.status} &lt;</span>
+            </div>
+            <div className="mt-3 text-green-400 text-xs lg:text-lg tracking-wider" aria-hidden="true"
+                 style={{ textShadow: "0 0 14px rgba(74,222,128,0.4)" }}>
+              ◆ {t.hero.annot.dispo}
+            </div>
+            <div className="mt-1 text-green-400/75 text-[10px] lg:text-xs tracking-wider" aria-hidden="true">
+              ◆ {t.hero.annot.contract}
+            </div>
+
+            <div className="mt-6 flex items-center gap-2 text-cyan-400/50 text-[10px] lg:text-[11px] tracking-[0.3em]" aria-hidden="true">
+              <span className="h-px flex-1 bg-cyan-400/25" />
+              <span>{t.hero.annot.stack} &lt;</span>
+            </div>
+            <p className="mt-2 text-cyan-100/85 text-[11px] lg:text-sm leading-relaxed whitespace-pre-line" aria-hidden="true">
+              {t.hero.annot.stackValue}
+            </p>
+
+            {/* ACTIONS : le premier écran n'offrait aucun moyen d'agir. Hiérarchie
+                assumée — prendre rendez-vous est le geste le plus engageant, il est
+                donc le seul en plein ; le CV est le repli, et le lien texte renvoie
+                à la section contact pour qui veut d'abord tout voir. */}
+            <div className="mt-6 flex items-center gap-2 text-cyan-400/50 text-[10px] lg:text-[11px] tracking-[0.3em]" aria-hidden="true">
+              <span className="h-px flex-1 bg-cyan-400/25" />
+              <span>{t.hero.annot.actions} &lt;</span>
+            </div>
+            <div className="mt-3 flex flex-col items-end gap-2">
+              <button
+                type="button"
+                onClick={openCalendly}
+                className="pointer-events-auto rounded bg-cyan-500 hover:bg-cyan-400 px-3.5 py-1.5
+                           text-black font-semibold text-[10px] lg:text-xs tracking-[0.12em]
+                           cursor-pointer transition-colors
+                           focus-visible:outline-2 focus-visible:outline-cyan-300"
+              >
+                {t.contact.calendlyBtn}
+              </button>
+              <button
+                type="button"
+                onClick={openCv}
+                className="pointer-events-auto rounded border border-cyan-400/40 px-3.5 py-1
+                           text-cyan-200 text-[10px] lg:text-xs tracking-[0.12em] cursor-pointer transition-all
+                           hover:bg-cyan-400/10 hover:border-cyan-400/70
+                           focus-visible:outline-2 focus-visible:outline-cyan-400"
+              >
+                {t.hero.annot.cv}
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToId("contact")}
+                className="pointer-events-auto text-cyan-400/70 hover:text-cyan-200 text-[10px] lg:text-[11px]
+                           tracking-wider cursor-pointer transition-colors
+                           focus-visible:outline-2 focus-visible:outline-cyan-400"
+              >
+                {t.hero.annot.contact}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="container w-full mx-auto px-4 flex flex-col gap-4 items-center z-10">
         {/* Identité EN CLAIR tant que l'accès n'est pas ouvert : sans elle, un visiteur

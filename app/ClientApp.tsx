@@ -172,7 +172,9 @@ export default function ClientApp() {
             En passant au-dessus, les deux coexistent. (Le HUD reste en z-50.)
             /30 = 2,3:1 : un contenu obligatoire par la loi ne peut pas être à la limite
             du lisible. /70 passe le seuil AA sans casser la discrétion d'un pied de page. */}
-        <footer className="relative z-[45] bg-[#05070a] md:bg-transparent pt-6 pb-24 md:pb-6 text-center text-cyan-100/70 font-mono text-xs">
+        {/* fond retiré sur mobile aussi : il formait la même bande opaque que la section
+            contact, juste en dessous. L'une sans l'autre aurait donné une arête franche. */}
+        <footer className="relative z-[45] bg-transparent pt-6 pb-20 md:pb-6 text-center text-cyan-100/70 font-mono text-xs">
           <span>© {new Date().getFullYear()} Charly Menthiller</span>
           <span className="mx-2">·</span>
           {/* href = repli sans JS (page indexable) · onClick = modale sans quitter la page */}

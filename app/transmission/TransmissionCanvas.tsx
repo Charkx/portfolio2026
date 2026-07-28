@@ -20,6 +20,7 @@ import * as THREE from "three"
 import { makeHolo, HUMAN_URL, type Pulse } from "../components/3d/holoMaterial"
 import { audioEngine } from "../lib/audioEngine"
 import { useSettingsStore } from "../store/settingsStore"
+import { hostOpacity, OP_FULL } from "../utils/holoDamage"
 
 // --- réglages jeu (côté canvas) ---
 const CUBE_POOL = 12          // meshes menaces réutilisés (pool)
@@ -47,11 +48,6 @@ type Shard = {
 // franchement plus présent à pleine intégrité, et faire de sa luminosité la lecture
 // DIRECTE des dégâts. Le joueur voit l'hôte s'effacer sans quitter l'action des yeux
 // pour aller lire la jauge du HUD.
-const OP_FULL = 0.75 // intégrité intacte
-// abaissé en même temps que OP_FULL : c'est l'ÉCART entre les deux qui rend chaque
-// brèche lisible, pas la valeur haute. Baisser le départ sans baisser le plancher
-// aurait rendu les impacts moins nets — exactement ce qu'on venait de corriger.
-const OP_DIM = 0.08  // au bord de la rupture
 // L'œil ne perçoit pas un NIVEAU, il perçoit un CHANGEMENT. Une descente lissée,
 // même réelle, passe inaperçue au milieu de l'action. À chaque brèche l'hôte
 // ENCAISSE donc visiblement : chute brutale, puis remontée vers son nouveau palier —
@@ -114,8 +110,7 @@ function Hologram({ pulse, defeated, integrity }: { pulse: Pulse; defeated: bool
     // brèches passaient donc inaperçues. Ici chaque brèche retire le MÊME POURCENTAGE
     // (~28 %), donc chaque impact se remarque autant, et l'écart absolu des premiers
     // coups est deux fois plus large qu'avant (0,21 contre 0,10).
-    const targetBase = OP_FULL * Math.pow(OP_DIM / OP_FULL, 1 - hp)
-    opBase.current += (targetBase - opBase.current) * k
+    opBase.current += (hostOpacity(hp) - opBase.current) * k
     // SURSAUT : appliqué sans lissage, sinon il serait mangé par le lissage lui-même
     const f = THREE.MathUtils.clamp(1 - pulse.t.value / FLINCH, 0, 1)
     const op = opBase.current * (1 - FLINCH_DEPTH * f * f)

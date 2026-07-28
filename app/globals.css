@@ -37,6 +37,26 @@ body.custom-cursor * {
   .touch-none { touch-action: auto !important; }
 }
 
+/* ─── DEUX RÈGLES DE HAUTEUR POUR LES SECTIONS ────────────────────────────────
+   Elles étaient devinées section par section (pt-16, pt-20, pb-8, pb-24, pb-28),
+   avec deux résultats sous le compte. Écrites ici une fois pour toutes :
+
+   1. HAUTEUR — sur mobile, utiliser `min-h-[100svh]`, jamais `min-h-screen`.
+      `min-h-screen` vaut 100vh, c'est-à-dire la hauteur de l'écran barre d'URL
+      MASQUÉE. Tant qu'elle est visible (l'état normal), la section fait 60 à
+      100 px de plus que ce qu'on voit, et son contenu déborde par le bas.
+      `100svh` est la hauteur garantie visible. Sur les branches desktop
+      `min-h-screen` reste correct : pas de barre d'URL.
+
+   2. MARGES — les deux barres de l'ATH font 64 px (h-16 dans ARInterface), en
+      haut et en bas, et elles sont posées PAR-DESSUS le contenu (fixed, z-50).
+      Une section qui remplit l'écran doit donc réserver au moins 64 px de chaque
+      côté, plus une respiration : pt-20 / pb-20 (80 px) est le minimum. En
+      dessous, le contenu passe sous la navigation et devient illisible.
+      Sur mobile la barre du bas porte les 4 liens de navigation, et celle du
+      haut le cluster SIG / CV / son / langue / alimentation : les deux comptent.
+   ────────────────────────────────────────────────────────────────────────────── */
+
 /* Apparition "glitch" de la carte mobile (clip-path + opacité + teinte, pas de transform → compatible avec le tilt) */
 @keyframes card-glitch-in {
   0%   { opacity: 0; clip-path: inset(45% 0 45% 0); filter: hue-rotate(80deg) brightness(1.6); }

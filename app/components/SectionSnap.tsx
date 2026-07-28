@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { getLenis, isProgrammaticScroll, sectionTargetY } from './SmoothScroll';
+import { nearest } from '../utils/scrollMath';
 
 // Sections alignées un-écran (l'intérieur de l'étage contact — 260vh — reste
 // scrubbable librement : contact est la dernière ancre, aucun snap vers le bas)
@@ -66,11 +67,6 @@ export default function SectionSnap() {
       SECTION_IDS.map((id) => (document.getElementById(id) ? sectionTargetY(id) : Infinity));
 
     // ancre initiale = section la plus proche (le navigateur peut restaurer le scroll)
-    const nearest = (y: number, T: number[]) => {
-      let best = 0;
-      T.forEach((t, k) => { if (Math.abs(y - t) < Math.abs(y - T[best])) best = k; });
-      return best;
-    };
     settled = nearest(window.scrollY, tops());
 
     // Départ d'un voyage — un seul endroit, partagé par le déclenchement normal et

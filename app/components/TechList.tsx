@@ -28,7 +28,10 @@ export default function TechList({
             &gt;&gt; {category}
           </h3>
 
-          <div className="grid grid-cols-4 gap-2 text-white">
+          {/* 5 colonnes et non 4 : l'ajout de GSAP portait le Frontend à 9 technos,
+              donc une 3e rangée et une section qui débordait en hauteur. À 5, on
+              revient au même nombre de rangées qu'avant. */}
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 text-white">
             {items.map((tech) => {
               const id = tech.name.toLowerCase();
               const isSelected = selectedTech === id;

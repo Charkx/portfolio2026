@@ -73,7 +73,23 @@ Le site est disponible sur [http://localhost:3000](http://localhost:3000).
 npm run build   # build de production
 npm run start   # sert le build de production
 npm run lint    # ESLint (non bloquant au build, cf. next.config.ts)
+npm test        # Vitest — logique pure et invariants d'assets/i18n
 ```
+
+### Tests
+
+27 tests, sans DOM ni WebGL. Ils couvrent délibérément ce que **ni TypeScript ni
+ESLint ne peuvent voir** :
+
+| Fichier | Ce qu'il protège |
+|---|---|
+| `tests/assets.test.ts` | Chaque techno déclarée a bien son SVG local, aucun fichier orphelin, chaque logo porte une couleur, le CV existe à son chemin. *Un manque ici n'échoue pas : il affiche un trou.* |
+| `tests/i18n.test.ts` | Parité des clés FR/EN, aucune chaîne vide, une description par techno dans les deux langues — et aucune traduction anglaise restée identique au français. |
+| `tests/logic.test.ts` | `nearest()` (ancrage du snap de section) et `hostOpacity()` (courbe de dégâts du mini-jeu), extraites de leurs closures pour être testables. |
+
+Le rendu 3D et les composants React ne sont pas testés : il faudrait jsdom et des
+mocks WebGL pour des tests qui casseraient à chaque ajustement visuel. Trois
+fichiers de logique pure valent mieux qu'une suite qu'on finit par désactiver.
 
 Aucune variable d'environnement n'est nécessaire.
 
@@ -103,6 +119,7 @@ app/
 ├─ transmission/              # mini-jeu déverrouillable (page + canvas dédié)
 ├─ mentions-legales/          # page légale (repli sans JS de la modale)
 ├─ sitemap.ts · robots.ts · manifest.ts · opengraph-image.tsx   # SEO / PWA générés
+│                                                              # (image OG produite par next/og : rien à maintenir)
 └─ globals.css                # design system cyberpunk (variables, animations, [data-motion])
 
 public/

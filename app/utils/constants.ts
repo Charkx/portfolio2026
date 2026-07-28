@@ -29,7 +29,9 @@ export const PROFILE = {
 // restait vide le temps de 16 allers-retours réseau. 76 Ko au total, désormais
 // servis par le même domaine que la page (donc déjà connecté, et mis en cache
 // longue durée par Vercel). Supprime au passage une dépendance à un tiers.
-// Icônes issues de devicon (github.com/devicons/devicon), licence MIT.
+// Icônes issues de devicon (github.com/devicons/devicon), licence MIT — sauf gsap.svg,
+// que devicon n'a pas : repris de simple-icons (CC0), remis en viewBox 128 et teinté
+// au vert de la marque pour s'aligner sur les autres (Logo3D extrude ces chemins).
 export const techIcon = (icon: string) => `/icons/tech/${icon}.svg`
 
 export const TECH_STACK = {
@@ -42,6 +44,7 @@ export const TECH_STACK = {
     { name: "CSS3",       icon: "css3",        level: 2, desc: "Layouts, animations, responsive — même sans framework." },
     { name: "Tailwind",   icon: "tailwindcss", level: 2, desc: "Mon outil de stylage au quotidien : rapide et cohérent." },
     { name: "ThreeJs",    icon: "threejs",     level: 2, desc: "3D temps réel avec React-Three-Fiber — ce cerveau et cette hélice, c'est moi." },
+    { name: "GSAP",       icon: "gsap",        level: 2, desc: "ScrollTrigger et timelines : toute la chorégraphie de ce site passe par lui." },
   ],
   "Backend": [
     { name: "NodeJs",     icon: "nodejs",      level: 2, desc: "Serveurs et API REST côté back." },

@@ -96,6 +96,29 @@ export default function ContactSection() {
     };
   }, [isMobile, reducedMotion, setEndSession, setCardActive]);
 
+  // MOBILE : la même désintégration, pilotée par le scroll de la section.
+  // Le mobile n'a pas l'étage de 260vh, donc rien ne pilotait `endSessionProgress` :
+  // le corps restait planté derrière la carte, et c'est le fond opaque qui le
+  // masquait. Le fond retiré, il fallait le faire vraiment disparaître — et le
+  // mécanisme existait déjà, il n'était simplement jamais alimenté ici.
+  // (mouvement réduit exclu : AugmentedHumanScene y calcule sa propre dissolution
+  //  à partir de la progression des fondus, sinon les deux se marcheraient dessus.)
+  useEffect(() => {
+    if (isMobile !== true || reducedMotion) return;
+
+    const st = ScrollTrigger.create({
+      trigger: sectionRef.current,
+      start: 'top bottom', // la section entre par le bas
+      end: 'top 30%',      // son titre est presque en haut → le corps a fini de se dissoudre
+      scrub: true,
+      // 0.85 = la borne haute de la courbe côté scène : 0 → 0.15 recule la caméra au
+      // plan large, 0.15 → 0.85 dissout le corps de haut en bas (cf. AugmentedHumanScene).
+      onUpdate: (self) => setEndSession(self.progress * 0.85),
+    });
+
+    return () => { st.kill(); setEndSession(0); };
+  }, [isMobile, reducedMotion, setEndSession]);
+
   // --- REDUCED-MOTION : version statique (pas de désintégration ni de séquence caméra) ---
   if (reducedMotion) {
     return (
@@ -103,7 +126,7 @@ export default function ContactSection() {
       // sections passent devant grâce à .holo-veil-fade (qui pose z-20) — celle-ci ne
       // porte pas cette classe, elle restait donc DERRIÈRE l'hologramme, invisible.
       // C'est la même valeur que partout ailleurs, pas un cas particulier.
-      <section id="contact" ref={sectionRef} className="relative z-20 min-h-screen flex items-center py-20 scroll-mt-20">
+      <section id="contact" ref={sectionRef} className="relative z-20 min-h-[100svh] flex items-center py-20 scroll-mt-20">
         {/* AUCUN fond : comme toutes les autres sections, le monde 3D reste visible
             derrière. Un fond opaque ici faisait de contact la seule section à masquer
             le site. La lisibilité passe par le glass-panel des coordonnées, exactement
@@ -129,12 +152,15 @@ export default function ContactSection() {
     );
   }
 
-  // --- MOBILE : la carte artefact SEULE (fond sombre → l'hologramme est masqué) + coordonnées ---
+  // --- MOBILE : la carte artefact + coordonnées, SUR le monde 3D comme partout ailleurs ---
   if (isMobile) {
     return (
-      <section id="contact" ref={sectionRef} className="relative z-20 flex flex-col items-center justify-start gap-4 pt-20 pb-8 px-4 scroll-mt-20 bg-[#05070a]">
-        {/* ancre 5e station : sert UNIQUEMENT à mapper le scroll (le fond sombre masque
-            l'hologramme partagé — au contact, seule la carte subsiste) */}
+      // Plus de fond opaque : contact était la seule section à masquer la scène, ce qui
+      // la sortait de la DA au lieu de la conclure. `pb-6` et non 20 : le pied de page
+      // suit immédiatement et porte déjà sa propre garde sous la barre du HUD — les deux
+      // marges s'additionnaient et repoussaient les mentions légales hors de l'écran.
+      <section id="contact" ref={sectionRef} className="relative z-20 flex flex-col items-center justify-start gap-3 pt-20 pb-6 px-4 scroll-mt-20">
+        {/* ancre 5e station : mappe le scroll pour la caméra */}
         <div data-holo="contact" aria-hidden className="absolute inset-0 pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center gap-4 w-full">
           <SectionTitle
@@ -145,14 +171,17 @@ export default function ContactSection() {
           <p className="-mt-1 text-cyan-400/70 font-mono text-[11px] tracking-wider text-center">
             {t.contact.howto}
           </p>
-          {/* LA carte 3D, seule (le même artefact que l'entrée — orbit coupé au tactile) */}
-          <div className="relative w-full max-w-md h-[40svh]">
+          {/* LA carte 3D (le même artefact que l'entrée — orbit coupé au tactile).
+              28svh et non 40 : c'était le poste le plus lourd de la section, et c'est
+              lui qui repoussait le pied de page sous la ligne de flottaison. */}
+          <div className="relative w-full max-w-md h-[28svh]">
             <ErrorBoundary fallback={<div className="absolute inset-0 flex items-center justify-center"><CardImage /></div>}>
               <BiometricCard />
             </ErrorBoundary>
           </div>
-          {/* canaux : intitulé = la carte parle · valeur = ouvre le canal */}
-          <div className="w-full max-w-md glass-panel rounded-xl p-4"><ContactChannels /></div>
+          {/* canaux à nu : pas de panneau. Le bloc mono se lit directement sur la scène,
+              comme le terminal d'accueil — c'est le design d'origine. */}
+          <div className="w-full max-w-md"><ContactChannels /></div>
         </div>
       </section>
     );
