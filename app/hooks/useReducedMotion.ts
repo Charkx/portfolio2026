@@ -5,16 +5,22 @@ import { useSettingsStore } from '../store/settingsStore';
  * Mouvement réduit EFFECTIF : le réglage manuel de la console de calibrage
  * (ANIMATIONS : COMPLÈTES/RÉDUITES) prime ; sinon on suit prefers-reduced-motion.
  *
- * Une réécriture en `useSyncExternalStore` a été tentée (B8) : plus propre sur le
- * papier, valeur juste dès le premier rendu au lieu de partir de `false`. Une
- * régression sur la récolte des lucioles en mouvement réduit a été signalée dans la
- * foulée, et cette version-ci a été rétablie pour l'isoler. Le mécanisme n'a JAMAIS
- * été démontré : la relecture du chemin (heroW ← station × matérialisation) n'a rien
- * donné. La seule piste est que ce hook est appelé DANS le canvas, donc dans le
- * réconciliateur de React Three Fiber et non celui du DOM.
- * À retenir : si la réécriture est retentée, c'est la récolte des lucioles en
- * mouvement réduit qu'il faut vérifier À L'ŒIL avant de conclure. Le surcoût de la
- * version ci-dessous est une image de mouvement complet avant la bascule.
+ * NE PAS réécrire ceci en `useSyncExternalStore`. Ça a été tenté (B8) — plus propre
+ * sur le papier, et valeur juste dès le premier rendu au lieu de partir de `false` —
+ * et ça a CASSÉ la récolte des lucioles en mouvement réduit. Le lien est confirmé par
+ * bisection : revenir à la version ci-dessous, seule variable changée, a rétabli le
+ * comportement.
+ *
+ * En revanche le MÉCANISME reste inexpliqué. La relecture du chemin
+ * (heroW ← station × matérialisation) n'a rien donné, et la branche `motion ===
+ * 'reduced'` court-circuite `prefers`, donc la valeur retournée devrait être
+ * identique dans les deux versions. Seule piste sérieuse : ce hook est appelé DANS le
+ * canvas, donc dans le réconciliateur de React Three Fiber et non celui du DOM, où
+ * les garanties de synchronisation de `useSyncExternalStore` ne sont pas les mêmes.
+ *
+ * Le surcoût assumé de cette version : une image de mouvement complet avant la
+ * bascule, pour qui a demandé moins de mouvement. C'est moins cher qu'un mini-jeu
+ * qu'on ne peut plus déverrouiller — la luciole est l'un des 5 signaux SIG.
  */
 export function useReducedMotion(): boolean {
   const [prefers, setPrefers] = useState(false);
