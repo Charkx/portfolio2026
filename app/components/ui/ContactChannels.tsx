@@ -54,20 +54,24 @@ export function ContactChannels() {
   // rangée en flex : la VALEUR tronque en ellipse sur petit écran (pas de débordement)
   const line = 'flex items-baseline gap-2 transition min-w-0';
   // intitulé = bouton : tap = la carte parle (aucune navigation)
-  const key = 'w-20 sm:w-24 shrink-0 text-left text-cyan-400/60 cursor-pointer hover:text-cyan-200 transition';
+  const key = 'w-16 sm:w-24 shrink-0 text-left text-cyan-400/60 cursor-pointer hover:text-cyan-200 transition';
   const val = 'truncate min-w-0 hover:brightness-125';
   const arrow = <span className="text-cyan-400/40 shrink-0">&gt;</span>;
 
   return (
+    // Tout est d'un cran plus compact SOUS 640 px, et d'un cran seulement : ce bloc
+    // occupait près de la moitié de la hauteur de la section sur un téléphone, alors
+    // qu'il n'y est qu'une liste de cinq lignes. Les valeurs `sm:` rendent au desktop
+    // exactement ce qu'il avait — c'est une réduction mobile, pas un redesign.
     <div className="font-mono text-center">
       {/* en-tête néon, comme le terminal d'accueil */}
-      <div className="text-cyan-400 text-lg md:text-xl neon-glow animate-pulse mb-3 tracking-[0.2em]">
+      <div className="text-cyan-400 text-base sm:text-lg md:text-xl neon-glow animate-pulse mb-2 sm:mb-3 tracking-[0.2em]">
         {t.contact.channelsHeader}
       </div>
 
       {/* bloc mono aligné à gauche, façon sortie terminal — largeur bornée, valeurs tronquées.
           Intitulé (bouton) fait parler la carte · Valeur (lien) ouvre le canal. */}
-      <div className="inline-block w-full max-w-md text-left text-cyan-300 text-sm space-y-1.5">
+      <div className="inline-block w-full max-w-md text-left text-cyan-300 text-xs sm:text-sm space-y-1 sm:space-y-1.5">
         <div className={line} {...hoverProps('email')}>
           {arrow}<button type="button" onClick={() => pokeCard('email')} className={key}>EMAIL</button>
           <a href={`mailto:${PROFILE.email}`} className={val} style={{ color: CH.email }}>◆ {PROFILE.email}</a>
@@ -97,7 +101,11 @@ export function ContactChannels() {
         <button
           type="button"
           onClick={openCalendly}
-          className="mt-5 w-full max-w-md sm:w-auto rounded px-6 py-2.5 font-mono text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
+          // min-h-11 : le texte rétrécit, pas la cible. C'est le bouton d'action
+          // principal de la page — 32 px de haut au doigt aurait été un recul.
+          // largeur auto sur TOUS les écrans : pleine largeur, ce bouton pesait autant
+          // que le bloc de coordonnées au-dessus et cassait l'alignement centré.
+          className="mt-3 sm:mt-5 inline-flex items-center justify-center min-h-11 rounded px-6 py-2 sm:py-2.5 font-mono text-xs sm:text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors cursor-pointer"
         >
           {t.contact.calendlyBtn}
         </button>
